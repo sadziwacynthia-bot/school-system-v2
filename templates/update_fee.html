@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% block title %}Update Fee Payment{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Update Fee Payment</h1>
+    <p>Add a new payment for this student.</p>
+</div>
+
+<div class="page-grid">
+    <div class="card-box">
+        <h2>Fee Information</h2>
+        <div class="student-info">
+            <p><strong>Student:</strong> {{ fee.first_name }} {{ fee.last_name }}</p>
+            <p><strong>Student Number:</strong> {{ fee.student_number }}</p>
+            <p><strong>Class:</strong> {{ fee.class_name }}</p>
+            <p><strong>Term:</strong> {{ fee.term_name or "Not set" }}</p>
+            <p><strong>Total Fee:</strong> ${{ fee.amount }}</p>
+            <p><strong>Already Paid:</strong> ${{ fee.paid_amount }}</p>
+            <p><strong>Balance:</strong> ${{ fee.balance }}</p>
+            <p><strong>Status:</strong> {{ fee.status }}</p>
+        </div>
+    </div>
+
+    <div class="card-box">
+        <h2>Add Payment</h2>
+        <form method="POST" class="payment-form">
+            <div class="form-group">
+                <label for="additional_payment">Additional Payment</label>
+                <input type="number" step="0.01" min="0" name="additional_payment" id="additional_payment" required>
+            </div>
+
+            <div class="form-group">
+                <label for="payment_date">Payment Date</label>
+                <input type="date" name="payment_date" id="payment_date" required>
+            </div>
+
+            <div class="form-group">
+                <label for="receipt_number">Receipt Number</label>
+                <input type="text" name="receipt_number" id="receipt_number" placeholder="Enter receipt number">
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn-primary">Save Payment</button>
+                <a href="{{ url_for('fees') }}" class="btn-secondary">Back to Fees</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card-box">
+    <h2>Payment History</h2>
+
+    {% if payment_history %}
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Payment Date</th>
+                    <th>Receipt Number</th>
+                    <th>Amount Paid</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for payment in payment_history %}
+                <tr>
+                    <td>{{ payment.payment_date or "-" }}</td>
+                    <td>{{ payment.receipt_number or "-" }}</td>
+                    <td>${{ payment.amount_paid }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+        <p>No payment history yet.</p>
+    {% endif %}
+</div>
+
+<style>
+.page-header {
+    margin-bottom: 24px;
+}
+.page-header h1 {
+    margin: 0;
+    color: #2563eb;
+    font-size: 30px;
+}
+.page-header p {
+    margin-top: 8px;
+    color: #6b7280;
+}
+.page-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 24px;
+}
+.card-box {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+.card-box h2 {
+    margin-top: 0;
+    margin-bottom: 18px;
+    color: #1e40af;
+}
+.student-info p {
+    margin-bottom: 10px;
+    color: #374151;
+}
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+.form-group input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    margin-bottom: 18px;
+    box-sizing: border-box;
+}
+.form-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.btn-primary,
+.btn-secondary {
+    display: inline-block;
+    padding: 12px 18px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 600;
+}
+.btn-primary {
+    background: #2563eb;
+    color: white;
+    border: none;
+}
+.btn-secondary {
+    background: #e5e7eb;
+    color: #111827;
+}
+.table-wrapper {
+    overflow-x: auto;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+th, td {
+    padding: 12px;
+    border-bottom: 1px solid #e5e7eb;
+    text-align: left;
+}
+th {
+    background: #2563eb;
+    color: white;
+}
+@media (max-width: 900px) {
+    .page-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}

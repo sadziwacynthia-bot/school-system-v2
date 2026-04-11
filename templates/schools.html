@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Schools{% endblock %}
+
+{% block content %}
+<h1 style="color:#2563eb;">Schools</h1>
+
+<div style="background:white; padding:24px; border-radius:16px; box-shadow:0 4px 14px rgba(0,0,0,0.08);">
+    <table style="width:100%; border-collapse:collapse;">
+        <thead>
+            <tr>
+                <th style="background:#2563eb; color:white; padding:12px; text-align:left;">School Name</th>
+                <th style="background:#2563eb; color:white; padding:12px; text-align:left;">School Code</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for school in schools %}
+            <tr>
+                <td style="padding:12px; border-bottom:1px solid #e5e7eb;">{{ school.school_name }}</td>
+                <td style="padding:12px; border-bottom:1px solid #e5e7eb;">{{ school.school_code }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

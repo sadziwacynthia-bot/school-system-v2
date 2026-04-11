@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Teachers{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Teachers</h1>
+    <p>Manage registered teachers.</p>
+</div>
+
+<div style="margin-bottom:20px;">
+    <a href="{{ url_for('teacher_registration') }}" class="btn-primary">Add Teacher</a>
+</div>
+
+<div class="card-box">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Teacher ID</th>
+                    <th>Full Name</th>
+                    <th>Phone</th>
+                    <th>Email</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for teacher in teachers %}
+                <tr>
+                    <td>{{ teacher.teacher_id }}</td>
+                    <td>{{ teacher.full_name }}</td>
+                    <td>{{ teacher.phone or "-" }}</td>
+                    <td>{{ teacher.email or "-" }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4">No teachers registered yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+.page-header h1 { color:#2563eb; margin:0; }
+.page-header p { color:#6b7280; margin-top:8px; }
+.btn-primary {
+    display:inline-block; background:#2563eb; color:white; text-decoration:none;
+    padding:12px 18px; border-radius:10px; font-weight:600;
+}
+.card-box {
+    background:white; border-radius:16px; padding:24px;
+    box-shadow:0 4px 14px rgba(0,0,0,0.08);
+}
+.table-wrapper { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; min-width:700px; }
+th, td { padding:12px; border-bottom:1px solid #e5e7eb; text-align:left; }
+th { background:#2563eb; color:white; }
+</style>
+{% endblock %}

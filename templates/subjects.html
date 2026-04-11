@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Subjects{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Subjects</h1>
+    <p>View and manage school subjects by class.</p>
+</div>
+
+<div class="page-actions">
+    <a href="{{ url_for('assign_subject') }}" class="btn-primary">Assign Subject</a>
+</div>
+
+<div class="card-box">
+    {% if subjects %}
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Class</th>
+                        <th>Subject</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in subjects %}
+                    <tr>
+                        <td>{{ item.class_name }}</td>
+                        <td>{{ item.subject }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <p>No subjects have been added yet.</p>
+            <a href="{{ url_for('assign_subject') }}" class="btn-secondary">Add First Subject</a>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+.page-header {
+    margin-bottom: 24px;
+}
+
+.page-header h1 {
+    margin: 0;
+    color: #2563eb;
+    font-size: 30px;
+}
+
+.page-header p {
+    margin-top: 8px;
+    color: #6b7280;
+    font-size: 15px;
+}
+
+.page-actions {
+    margin-bottom: 20px;
+}
+
+.card-box {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+
+.table-wrapper {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 500px;
+}
+
+th, td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+th {
+    background: #2563eb;
+    color: white;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 30px 10px;
+    color: #6b7280;
+}
+
+.btn-primary,
+.btn-secondary {
+    display: inline-block;
+    padding: 12px 18px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 600;
+    text-align: center;
+}
+
+.btn-primary {
+    background: #2563eb;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #1e40af;
+}
+
+.btn-secondary {
+    background: #e5e7eb;
+    color: #111827;
+}
+
+.btn-secondary:hover {
+    background: #d1d5db;
+}
+</style>
+{% endblock %}

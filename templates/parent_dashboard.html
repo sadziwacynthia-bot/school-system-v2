@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Parent Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Parent Dashboard</h1>
+    <p>Welcome{% if session.get('full_name') %}, {{ session.get('full_name') }}{% endif %}</p>
+</div>
+
+{% if student %}
+<div class="summary-cards">
+    <div class="summary-card">
+        <span class="summary-label">Total Fees</span>
+        <span class="summary-value">${{ fee_summary.total_amount }}</span>
+    </div>
+    <div class="summary-card">
+        <span class="summary-label">Total Paid</span>
+        <span class="summary-value">${{ fee_summary.total_paid }}</span>
+    </div>
+    <div class="summary-card">
+        <span class="summary-label">Balance</span>
+        <span class="summary-value">${{ fee_summary.total_balance }}</span>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <div class="card-box">
+        <h2>Student Information</h2>
+        <div class="info-grid">
+            <div class="info-item"><span class="label">Full Name</span><span class="value">{{ student.first_name }} {{ student.last_name }}</span></div>
+            <div class="info-item"><span class="label">Student Number</span><span class="value">{{ student.student_number }}</span></div>
+            <div class="info-item"><span class="label">Class</span><span class="value">{{ student.class_name or "Not assigned" }}</span></div>
+            <div class="info-item"><span class="label">Boarding Status</span><span class="value">{{ student.boarding_status or "Not set" }}</span></div>
+        </div>
+    </div>
+
+    <div class="card-box">
+        <h2>Quick Links</h2>
+        <div class="quick-links">
+            <a href="{{ url_for('parent_fees') }}" class="quick-link">View Fees</a>
+            <a href="{{ url_for('parent_results') }}" class="quick-link">View Results</a>
+            <a href="{{ url_for('parent_attendance') }}" class="quick-link">View Attendance</a>
+            <a href="{{ url_for('parent_assignments') }}" class="quick-link">View Assignments</a>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="card-box">
+    <p>No student linked to this parent account yet.</p>
+</div>
+{% endif %}
+
+<style>
+.page-header h1 { margin:0; color:#2563eb; font-size:30px; }
+.page-header p { margin-top:8px; color:#6b7280; }
+.summary-cards { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin:20px 0; }
+.summary-card, .card-box { background:white; border-radius:16px; padding:24px; box-shadow:0 4px 14px rgba(0,0,0,0.08); }
+.summary-label { display:block; color:#6b7280; margin-bottom:8px; }
+.summary-value { font-size:24px; font-weight:700; color:#2563eb; }
+.dashboard-grid { display:grid; grid-template-columns:2fr 1fr; gap:20px; }
+.info-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.info-item { background:#f8fafc; padding:14px; border-radius:10px; border:1px solid #e5e7eb; }
+.label { display:block; font-size:13px; color:#6b7280; margin-bottom:6px; }
+.value { font-size:16px; font-weight:600; }
+.quick-links { display:grid; gap:12px; }
+.quick-link { display:block; text-decoration:none; background:#2563eb; color:white; padding:14px 16px; border-radius:10px; text-align:center; font-weight:600; }
+@media (max-width:900px) {
+    .summary-cards, .dashboard-grid, .info-grid { grid-template-columns:1fr; }
+}
+</style>
+{% endblock %}

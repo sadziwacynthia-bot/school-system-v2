@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}My Timetable{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>My Timetable</h1>
+    <p>Your assigned lessons for the week.</p>
+</div>
+
+<div class="card-box">
+    {% if timetable_rows %}
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Day</th>
+                    <th>Start</th>
+                    <th>End</th>
+                    <th>Class</th>
+                    <th>Subject</th>
+                    <th>Room</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in timetable_rows %}
+                <tr>
+                    <td>{{ row.day_of_week }}</td>
+                    <td>{{ row.start_time }}</td>
+                    <td>{{ row.end_time }}</td>
+                    <td>{{ row.class_name }}</td>
+                    <td>{{ row.subject }}</td>
+                    <td>{{ row.room or "-" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p>No timetable entries found yet.</p>
+    {% endif %}
+</div>
+
+<style>
+.page-header { margin-bottom: 24px; }
+.page-header h1 { margin: 0; color: #2563eb; font-size: 30px; }
+.page-header p { margin-top: 8px; color: #6b7280; }
+.card-box {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+}
+.table-wrapper { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; min-width: 850px; }
+th, td {
+    padding: 12px;
+    border-bottom: 1px solid #e5e7eb;
+    text-align: left;
+}
+th { background: #2563eb; color: white; }
+</style>
+{% endblock %}

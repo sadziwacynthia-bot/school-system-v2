@@ -1,0 +1,232 @@
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.page-title {
+    font-size: 32px;
+    font-weight: 700;
+    color: #0d47a1;
+    margin: 0;
+}
+
+.page-subtitle {
+    margin: 5px 0 0;
+    color: #666;
+    font-size: 15px;
+}
+
+.card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+
+.search-card {
+    padding: 18px;
+}
+
+.search-form {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.search-input {
+    flex: 1;
+    min-width: 250px;
+    padding: 14px 16px;
+    border: 1px solid #d9e2f1;
+    border-radius: 12px;
+    outline: none;
+    font-size: 15px;
+}
+
+.search-input:focus {
+    border-color: #1565c0;
+    box-shadow: 0 0 0 3px rgba(21, 101, 192, 0.12);
+}
+
+.class-card {
+    overflow: hidden;
+}
+
+.class-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.class-header h2 {
+    margin: 0;
+    color: #123c8c;
+    font-size: 24px;
+}
+
+.student-count {
+    background: #eef4ff;
+    color: #1565c0;
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+.modern-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.modern-table thead {
+    background: linear-gradient(90deg, #0d47a1, #1976d2);
+    color: white;
+}
+
+.modern-table th {
+    padding: 14px 12px;
+    text-align: left;
+    font-size: 14px;
+}
+
+.modern-table td {
+    padding: 14px 12px;
+    border-bottom: 1px solid #edf1f7;
+    vertical-align: middle;
+    font-size: 14px;
+}
+
+.modern-table tbody tr:hover {
+    background: #f8fbff;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.btn {
+    display: inline-block;
+    padding: 10px 16px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 14px;
+    border: none;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.btn-sm {
+    padding: 8px 12px;
+    font-size: 13px;
+}
+
+.btn-primary {
+    background: #1565c0;
+    color: #fff;
+}
+
+.btn-primary:hover {
+    background: #0d47a1;
+}
+
+.btn-view {
+    background: #e3f2fd;
+    color: #0d47a1;
+}
+
+.btn-view:hover {
+    background: #bbdefb;
+}
+
+.btn-edit {
+    background: #ede7f6;
+    color: #5e35b1;
+}
+
+.btn-edit:hover {
+    background: #d1c4e9;
+}
+
+.btn-warning {
+    background: #fff3cd;
+    color: #8a6d1d;
+}
+
+.btn-warning:hover {
+    background: #ffe69c;
+}
+
+.btn-success {
+    background: #d1f7dd;
+    color: #146c43;
+}
+
+.btn-success:hover {
+    background: #b7ebc6;
+}
+
+.btn-danger {
+    background: #fde2e1;
+    color: #b42318;
+}
+
+.btn-danger:hover {
+    background: #f8c9c7;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 7px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.status-badge.active {
+    background: #d1f7dd;
+    color: #146c43;
+}
+
+.status-badge.inactive {
+    background: #fde2e1;
+    color: #b42318;
+}
+
+.status-badge.transferred {
+    background: #fff4cc;
+    color: #8a6d1d;
+}
+
+.status-badge.graduated {
+    background: #e0ecff;
+    color: #1d4ed8;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.empty-state h3 {
+    margin-bottom: 8px;
+    color: #123c8c;
+}
+
+.empty-state p {
+    color: #666;
+}

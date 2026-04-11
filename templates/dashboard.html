@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard-shell">
+
+    <div class="hero-card">
+        <div class="hero-text">
+            <p class="hero-label">School Management System</p>
+            <h1>
+                Welcome{% if session.get('full_name') %}, {{ session.get('full_name') }}{% endif %}
+            </h1>
+            <p class="hero-subtext">
+                Here is your quick overview of the system.
+            </p>
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">🎓</div>
+            <div class="stat-content">
+                <span class="stat-title">Students</span>
+                <span class="stat-value">{{ total_students }}</span>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">👩‍🏫</div>
+            <div class="stat-content">
+                <span class="stat-title">Teachers</span>
+                <span class="stat-value">{{ total_teachers }}</span>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">👥</div>
+            <div class="stat-content">
+                <span class="stat-title">Users</span>
+                <span class="stat-value">{{ total_users }}</span>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">💳</div>
+            <div class="stat-content">
+                <span class="stat-title">Fee Records</span>
+                <span class="stat-value">{{ total_fee_records }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-grid">
+        <div class="panel-card">
+            <div class="panel-header">
+                <h2>Quick Actions</h2>
+                <p>Common tasks you may want to do next.</p>
+            </div>
+
+            <div class="quick-links">
+                {% if session.get('role') == 'super_admin' %}
+                    <a href="{{ url_for('schools') }}" class="quick-link">View Schools</a>
+                    <a href="{{ url_for('add_school') }}" class="quick-link">Add School</a>
+                    <a href="{{ url_for('add_school_admin') }}" class="quick-link">Add School Admin</a>
+                {% endif %}
+
+                {% if session.get('role') in ['super_admin', 'school_admin'] %}
+                    <a href="{{ url_for('students') }}" class="quick-link">View Students</a>
+                    <a href="{{ url_for('add_student') }}" class="quick-link">Add Student</a>
+                    <a href="{{ url_for('teachers') }}" class="quick-link">View Teachers</a>
+                    <a href="{{ url_for('teacher_registration') }}" class="quick-link">Register Teacher</a>
+                    <a href="{{ url_for('assign_teacher') }}" class="quick-link">Assign Teacher</a>
+                    <a href="{{ url_for('fees') }}" class="quick-link">View Fees</a>
+                    <a href="{{ url_for('add_fee') }}" class="quick-link">Add Fee</a>
+                    <a href="{{ url_for('enter_result') }}" class="quick-link">Enter Results</a>
+                    <a href="{{ url_for('results') }}" class="quick-link">View Results</a>
+                    <a href="{{ url_for('attendance') }}" class="quick-link">Take Attendance</a>
+                    <a href="{{ url_for('timetable') }}" class="quick-link">View Timetable</a>
+                    <a href="{{ url_for('add_timetable') }}" class="quick-link">Add Timetable</a>
+                    <a href="{{ url_for('assignments') }}" class="quick-link">Assignments</a>
+                    <a href="{{ url_for('add_assignment') }}" class="quick-link">Add Assignment</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="panel-card side-panel">
+            <div class="panel-header">
+                <h2>System Notes</h2>
+                <p>A quick reminder of how this system works.</p>
+            </div>
+
+            <div class="note-list">
+                <div class="note-item">
+                    <strong>School isolation:</strong>
+                    <span>Each school should only see its own data.</span>
+                </div>
+
+                <div class="note-item">
+                    <strong>School admin:</strong>
+                    <span>Manages students, teachers, fees, results, attendance, and timetable for one school.</span>
+                </div>
+
+                <div class="note-item">
+                    <strong>Super admin:</strong>
+                    <span>Creates schools and school admins, and can oversee the full platform.</span>
+                </div>
+
+                <div class="note-item">
+                    <strong>Parents & teachers:</strong>
+                    <span>Only see information linked to their own role and records.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.dashboard-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.hero-card {
+    background: linear-gradient(135deg, #2563eb, #1e40af);
+    color: white;
+    border-radius: 24px;
+    padding: 32px;
+    box-shadow: 0 14px 35px rgba(37, 99, 235, 0.22);
+}
+
+.hero-label {
+    margin: 0 0 8px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    opacity: 0.85;
+}
+
+.hero-card h1 {
+    margin: 0;
+    font-size: 34px;
+    line-height: 1.2;
+}
+
+.hero-subtext {
+    margin-top: 10px;
+    font-size: 15px;
+    opacity: 0.92;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+}
+
+.stat-card {
+    background: #ffffff;
+    border-radius: 18px;
+    padding: 22px 20px;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border: 1px solid #e5e7eb;
+}
+
+.stat-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 14px;
+    background: #eff6ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+}
+
+.stat-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.stat-title {
+    font-size: 14px;
+    color: #6b7280;
+    margin-bottom: 6px;
+}
+
+.stat-value {
+    font-size: 30px;
+    font-weight: 700;
+    color: #1e3a8a;
+    line-height: 1;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+}
+
+.panel-card {
+    background: #ffffff;
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+    border: 1px solid #e5e7eb;
+}
+
+.panel-header {
+    margin-bottom: 18px;
+}
+
+.panel-header h2 {
+    margin: 0;
+    font-size: 22px;
+    color: #1e40af;
+}
+
+.panel-header p {
+    margin: 8px 0 0;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.quick-links {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.quick-link {
+    display: block;
+    text-decoration: none;
+    background: #2563eb;
+    color: white;
+    padding: 14px 16px;
+    border-radius: 12px;
+    font-weight: 600;
+    text-align: center;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.15);
+}
+
+.quick-link:hover {
+    background: #1e40af;
+    transform: translateY(-2px);
+}
+
+.note-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.note-item {
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.note-item strong {
+    color: #1e3a8a;
+    font-size: 14px;
+}
+
+.note-item span {
+    color: #4b5563;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+@media (max-width: 1100px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 700px) {
+    .hero-card {
+        padding: 24px;
+    }
+
+    .hero-card h1 {
+        font-size: 28px;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .quick-links {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}

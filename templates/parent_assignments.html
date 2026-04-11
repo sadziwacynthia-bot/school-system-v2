@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Parent Assignments{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Assignments</h1>
+    <p>Assignments for your child’s class.</p>
+</div>
+
+<div class="card-box">
+    {% if assignments %}
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Class</th>
+                    <th>Subject</th>
+                    <th>Title</th>
+                    <th>Description</th>
+                    <th>Due Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in assignments %}
+                <tr>
+                    <td>{{ item.class_name }}</td>
+                    <td>{{ item.subject }}</td>
+                    <td>{{ item.title }}</td>
+                    <td>{{ item.description }}</td>
+                    <td>{{ item.due_date }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+        <p>No assignments found.</p>
+    {% endif %}
+</div>
+
+<style>
+.page-header {
+    margin-bottom: 24px;
+}
+.page-header h1 {
+    margin: 0;
+    color: #2563eb;
+    font-size: 30px;
+}
+.page-header p {
+    margin-top: 8px;
+    color: #6b7280;
+}
+.card-box {
+    background: white;
+    padding: 24px;
+    border-radius: 16px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+}
+.table-wrapper {
+    overflow-x: auto;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 900px;
+}
+th, td {
+    padding: 12px;
+    border-bottom: 1px solid #e5e7eb;
+    text-align: left;
+    vertical-align: top;
+}
+th {
+    background: #2563eb;
+    color: white;
+}
+</style>
+{% endblock %}

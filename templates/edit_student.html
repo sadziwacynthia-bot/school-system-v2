@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block title %}Edit Student{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Edit Student</h1>
+    <p>Update student details.</p>
+</div>
+
+<div class="card-box">
+    <form method="POST" action="{{ url_for('update_student', id=student.id) }}" class="form-grid">
+        <div class="form-group">
+            <label>First Name</label>
+            <input type="text" name="first_name" value="{{ student.first_name or '' }}" required>
+        </div>
+
+        <div class="form-group">
+            <label>Last Name</label>
+            <input type="text" name="last_name" value="{{ student.last_name or '' }}" required>
+        </div>
+
+        <div class="form-group">
+            <label>Date of Birth</label>
+            <input type="date" name="birthday" value="{{ student.birthday or '' }}">
+        </div>
+
+        <div class="form-group">
+            <label>Gender</label>
+            <select name="gender">
+                <option value="">Select gender</option>
+                <option value="Male" {% if student.gender == 'Male' %}selected{% endif %}>Male</option>
+                <option value="Female" {% if student.gender == 'Female' %}selected{% endif %}>Female</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Class</label>
+            <select name="class_name">
+                {% for class_name in class_options %}
+                    <option value="{{ class_name }}" {% if student.class_name == class_name %}selected{% endif %}>
+                        {{ class_name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Boarding Status</label>
+            <select name="boarding_status">
+                <option value="">Select status</option>
+                <option value="Day" {% if student.boarding_status == 'Day' %}selected{% endif %}>Day</option>
+                <option value="Boarder" {% if student.boarding_status == 'Boarder' %}selected{% endif %}>Boarder</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Enrollment Date</label>
+            <input type="date" name="enrollment_date" value="{{ student.enrollment_date or '' }}">
+        </div>
+
+        <div class="form-group">
+            <label>Leaving Year</label>
+            <input type="text" name="leaving_year" value="{{ student.leaving_year or '' }}">
+        </div>
+
+        <div class="form-group full-width">
+            <label>Student Status</label>
+            <select name="current_status">
+                <option value="Active" {% if student.current_status == 'Active' %}selected{% endif %}>Active</option>
+                <option value="Graduated" {% if student.current_status == 'Graduated' %}selected{% endif %}>Graduated</option>
+                <option value="Transferred" {% if student.current_status == 'Transferred' %}selected{% endif %}>Transferred</option>
+                <option value="Withdrawn" {% if student.current_status == 'Withdrawn' %}selected{% endif %}>Withdrawn</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Home Address</label>
+            <input type="text" name="home_address" value="{{ student.home_address or '' }}">
+        </div>
+
+        <div class="form-group">
+            <label>Mailing Address</label>
+            <input type="text" name="mailing_address" value="{{ student.mailing_address or '' }}">
+        </div>
+
+        <div class="form-group">
+            <label>Student Phone</label>
+            <input type="text" name="student_phone" value="{{ student.student_phone or '' }}">
+        </div>
+
+        <div class="form-group">
+            <label>Emergency Contact</label>
+            <input type="text" name="emergency_contact" value="{{ student.emergency_contact or '' }}">
+        </div>
+
+        <div class="form-group full-width">
+            <label>Medical Information</label>
+            <textarea name="medical_info" rows="4">{{ student.medical_info or '' }}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label>Guardian 1 Name</label>
+            <input type="text" name="guardian1_name" value="{{ student.guardian1_name or '' }}">
+        </div>
+
+        <div class="form-group">
+            <label>Guardian 1 Relationship</label>
+            <input type="text" name="guardian1_relationship" value="{{ student.guardian1_relationship or '' }}">
+        </div>
+
+        <div class="form-group">
+            <label>Guardian 1 Phone</label>
+            <input type="text" name="guardian1_phone" value="{{ student.guardian1_phone or '' }}">
+        </div>
+
+        <div class="form-group">
+            <label>Guardian 1 WhatsApp</label>
+            <input type="text" name="guardian1_whatsapp" value="{{ student.guardian1_whatsapp or '' }}">
+        </div>
+
+        <div class="form-group full-width">
+            <label>Guardian 1 Email</label>
+            <input type="email" name="guardian1_email" value="{{ student.guardian1_email or '' }}">
+        </div>
+
+        <div class="form-group">
+            <label>Guardian 2 Name</label>
+            <input type="text" name="guardian2_name" value="{{ student.guardian2_name or '' }}">
+        </div>
+
+        <div class="form-group">
+            <label>Guardian 2 Relationship</label>
+            <input type="text" name="guardian2_relationship" value="{{ student.guardian2_relationship or '' }}">
+        </div>
+
+        <div class="form-group">
+            <label>Guardian 2 Phone</label>
+            <input type="text" name="guardian2_phone" value="{{ student.guardian2_phone or '' }}">
+        </div>
+
+        <div class="form-group">
+            <label>Guardian 2 WhatsApp</label>
+            <input type="text" name="guardian2_whatsapp" value="{{ student.guardian2_whatsapp or '' }}">
+        </div>
+
+        <div class="form-group full-width">
+            <label>Guardian 2 Email</label>
+            <input type="email" name="guardian2_email" value="{{ student.guardian2_email or '' }}">
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">Save Changes</button>
+            <a href="{{ url_for('student_profile', id=student.id) }}" class="btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<style>
+.page-header { margin-bottom:24px; }
+.page-header h1 { margin:0; color:#2563eb; font-size:30px; }
+.page-header p { margin-top:8px; color:#6b7280; }
+.card-box { background:white; border-radius:16px; padding:24px; box-shadow:0 4px 14px rgba(0,0,0,0.08); }
+.form-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:18px; }
+.full-width { grid-column:1 / -1; }
+.form-group label { display:block; margin-bottom:8px; font-weight:600; }
+.form-group input, .form-group select, .form-group textarea {
+    width:100%; padding:12px; border:1px solid #d1d5db; border-radius:10px; box-sizing:border-box;
+}
+.form-actions { grid-column:1 / -1; display:flex; gap:12px; flex-wrap:wrap; }
+.btn-primary, .btn-secondary {
+    display:inline-block; padding:12px 18px; border-radius:10px; text-decoration:none; font-weight:600;
+}
+.btn-primary { background:#2563eb; color:white; border:none; }
+.btn-secondary { background:#e5e7eb; color:#111827; }
+@media (max-width:700px) {
+    .form-grid { grid-template-columns:1fr; }
+}
+</style>
+{% endblock %}

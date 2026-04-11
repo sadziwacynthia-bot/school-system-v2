@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}School System{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f5f7fb;
+            color: #1f2937;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #2563eb, #1e40af);
+            color: white;
+            padding: 14px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+        }
+
+        .navbar h2 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            transition: 0.2s ease;
+        }
+
+        .nav-links a:hover {
+            background: rgba(255,255,255,0.18);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px 18px 40px;
+        }
+
+        .flash {
+            padding: 12px 14px;
+            margin-bottom: 14px;
+            border-radius: 10px;
+            font-weight: 500;
+        }
+
+        .flash.success { background: #dcfce7; color: #166534; }
+        .flash.danger { background: #fee2e2; color: #991b1b; }
+        .flash.warning { background: #fef3c7; color: #92400e; }
+
+        @media (max-width: 700px) {
+            .navbar {
+                align-items: flex-start;
+            }
+
+            .nav-links {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <h2>School System V2</h2>
+
+        <div class="nav-links">
+            {% if session.get('user_id') %}
+
+                {% if session.get('role') == 'parent' %}
+                    <a href="{{ url_for('parent_dashboard') }}">Dashboard</a>
+                    <a href="{{ url_for('parent_fees') }}">Fees</a>
+                    <a href="{{ url_for('parent_results') }}">Results</a>
+                    <a href="{{ url_for('parent_attendance') }}">Attendance</a>
+                    <a href="{{ url_for('parent_assignments') }}">Assignments</a>
+                    <a href="{{ url_for('logout') }}">Logout</a>
+
+                {% elif session.get('role') == 'teacher' %}
+                    <a href="{{ url_for('teacher_dashboard') }}">Dashboard</a>
+                    <a href="{{ url_for('attendance') }}">Attendance</a>
+                    <a href="{{ url_for('enter_result') }}">Results Entry</a>
+                    <a href="{{ url_for('results') }}">Results</a>
+                    <a href="{{ url_for('assignments') }}">Assignments</a>
+                    <a href="{{ url_for('timetable') }}">My Timetable</a>
+                    <a href="{{ url_for('logout') }}">Logout</a>
+
+                {% elif session.get('role') == 'school_admin' %}
+                    <a href="{{ url_for('dashboard') }}">Dashboard</a>
+                    <a href="{{ url_for('students') }}">Students</a>
+                    <a href="{{ url_for('add_student') }}">Add Student</a>
+                    <a href="{{ url_for('teachers') }}">Teachers</a>
+                    <a href="{{ url_for('teacher_registration') }}">Register Teacher</a>
+                    <a href="{{ url_for('assign_teacher') }}">Assign Teacher</a>
+                    <a href="{{ url_for('fees') }}">Fees</a>
+                    <a href="{{ url_for('enter_result') }}">Results Entry</a>
+                    <a href="{{ url_for('results') }}">Results</a>
+                    <a href="{{ url_for('attendance') }}">Attendance</a>
+                    <a href="{{ url_for('attendance_records') }}">Records</a>
+                    <a href="{{ url_for('assignments') }}">Assignments</a>
+                    <a href="{{ url_for('add_assignment') }}">Add Assignment</a>
+                    <a href="{{ url_for('timetable') }}">Timetable</a>
+                    <a href="{{ url_for('add_timetable') }}">Add Timetable</a>
+                    <a href="{{ url_for('logout') }}">Logout</a>
+
+                {% elif session.get('role') == 'super_admin' %}
+                    <a href="{{ url_for('dashboard') }}">Dashboard</a>
+                    <a href="{{ url_for('schools') }}">Schools</a>
+                    <a href="{{ url_for('add_school') }}">Add School</a>
+                    <a href="{{ url_for('add_school_admin') }}">Add Admin</a>
+                    <a href="{{ url_for('students') }}">Students</a>
+                    <a href="{{ url_for('add_student') }}">Add Student</a>
+                    <a href="{{ url_for('teachers') }}">Teachers</a>
+                    <a href="{{ url_for('teacher_registration') }}">Register Teacher</a>
+                    <a href="{{ url_for('assign_teacher') }}">Assign Teacher</a>
+                    <a href="{{ url_for('fees') }}">Fees</a>
+                    <a href="{{ url_for('enter_result') }}">Results Entry</a>
+                    <a href="{{ url_for('results') }}">Results</a>
+                    <a href="{{ url_for('attendance') }}">Attendance</a>
+                    <a href="{{ url_for('attendance_records') }}">Records</a>
+                    <a href="{{ url_for('assignments') }}">Assignments</a>
+                    <a href="{{ url_for('add_assignment') }}">Add Assignment</a>
+                    <a href="{{ url_for('timetable') }}">Timetable</a>
+                    <a href="{{ url_for('add_timetable') }}">Add Timetable</a>
+                    <a href="{{ url_for('logout') }}">Logout</a>
+                {% endif %}
+
+            {% else %}
+                <a href="{{ url_for('index') }}">Home</a>
+                <a href="{{ url_for('login') }}">Login</a>
+                <a href="{{ url_for('parent_setup') }}">Parent Setup</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </div>
+
+</body>
+</html>

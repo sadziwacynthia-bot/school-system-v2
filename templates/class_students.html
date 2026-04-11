@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}Class Students{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ class_name }}</h1>
+    <p>Students in this class.</p>
+</div>
+
+<div class="page-actions">
+    <a href="{{ url_for('classes') }}" class="btn-secondary">Back to Classes</a>
+</div>
+
+<div class="card-box">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Student Number</th>
+                    <th>Name</th>
+                    <th>Boarding Type</th>
+                    <th>Guardian</th>
+                    <th>Guardian Phone</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for student in students %}
+                <tr>
+                    <td>{{ student.student_number }}</td>
+                    <td>{{ student.first_name }} {{ student.last_name }}</td>
+                    <td>{{ student.boarding_status or "-" }}</td>
+                    <td>{{ student.guardian1_name or "-" }}</td>
+                    <td>{{ student.guardian1_phone or "-" }}</td>
+                    <td>{{ student.current_status or "Active" }}</td>
+                    <td>
+                        <a href="{{ url_for('student_profile', id=student.id) }}" class="action-btn">View</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="empty-row">No students in this class yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+.page-header {
+    margin-bottom: 24px;
+}
+
+.page-header h1 {
+    margin: 0;
+    color: #2563eb;
+    font-size: 30px;
+}
+
+.page-header p {
+    margin-top: 8px;
+    color: #6b7280;
+    font-size: 15px;
+}
+
+.page-actions {
+    margin-bottom: 20px;
+}
+
+.card-box {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+
+.table-wrapper {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 900px;
+}
+
+th, td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+th {
+    background: #2563eb;
+    color: white;
+    font-weight: 600;
+}
+
+tr:hover {
+    background: #f8fafc;
+}
+
+.empty-row {
+    text-align: center;
+    color: #6b7280;
+    padding: 20px;
+}
+
+.action-btn,
+.btn-secondary {
+    display: inline-block;
+    text-decoration: none;
+    font-weight: 600;
+    border-radius: 8px;
+}
+
+.action-btn {
+    background: #2563eb;
+    color: white;
+    padding: 8px 12px;
+    font-size: 13px;
+}
+
+.action-btn:hover {
+    background: #1e40af;
+}
+
+.btn-secondary {
+    background: #e5e7eb;
+    color: #111827;
+    padding: 12px 18px;
+}
+
+.btn-secondary:hover {
+    background: #d1d5db;
+}
+</style>
+{% endblock %}

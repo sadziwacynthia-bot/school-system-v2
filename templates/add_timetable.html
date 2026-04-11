@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Add Timetable{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Add Timetable Entry</h1>
+    <p>Create a lesson slot for a class.</p>
+</div>
+
+<div class="card-box">
+    <form method="POST" class="form-grid">
+        <div class="form-group">
+            <label>Class</label>
+            <select name="class_name" required>
+                <option value="">Select class</option>
+                {% for class_name in class_options %}
+                    <option value="{{ class_name }}">{{ class_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Subject</label>
+            <select name="subject" required>
+                <option value="">Select subject</option>
+                {% for subject in subjects %}
+                    <option value="{{ subject }}">{{ subject }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Teacher</label>
+            <select name="teacher_id" required>
+                <option value="">Select teacher</option>
+                {% for teacher in teachers %}
+                    <option value="{{ teacher.id }}">{{ teacher.full_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Day</label>
+            <select name="day_of_week" required>
+                <option value="">Select day</option>
+                <option value="Monday">Monday</option>
+                <option value="Tuesday">Tuesday</option>
+                <option value="Wednesday">Wednesday</option>
+                <option value="Thursday">Thursday</option>
+                <option value="Friday">Friday</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Start Time</label>
+            <input type="time" name="start_time" required>
+        </div>
+
+        <div class="form-group">
+            <label>End Time</label>
+            <input type="time" name="end_time" required>
+        </div>
+
+        <div class="form-group full-width">
+            <label>Room</label>
+            <input type="text" name="room" placeholder="Optional room name/number">
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">Save Timetable Entry</button>
+            <a href="{{ url_for('timetable') }}" class="btn-secondary">Back</a>
+        </div>
+    </form>
+</div>
+
+<style>
+.page-header { margin-bottom: 24px; }
+.page-header h1 { margin: 0; color: #2563eb; font-size: 30px; }
+.page-header p { margin-top: 8px; color: #6b7280; }
+.card-box {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+}
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+}
+.full-width { grid-column: 1 / -1; }
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    box-sizing: border-box;
+}
+.form-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.btn-primary, .btn-secondary {
+    display: inline-block;
+    padding: 12px 18px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 600;
+}
+.btn-primary {
+    background: #2563eb;
+    color: white;
+    border: none;
+}
+.btn-secondary {
+    background: #e5e7eb;
+    color: #111827;
+}
+@media (max-width: 700px) {
+    .form-grid { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}

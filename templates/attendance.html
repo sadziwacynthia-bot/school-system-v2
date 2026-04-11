@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block title %}Attendance{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Take Attendance</h1>
+    <p>Select a class, load students, and record attendance.</p>
+</div>
+
+<div class="card-box">
+    <form method="POST" action="{{ url_for('attendance') }}" class="select-form">
+        <div class="form-group">
+            <label for="class_name">Select Class</label>
+            <select name="class_name" id="class_name" required>
+                <option value="">Select class</option>
+                {% for class_name in class_options %}
+                    <option value="{{ class_name }}" {% if selected_class == class_name %}selected{% endif %}>
+                        {{ class_name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">Load Students</button>
+            <a href="{{ url_for('attendance_records') }}" class="btn-secondary">View Records</a>
+        </div>
+    </form>
+</div>
+
+{% if students %}
+<div class="card-box">
+    <form method="POST" action="{{ url_for('save_attendance') }}" class="attendance-form">
+        <input type="hidden" name="class_name" value="{{ selected_class }}">
+
+        <div class="form-group">
+            <label for="date">Date</label>
+            <input type="date" name="date" id="date" required>
+        </div>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Student Name</th>
+                        <th>Student Number</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for student in students %}
+                    <tr>
+                        <td>{{ student.first_name }} {{ student.last_name }}</td>
+                        <td>{{ student.student_number }}</td>
+                        <td>
+                            <input type="hidden" name="student_id" value="{{ student.id }}">
+                            <select name="status_{{ student.id }}" required>
+                                <option value="Present">Present</option>
+                                <option value="Absent">Absent</option>
+                                <option value="Late">Late</option>
+                            </select>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">Save Attendance</button>
+        </div>
+    </form>
+</div>
+{% endif %}
+
+<style>
+.page-header {
+    margin-bottom: 24px;
+}
+.page-header h1 {
+    margin: 0;
+    color: #2563eb;
+    font-size: 30px;
+}
+.page-header p {
+    margin-top: 8px;
+    color: #6b7280;
+}
+.card-box {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+    margin-bottom: 20px;
+}
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+.form-group select,
+.form-group input {
+    width: 100%;
+    max-width: 380px;
+    padding: 12px 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    box-sizing: border-box;
+}
+.table-wrapper {
+    overflow-x: auto;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 700px;
+}
+th, td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+}
+th {
+    background: #2563eb;
+    color: white;
+}
+td select {
+    width: 160px;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+}
+.form-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 18px;
+}
+.btn-primary,
+.btn-secondary {
+    display: inline-block;
+    padding: 12px 18px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 600;
+}
+.btn-primary {
+    background: #2563eb;
+    color: white;
+    border: none;
+}
+.btn-secondary {
+    background: #e5e7eb;
+    color: #111827;
+}
+</style>
+{% endblock %}

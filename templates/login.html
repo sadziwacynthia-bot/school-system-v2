@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div style="max-width: 450px; margin: 40px auto; background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 14px rgba(0,0,0,0.08);">
+    <h1 style="margin-top:0; color:#2563eb;">Login</h1>
+    <form method="POST">
+        <div style="margin-bottom:14px;">
+            <label>Username</label>
+            <input type="text" name="username" required style="width:100%; padding:12px; border:1px solid #d1d5db; border-radius:10px;">
+        </div>
+
+        <div style="margin-bottom:14px;">
+            <label>Password</label>
+            <input type="password" name="password" required style="width:100%; padding:12px; border:1px solid #d1d5db; border-radius:10px;">
+        </div>
+
+        <button type="submit" style="background:#2563eb; color:white; border:none; padding:12px 18px; border-radius:10px; font-weight:600;">
+            Login
+        </button>
+    </form>
+</div>
+{% endblock %}

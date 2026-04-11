@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}Print Result{% endblock %}
+
+{% block content %}
+<div class="print-page">
+    <div class="print-actions no-print">
+        <button onclick="window.print()" class="btn-primary">Print Result</button>
+        <a href="{{ url_for('student_profile', id=student.id) }}" class="btn-secondary">Back</a>
+    </div>
+
+    <div class="result-slip">
+        <div class="school-header">
+            <h1>Student Result Slip</h1>
+            <p>{{ term }}</p>
+        </div>
+
+        <div class="student-details">
+            <p><strong>Student Name:</strong> {{ student.first_name }} {{ student.last_name }}</p>
+            <p><strong>Student Number:</strong> {{ student.student_number }}</p>
+            <p><strong>Class:</strong> {{ student.class_name }}</p>
+            <p><strong>Status:</strong> {{ student.current_status or "Active" }}</p>
+        </div>
+
+        <div class="fee-status">
+            {% if total_balance > 0 %}
+                <p class="not-cleared"><strong>Fee Clearance:</strong> Not Cleared (${{ total_balance }} outstanding)</p>
+            {% else %}
+                <p class="cleared"><strong>Fee Clearance:</strong> Cleared</p>
+            {% endif %}
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Subject</th>
+                    <th>Marks</th>
+                    <th>Grade</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in results %}
+                <tr>
+                    <td>{{ row.subject }}</td>
+                    <td>{{ row.marks }}</td>
+                    <td>{{ row.grade }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="summary-box">
+            <p><strong>Total Marks:</strong> {{ total_marks }}</p>
+            <p><strong>Average:</strong> {{ average }}</p>
+        </div>
+    </div>
+</div>
+
+<style>
+.print-page {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.print-actions {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.btn-primary,
+.btn-secondary {
+    display: inline-block;
+    padding: 12px 18px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-primary {
+    background: #2563eb;
+    color: white;
+}
+
+.btn-secondary {
+    background: #e5e7eb;
+    color: #111827;
+}
+
+.result-slip {
+    background: white;
+    padding: 30px;
+    border-radius: 16px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+}
+
+.school-header {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.school-header h1 {
+    margin: 0;
+    color: #1e40af;
+}
+
+.student-details p,
+.summary-box p,
+.fee-status p {
+    margin: 8px 0;
+}
+
+.cleared {
+    color: #166534;
+}
+
+.not-cleared {
+    color: #991b1b;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+th, td {
+    border: 1px solid #d1d5db;
+    padding: 12px;
+    text-align: left;
+}
+
+th {
+    background: #2563eb;
+    color: white;
+}
+
+.summary-box {
+    margin-top: 24px;
+}
+
+@media print {
+    .no-print {
+        display: none;
+    }
+
+    body {
+        background: white;
+    }
+
+    .result-slip {
+        box-shadow: none;
+        border: none;
+    }
+}
+</style>
+{% endblock %}
