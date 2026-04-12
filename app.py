@@ -2296,7 +2296,32 @@ def setup_app():
     except Exception as e:
         print("SETUP ERROR:", e)
 
+@app.route("/fix_old_data_school")
+@login_required
+@roles_required("super_admin")
+def fix_old_data_school():
+    school = fetch_one("SELECT * FROM schools WHERE school_code = ?", ("SCH001",))
 
+    if not school:
+        flash("Default school not found.", "danger")
+        return redirect(url_for("dashboard"))
+
+    school_id = school["id"]
+
+    execute_commit("UPDATE users SET school_id = ? WHERE school_id IS NULL", (school_id,))
+    execute_commit("UPDATE students SET school_id = ? WHERE school_id IS NULL", (school_id,))
+    execute_commit("UPDATE teachers SET school_id = ? WHERE school_id IS NULL", (school_id,))
+    execute_commit("UPDATE guardians SET school_id = ? WHERE school_id IS NULL", (school_id,))
+    execute_commit("UPDATE fees SET school_id = ? WHERE school_id IS NULL", (school_id,))
+    execute_commit("UPDATE results SET school_id = ? WHERE school_id IS NULL", (school_id,))
+    execute_commit("UPDATE attendance SET school_id = ? WHERE school_id IS NULL", (school_id,))
+    execute_commit("UPDATE teacher_assignments SET school_id = ? WHERE school_id IS NULL", (school_id,))
+    execute_commit("UPDATE assignments SET school_id = ? WHERE school_id IS NULL", (school_id,))
+    execute_commit("UPDATE fee_payments SET school_id = ? WHERE school_id IS NULL", (school_id,))
+    execute_commit("UPDATE timetables SET school_id = ? WHERE school_id IS NULL", (school_id,))
+
+    flash("Old data has been assigned to the default school.", "success")
+    return redirect(url_for("dashboard"))
 setup_app()
 
 if __name__ == "__main__":
