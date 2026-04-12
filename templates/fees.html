@@ -1,26 +1,34 @@
 {% extends "base.html" %}
+
 {% block title %}Fees{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1>Fees Management</h1>
-    <p>View all fee records.</p>
+    <div>
+        <h2 class="page-title">Fees Management</h2>
+        <p class="page-subtitle">Track school fees, payments, and outstanding balances</p>
+    </div>
+    <a href="{{ url_for('add_fee') }}" class="btn btn-primary">+ Add Fee</a>
 </div>
 
-<div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:20px;">
-    <a href="{{ url_for('add_fee') }}" class="btn-primary">Add Fee</a>
-</div>
-
-<div class="search-card">
-    <form method="GET" action="{{ url_for('fees') }}" class="search-form">
-        <input type="text" name="search" value="{{ search or '' }}" placeholder="Search by name or student number">
-        <button type="submit">Search</button>
+<div class="table-card">
+    <form method="GET" action="{{ url_for('fees') }}" class="search-bar">
+        <input
+            type="text"
+            name="search"
+            placeholder="Search by student name or student number"
+            value="{{ search or '' }}"
+        >
+        <button type="submit" class="btn btn-primary">Search</button>
     </form>
 </div>
 
-<div class="card-box">
-    {% if fee_records %}
-    <div class="table-wrapper">
+<div class="table-card">
+    <div class="section-title-row">
+        <h3>Fee Records</h3>
+    </div>
+
+    <div class="table-responsive">
         <table>
             <thead>
                 <tr>
@@ -28,75 +36,57 @@
                     <th>Student Name</th>
                     <th>Class</th>
                     <th>Term</th>
-                    <th>Total Fee</th>
+                    <th>Amount</th>
                     <th>Paid</th>
                     <th>Balance</th>
                     <th>Status</th>
                     <th>Due Date</th>
-                    <th>Action</th>
+                    <th style="width: 140px;">Action</th>
                 </tr>
             </thead>
             <tbody>
                 {% for fee in fee_records %}
                 <tr>
-                    <td>{{ fee.student_number }}</td>
+                    <td>{{ fee.student_number or '-' }}</td>
                     <td>{{ fee.first_name }} {{ fee.last_name }}</td>
-                    <td>{{ fee.class_name }}</td>
-                    <td>{{ fee.term_name }}</td>
-                    <td>${{ fee.amount }}</td>
-                    <td>${{ fee.paid_amount }}</td>
-                    <td>${{ fee.balance }}</td>
-                    <td>{{ fee.status }}</td>
-                    <td>{{ fee.due_date or "-" }}</td>
+                    <td>{{ fee.class_name or '-' }}</td>
+                    <td>{{ fee.term_name or '-' }}</td>
+                    <td>${{ "%.2f"|format(fee.amount or 0) }}</td>
+                    <td>${{ "%.2f"|format(fee.paid_amount or 0) }}</td>
                     <td>
-    <a href="{{ url_for('update_fee', fee_id=fee.id) }}" class="action-btn">Update Payment</a>
-</td>
+                        {% if (fee.balance or 0) > 0 %}
+                            <span class="balance-text danger-balance">
+                                ${{ "%.2f"|format(fee.balance or 0) }}
+                            </span>
+                        {% else %}
+                            <span class="balance-text success-balance">
+                                ${{ "%.2f"|format(fee.balance or 0) }}
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if fee.status == 'Paid' %}
+                            <span class="status-badge status-paid">Paid</span>
+                        {% elif fee.status == 'Partially Paid' %}
+                            <span class="status-badge status-pending">Partially Paid</span>
+                        {% else %}
+                            <span class="status-badge status-inactive">Pending</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ fee.due_date or '-' }}</td>
+                    <td>
+                        <a href="{{ url_for('update_fee', fee_id=fee.id) }}" class="btn btn-primary btn-sm">
+                            Update
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="10">No fee records found.</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
-    {% else %}
-    <p>No fee records found.</p>
-    {% endif %}
 </div>
-
-<style>
-.page-header h1 { color:#2563eb; margin:0; }
-.page-header p { color:#6b7280; margin-top:8px; }
-.btn-primary {
-    display:inline-block; background:#2563eb; color:white; text-decoration:none;
-    padding:12px 18px; border-radius:10px; font-weight:600;
-}
-.search-card, .card-box {
-    background:white; border-radius:16px; padding:20px;
-    box-shadow:0 4px 14px rgba(0,0,0,0.08); margin-bottom:20px;
-}
-.search-form {
-    display:flex; gap:10px; flex-wrap:wrap;
-}
-.search-form input {
-    flex:1; min-width:240px; padding:12px; border:1px solid #d1d5db; border-radius:10px;
-}
-.search-form button {
-    background:#2563eb; color:white; border:none; padding:12px 16px; border-radius:10px;
-}
-.table-wrapper { overflow-x:auto; }
-table { width:100%; border-collapse:collapse; min-width:950px; }
-th, td { padding:12px; border-bottom:1px solid #e5e7eb; text-align:left; }
-th { background:#2563eb; color:white; }
-.action-btn {
-    display: inline-block;
-    background: #2563eb;
-    color: white;
-    text-decoration: none;
-    padding: 8px 12px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 600;
-}
-.action-btn:hover {
-    background: #1e40af;
-}
-</style>
 {% endblock %}

@@ -11,8 +11,8 @@
         {% if session.get('user_id') %}
         <aside class="sidebar">
             <div class="sidebar-brand">
-                <h2>SchoolSys</h2>
-                <p>Management Portal</p>
+                <h2>EduTrack</h2>
+                <p>Smart School System</p>
             </div>
 
             <nav class="sidebar-menu">
@@ -55,12 +55,15 @@
         <div class="content-area">
             {% if session.get('user_id') %}
             <header class="topbar">
-                <div>
-                    <h1 class="topbar-title">School Management System</h1>
-                    <p class="topbar-subtitle">
-                        Welcome, {{ session.get('full_name', 'User') }}
-                    </p>
-                </div>
+            <div>
+        <h1 class="topbar-title">EduTrack</h1>
+        <p class="topbar-subtitle">
+            Smart School Management System
+        </p>
+        <p class="topbar-subtitle">
+            Welcome, {{ session.get('full_name', 'User') }}
+        </p>
+    </div>
                 <div class="topbar-actions">
                     <span class="role-badge">{{ session.get('role', 'user')|replace('_', ' ')|title }}</span>
                     <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>

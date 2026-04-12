@@ -1,148 +1,92 @@
 {% extends "base.html" %}
+
 {% block title %}Student Profile{% endblock %}
 
 {% block content %}
-<div class="profile-shell">
-
-    <div class="hero-card">
-        <div class="hero-left">
-            <p class="hero-label">Student Profile</p>
-            <h1>{{ student.first_name }} {{ student.last_name }}</h1>
-            <p class="hero-subtext">
-                Student Number: <strong>{{ student.student_number }}</strong>
-            </p>
-        </div>
-
-        <div class="hero-right">
-            {% if student.current_status == 'Inactive' %}
-                <span class="status-pill inactive">Inactive</span>
-            {% elif student.current_status == 'Transferred' %}
-                <span class="status-pill transferred">Transferred</span>
-            {% elif student.current_status == 'Graduated' %}
-                <span class="status-pill graduated">Graduated</span>
-            {% else %}
-                <span class="status-pill active">Active</span>
-            {% endif %}
-        </div>
+<div class="page-header">
+    <div>
+        <h2 class="page-title">Student Profile</h2>
+        <p class="page-subtitle">View full student information and academic details</p>
     </div>
-
-    <div class="action-bar">
+    <div class="action-group">
         <a href="{{ url_for('edit_student', id=student.id) }}" class="btn btn-primary">Edit Student</a>
-        <a href="{{ url_for('print_result', student_id=student.id, term='Term 1') }}" class="btn btn-secondary">Print Term 1</a>
-        <a href="{{ url_for('print_result', student_id=student.id, term='Term 2') }}" class="btn btn-secondary">Print Term 2</a>
-        <a href="{{ url_for('print_result', student_id=student.id, term='Term 3') }}" class="btn btn-secondary">Print Term 3</a>
-        <a href="{{ url_for('students') }}" class="btn btn-light">Back to Students</a>
-        <a href="{{ url_for('send_fee_reminder', student_id=student.id) }}"
-   class="btn btn-warning">
-   Send Fee Reminder
-</a>
+        <a href="{{ url_for('students') }}" class="btn btn-secondary">Back to Students</a>
+    </div>
+</div>
+
+<div class="profile-top-card">
+    <div class="profile-avatar">
+        {{ student.first_name[0] if student.first_name else 'S' }}{{ student.last_name[0] if student.last_name else '' }}
+    </div>
+    <div class="profile-top-details">
+        <h3>{{ student.first_name }} {{ student.last_name }}</h3>
+        <p>Student Number: <strong>{{ student.student_number or '-' }}</strong></p>
+        <p>Class: <strong>{{ student.class_name or '-' }}</strong></p>
+        <p>
+            Status:
+            {% set status = student.current_status or 'Active' %}
+            {% if status == 'Active' %}
+                <span class="status-badge status-active">Active</span>
+            {% elif status == 'Inactive' %}
+                <span class="status-badge status-inactive">Inactive</span>
+            {% else %}
+                <span class="status-badge status-pending">{{ status }}</span>
+            {% endif %}
+        </p>
+    </div>
+</div>
+
+<div class="profile-grid">
+    <div class="profile-card">
+        <h3>Basic Information</h3>
+        <div class="profile-item"><span>First Name</span><strong>{{ student.first_name or '-' }}</strong></div>
+        <div class="profile-item"><span>Last Name</span><strong>{{ student.last_name or '-' }}</strong></div>
+        <div class="profile-item"><span>Birthday</span><strong>{{ student.birthday or '-' }}</strong></div>
+        <div class="profile-item"><span>Gender</span><strong>{{ student.gender or '-' }}</strong></div>
+        <div class="profile-item"><span>Enrollment Date</span><strong>{{ student.enrollment_date or '-' }}</strong></div>
+        <div class="profile-item"><span>Leaving Year</span><strong>{{ student.leaving_year or '-' }}</strong></div>
+        <div class="profile-item"><span>Boarding Status</span><strong>{{ student.boarding_status or '-' }}</strong></div>
     </div>
 
-    <div class="profile-grid">
-        <div class="card-box">
-            <h2>Student Information</h2>
-            <div class="info-grid">
-                <div class="info-item">
-                    <span class="label">Full Name</span>
-                    <span class="value">{{ student.first_name }} {{ student.last_name }}</span>
-                </div>
-
-                <div class="info-item">
-                    <span class="label">Student Number</span>
-                    <span class="value">{{ student.student_number }}</span>
-                </div>
-
-                <div class="info-item">
-                    <span class="label">Class</span>
-                    <span class="value">{{ student.class_name or "Not set" }}</span>
-                </div>
-
-                <div class="info-item">
-                    <span class="label">Boarding Status</span>
-                    <span class="value">{{ student.boarding_status or "Not set" }}</span>
-                </div>
-
-                <div class="info-item">
-                    <span class="label">Gender</span>
-                    <span class="value">{{ student.gender or "Not set" }}</span>
-                </div>
-
-                <div class="info-item">
-                    <span class="label">Date of Birth</span>
-                    <span class="value">{{ student.birthday or "Not set" }}</span>
-                </div>
-
-                <div class="info-item">
-                    <span class="label">Enrollment Date</span>
-                    <span class="value">{{ student.enrollment_date or "Not set" }}</span>
-                </div>
-
-                <div class="info-item">
-                    <span class="label">Leaving Year</span>
-                    <span class="value">{{ student.leaving_year or "Not set" }}</span>
-                </div>
-
-                <div class="info-item">
-                    <span class="label">Student Phone</span>
-                    <span class="value">{{ student.student_phone or "Not set" }}</span>
-                </div>
-
-                <div class="info-item">
-                    <span class="label">Emergency Contact</span>
-                    <span class="value">{{ student.emergency_contact or "Not set" }}</span>
-                </div>
-
-                <div class="info-item full-width">
-                    <span class="label">Home Address</span>
-                    <span class="value">{{ student.home_address or "Not set" }}</span>
-                </div>
-
-                <div class="info-item full-width">
-                    <span class="label">Mailing Address</span>
-                    <span class="value">{{ student.mailing_address or "Not set" }}</span>
-                </div>
-
-                <div class="info-item full-width">
-                    <span class="label">Medical Information</span>
-                    <span class="value">{{ student.medical_info or "Not set" }}</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="card-box">
-            <h2>Guardians</h2>
-
-            <div class="guardian-block">
-                <h3>Guardian 1</h3>
-                <p><strong>Name:</strong> {{ student.guardian1_name or "Not set" }}</p>
-                <p><strong>Relationship:</strong> {{ student.guardian1_relationship or "Not set" }}</p>
-                <p><strong>Phone:</strong> {{ student.guardian1_phone or "Not set" }}</p>
-                <p><strong>WhatsApp:</strong> {{ student.guardian1_whatsapp or "Not set" }}</p>
-                <p><strong>Email:</strong> {{ student.guardian1_email or "Not set" }}</p>
-            </div>
-
-            <div class="divider"></div>
-
-            <div class="guardian-block">
-                <h3>Guardian 2</h3>
-                <p><strong>Name:</strong> {{ student.guardian2_name or "Not set" }}</p>
-                <p><strong>Relationship:</strong> {{ student.guardian2_relationship or "Not set" }}</p>
-                <p><strong>Phone:</strong> {{ student.guardian2_phone or "Not set" }}</p>
-                <p><strong>WhatsApp:</strong> {{ student.guardian2_whatsapp or "Not set" }}</p>
-                <p><strong>Email:</strong> {{ student.guardian2_email or "Not set" }}</p>
-            </div>
-        </div>
+    <div class="profile-card">
+        <h3>Contact & Medical</h3>
+        <div class="profile-item"><span>Student Phone</span><strong>{{ student.student_phone or '-' }}</strong></div>
+        <div class="profile-item"><span>Emergency Contact</span><strong>{{ student.emergency_contact or '-' }}</strong></div>
+        <div class="profile-item"><span>Home Address</span><strong>{{ student.home_address or '-' }}</strong></div>
+        <div class="profile-item"><span>Mailing Address</span><strong>{{ student.mailing_address or '-' }}</strong></div>
+        <div class="profile-item"><span>Medical Info</span><strong>{{ student.medical_info or '-' }}</strong></div>
     </div>
 
-    <div class="card-box">
-        <h2>Fees</h2>
-        {% if fees %}
-        <div class="table-wrapper">
+    <div class="profile-card">
+        <h3>Guardian 1</h3>
+        <div class="profile-item"><span>Name</span><strong>{{ student.guardian1_name or '-' }}</strong></div>
+        <div class="profile-item"><span>Relationship</span><strong>{{ student.guardian1_relationship or '-' }}</strong></div>
+        <div class="profile-item"><span>Phone</span><strong>{{ student.guardian1_phone or '-' }}</strong></div>
+        <div class="profile-item"><span>WhatsApp</span><strong>{{ student.guardian1_whatsapp or '-' }}</strong></div>
+        <div class="profile-item"><span>Email</span><strong>{{ student.guardian1_email or '-' }}</strong></div>
+    </div>
+
+    <div class="profile-card">
+        <h3>Guardian 2</h3>
+        <div class="profile-item"><span>Name</span><strong>{{ student.guardian2_name or '-' }}</strong></div>
+        <div class="profile-item"><span>Relationship</span><strong>{{ student.guardian2_relationship or '-' }}</strong></div>
+        <div class="profile-item"><span>Phone</span><strong>{{ student.guardian2_phone or '-' }}</strong></div>
+        <div class="profile-item"><span>WhatsApp</span><strong>{{ student.guardian2_whatsapp or '-' }}</strong></div>
+        <div class="profile-item"><span>Email</span><strong>{{ student.guardian2_email or '-' }}</strong></div>
+    </div>
+</div>
+
+<div class="profile-sections-grid">
+    <div class="table-card">
+        <div class="section-title-row">
+            <h3>Fee Records</h3>
+        </div>
+        <div class="table-responsive">
             <table>
                 <thead>
                     <tr>
                         <th>Term</th>
-                        <th>Total Fee</th>
+                        <th>Amount</th>
                         <th>Paid</th>
                         <th>Balance</th>
                         <th>Status</th>
@@ -151,318 +95,96 @@
                 <tbody>
                     {% for fee in fees %}
                     <tr>
-                        <td>{{ fee.term_name }}</td>
-                        <td>${{ fee.amount }}</td>
-                        <td>${{ fee.paid_amount }}</td>
-                        <td>${{ fee.balance }}</td>
-                        <td>{{ fee.status }}</td>
+                        <td>{{ fee.term_name or '-' }}</td>
+                        <td>${{ "%.2f"|format(fee.amount or 0) }}</td>
+                        <td>${{ "%.2f"|format(fee.paid_amount or 0) }}</td>
+                        <td>${{ "%.2f"|format(fee.balance or 0) }}</td>
+                        <td>
+                            {% if fee.status == 'Paid' %}
+                                <span class="status-badge status-paid">Paid</span>
+                            {% elif fee.status == 'Partially Paid' %}
+                                <span class="status-badge status-pending">Partially Paid</span>
+                            {% else %}
+                                <span class="status-badge status-inactive">{{ fee.status or 'Pending' }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5">No fee records found.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-        {% else %}
-            <p class="empty-text">No fee records found.</p>
-        {% endif %}
     </div>
 
-    <div class="two-column-grid">
-        <div class="card-box">
-            <h2>Results</h2>
-            {% if results %}
-            <div class="table-wrapper">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Subject</th>
-                            <th>Term</th>
-                            <th>Marks</th>
-                            <th>Grade</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for r in results %}
-                        <tr>
-                            <td>{{ r.subject }}</td>
-                            <td>{{ r.term }}</td>
-                            <td>{{ r.marks }}</td>
-                            <td>{{ r.grade }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-                <p class="empty-text">No results found.</p>
-            {% endif %}
+    <div class="table-card">
+        <div class="section-title-row">
+            <h3>Results</h3>
         </div>
-
-        <div class="card-box">
-            <h2>Attendance</h2>
-            {% if attendance_records %}
-            <div class="table-wrapper">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for a in attendance_records %}
-                        <tr>
-                            <td>{{ a.date }}</td>
-                            <td>{{ a.status }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-                <p class="empty-text">No attendance records found.</p>
-            {% endif %}
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Term</th>
+                        <th>Subject</th>
+                        <th>Marks</th>
+                        <th>Grade</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for result in results %}
+                    <tr>
+                        <td>{{ result.term or '-' }}</td>
+                        <td>{{ result.subject or '-' }}</td>
+                        <td>{{ result.marks or '-' }}</td>
+                        <td>{{ result.grade or '-' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4">No results found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 
+    <div class="table-card">
+        <div class="section-title-row">
+            <h3>Attendance</h3>
+        </div>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in attendance_records %}
+                    <tr>
+                        <td>{{ record.date or '-' }}</td>
+                        <td>
+                            {% if record.status == 'Present' %}
+                                <span class="status-badge status-active">Present</span>
+                            {% elif record.status == 'Absent' %}
+                                <span class="status-badge status-inactive">Absent</span>
+                            {% else %}
+                                <span class="status-badge status-pending">{{ record.status or '-' }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="2">No attendance records found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
-
-<style>
-.profile-shell {
-    display: flex;
-    flex-direction: column;
-    gap: 22px;
-}
-
-.hero-card {
-    background: linear-gradient(135deg, #2563eb, #1e40af);
-    color: white;
-    border-radius: 24px;
-    padding: 28px 30px;
-    box-shadow: 0 14px 35px rgba(37, 99, 235, 0.20);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 18px;
-    flex-wrap: wrap;
-}
-
-.hero-label {
-    margin: 0 0 8px;
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    opacity: 0.85;
-}
-
-.hero-card h1 {
-    margin: 0;
-    font-size: 34px;
-    line-height: 1.2;
-}
-
-.hero-subtext {
-    margin-top: 10px;
-    font-size: 15px;
-    opacity: 0.92;
-}
-
-.status-pill {
-    display: inline-block;
-    padding: 10px 16px;
-    border-radius: 999px;
-    font-size: 14px;
-    font-weight: 700;
-    background: rgba(255,255,255,0.18);
-    color: white;
-}
-
-.status-pill.active {
-    background: #dcfce7;
-    color: #166534;
-}
-
-.status-pill.inactive {
-    background: #fee2e2;
-    color: #991b1b;
-}
-
-.status-pill.transferred {
-    background: #fef3c7;
-    color: #92400e;
-}
-
-.status-pill.graduated {
-    background: #e0e7ff;
-    color: #3730a3;
-}
-
-.action-bar {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.btn {
-    display: inline-block;
-    padding: 12px 16px;
-    border-radius: 10px;
-    text-decoration: none;
-    font-weight: 600;
-    transition: 0.2s ease;
-}
-
-.btn-primary {
-    background: #2563eb;
-    color: white;
-}
-
-.btn-primary:hover {
-    background: #1e40af;
-}
-
-.btn-secondary {
-    background: #6b7280;
-    color: white;
-}
-
-.btn-secondary:hover {
-    background: #4b5563;
-}
-
-.btn-light {
-    background: #e5e7eb;
-    color: #111827;
-}
-
-.btn-light:hover {
-    background: #d1d5db;
-}
-
-.profile-grid {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 20px;
-}
-
-.two-column-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-}
-
-.card-box {
-    background: white;
-    border-radius: 18px;
-    padding: 24px;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
-    border: 1px solid #e5e7eb;
-}
-
-.card-box h2 {
-    margin-top: 0;
-    margin-bottom: 18px;
-    color: #1e40af;
-    font-size: 22px;
-}
-
-.info-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-}
-
-.info-item {
-    background: #f8fafc;
-    padding: 14px;
-    border-radius: 12px;
-    border: 1px solid #e5e7eb;
-}
-
-.full-width {
-    grid-column: 1 / -1;
-}
-
-.label {
-    display: block;
-    font-size: 13px;
-    color: #6b7280;
-    margin-bottom: 6px;
-}
-
-.value {
-    font-size: 16px;
-    font-weight: 600;
-    color: #111827;
-    line-height: 1.4;
-}
-
-.guardian-block h3 {
-    margin-top: 0;
-    margin-bottom: 12px;
-    color: #2563eb;
-}
-
-.guardian-block p {
-    margin: 8px 0;
-    color: #374151;
-}
-
-.divider {
-    height: 1px;
-    background: #e5e7eb;
-    margin: 18px 0;
-}
-
-.table-wrapper {
-    overflow-x: auto;
-}
-
-table {
-    width: 100%;
-    min-width: 500px;
-    border-collapse: collapse;
-}
-
-th, td {
-    padding: 12px;
-    text-align: left;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-th {
-    background: #2563eb;
-    color: white;
-    font-weight: 600;
-}
-
-.empty-text {
-    color: #6b7280;
-}
-
-@media (max-width: 1000px) {
-    .profile-grid,
-    .two-column-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-@media (max-width: 700px) {
-    .hero-card h1 {
-        font-size: 28px;
-    }
-
-    .info-grid {
-        grid-template-columns: 1fr;
-    }
-}
-.btn-warning {
-    background: #f59e0b;
-    color: white;
-}
-
-.btn-warning:hover {
-    background: #d97706;
-}
-</style>
 {% endblock %}
