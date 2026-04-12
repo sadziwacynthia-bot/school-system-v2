@@ -1,71 +1,144 @@
 {% extends "base.html" %}
+
 {% block title %}Parent Dashboard{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1>Parent Dashboard</h1>
-    <p>Welcome{% if session.get('full_name') %}, {{ session.get('full_name') }}{% endif %}</p>
+    <div>
+        <h2 class="page-title">Parent Dashboard</h2>
+        <p class="page-subtitle">View your child’s school information in one place</p>
+    </div>
 </div>
 
 {% if student %}
-<div class="summary-cards">
-    <div class="summary-card">
-        <span class="summary-label">Total Fees</span>
-        <span class="summary-value">${{ fee_summary.total_amount }}</span>
+<div class="dashboard-grid premium-stats-grid">
+    <div class="stats-card premium-card students-card">
+        <div class="stats-top">
+            <span class="stats-card-label">Student Name</span>
+            <span class="stats-icon">👨‍🎓</span>
+        </div>
+        <div class="stats-card-value small-stat">{{ student.first_name }} {{ student.last_name }}</div>
+        <div class="stats-card-note">Current learner profile</div>
     </div>
-    <div class="summary-card">
-        <span class="summary-label">Total Paid</span>
-        <span class="summary-value">${{ fee_summary.total_paid }}</span>
+
+    <div class="stats-card premium-card schools-card">
+        <div class="stats-top">
+            <span class="stats-card-label">Class</span>
+            <span class="stats-icon">🏫</span>
+        </div>
+        <div class="stats-card-value small-stat">{{ student.class_name or 'Not Assigned' }}</div>
+        <div class="stats-card-note">Current class placement</div>
     </div>
-    <div class="summary-card">
-        <span class="summary-label">Balance</span>
-        <span class="summary-value">${{ fee_summary.total_balance }}</span>
+
+    <div class="stats-card premium-card fees-card">
+        <div class="stats-top">
+            <span class="stats-card-label">Outstanding Balance</span>
+            <span class="stats-icon">💳</span>
+        </div>
+        <div class="stats-card-value">${{ "%.2f"|format(fee_summary.total_balance or 0) }}</div>
+        <div class="stats-card-note">Total unpaid school fees</div>
     </div>
 </div>
 
-<div class="dashboard-grid">
-    <div class="card-box">
-        <h2>Student Information</h2>
-        <div class="info-grid">
-            <div class="info-item"><span class="label">Full Name</span><span class="value">{{ student.first_name }} {{ student.last_name }}</span></div>
-            <div class="info-item"><span class="label">Student Number</span><span class="value">{{ student.student_number }}</span></div>
-            <div class="info-item"><span class="label">Class</span><span class="value">{{ student.class_name or "Not assigned" }}</span></div>
-            <div class="info-item"><span class="label">Boarding Status</span><span class="value">{{ student.boarding_status or "Not set" }}</span></div>
+<div class="dashboard-main-grid">
+    <div class="dashboard-left-column">
+        <div class="dashboard-panel premium-panel">
+            <div class="panel-header">
+                <h3>Student Information</h3>
+                <p>Basic learner details</p>
+            </div>
+
+            <div class="summary-list modern-summary-list">
+                <div class="summary-item">
+                    <span>Student Number</span>
+                    <strong>{{ student.student_number or '-' }}</strong>
+                </div>
+                <div class="summary-item">
+                    <span>Full Name</span>
+                    <strong>{{ student.first_name }} {{ student.last_name }}</strong>
+                </div>
+                <div class="summary-item">
+                    <span>Class</span>
+                    <strong>{{ student.class_name or '-' }}</strong>
+                </div>
+                <div class="summary-item">
+                    <span>Status</span>
+                    <strong>{{ student.current_status or 'Active' }}</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-panel premium-panel">
+            <div class="panel-header">
+                <h3>Quick Parent Actions</h3>
+                <p>Open the sections you need most</p>
+            </div>
+
+            <div class="quick-actions-grid">
+                <a href="{{ url_for('parent_fees') }}" class="quick-action-tile">
+                    <span class="quick-action-icon">💳</span>
+                    <span>View Fees</span>
+                </a>
+                <a href="{{ url_for('parent_results') }}" class="quick-action-tile">
+                    <span class="quick-action-icon">📘</span>
+                    <span>View Results</span>
+                </a>
+                <a href="{{ url_for('parent_attendance') }}" class="quick-action-tile">
+                    <span class="quick-action-icon">✅</span>
+                    <span>View Attendance</span>
+                </a>
+                <a href="{{ url_for('parent_assignments') }}" class="quick-action-tile">
+                    <span class="quick-action-icon">📚</span>
+                    <span>View Assignments</span>
+                </a>
+            </div>
         </div>
     </div>
 
-    <div class="card-box">
-        <h2>Quick Links</h2>
-        <div class="quick-links">
-            <a href="{{ url_for('parent_fees') }}" class="quick-link">View Fees</a>
-            <a href="{{ url_for('parent_results') }}" class="quick-link">View Results</a>
-            <a href="{{ url_for('parent_attendance') }}" class="quick-link">View Attendance</a>
-            <a href="{{ url_for('parent_assignments') }}" class="quick-link">View Assignments</a>
+    <div class="dashboard-right-column">
+        <div class="dashboard-panel premium-panel">
+            <div class="panel-header">
+                <h3>Fees Summary</h3>
+                <p>Current fee overview</p>
+            </div>
+
+            <div class="summary-list modern-summary-list">
+                <div class="summary-item">
+                    <span>Total Fees</span>
+                    <strong>${{ "%.2f"|format(fee_summary.total_amount or 0) }}</strong>
+                </div>
+                <div class="summary-item">
+                    <span>Total Paid</span>
+                    <strong>${{ "%.2f"|format(fee_summary.total_paid or 0) }}</strong>
+                </div>
+                <div class="summary-item">
+                    <span>Total Balance</span>
+                    <strong>${{ "%.2f"|format(fee_summary.total_balance or 0) }}</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-panel premium-panel">
+            <div class="panel-header">
+                <h3>Parent Note</h3>
+                <p>Important reminder</p>
+            </div>
+
+            <div class="dashboard-note-box">
+                <p>
+                    Use this portal to track your child’s fees, results,
+                    attendance, and assignments. Keep your login details safe.
+                </p>
+            </div>
         </div>
     </div>
 </div>
 {% else %}
-<div class="card-box">
-    <p>No student linked to this parent account yet.</p>
+<div class="dashboard-panel premium-panel">
+    <div class="panel-header">
+        <h3>No Linked Student Found</h3>
+        <p>Your account is not yet connected to a student profile.</p>
+    </div>
 </div>
 {% endif %}
-
-<style>
-.page-header h1 { margin:0; color:#2563eb; font-size:30px; }
-.page-header p { margin-top:8px; color:#6b7280; }
-.summary-cards { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin:20px 0; }
-.summary-card, .card-box { background:white; border-radius:16px; padding:24px; box-shadow:0 4px 14px rgba(0,0,0,0.08); }
-.summary-label { display:block; color:#6b7280; margin-bottom:8px; }
-.summary-value { font-size:24px; font-weight:700; color:#2563eb; }
-.dashboard-grid { display:grid; grid-template-columns:2fr 1fr; gap:20px; }
-.info-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-.info-item { background:#f8fafc; padding:14px; border-radius:10px; border:1px solid #e5e7eb; }
-.label { display:block; font-size:13px; color:#6b7280; margin-bottom:6px; }
-.value { font-size:16px; font-weight:600; }
-.quick-links { display:grid; gap:12px; }
-.quick-link { display:block; text-decoration:none; background:#2563eb; color:white; padding:14px 16px; border-radius:10px; text-align:center; font-weight:600; }
-@media (max-width:900px) {
-    .summary-cards, .dashboard-grid, .info-grid { grid-template-columns:1fr; }
-}
-</style>
 {% endblock %}

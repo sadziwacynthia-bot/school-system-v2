@@ -1,38 +1,50 @@
 {% extends "base.html" %}
+
 {% block title %}Parent Results{% endblock %}
 
 {% block content %}
-<h1 style="color:#2563eb;">Results</h1>
-<div class="card-box">
-    {% if result_records %}
-    <table>
-        <thead>
-            <tr>
-                <th>Subject</th>
-                <th>Term</th>
-                <th>Marks</th>
-                <th>Grade</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for result in result_records %}
-            <tr>
-                <td>{{ result.subject }}</td>
-                <td>{{ result.term }}</td>
-                <td>{{ result.marks }}</td>
-                <td>{{ result.grade }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <p>No results found.</p>
-    {% endif %}
+<div class="page-header">
+    <div>
+        <h2 class="page-title">Results</h2>
+        <p class="page-subtitle">Academic performance records</p>
+    </div>
 </div>
-<style>
-.card-box{background:white;padding:24px;border-radius:16px;box-shadow:0 4px 14px rgba(0,0,0,0.08);}
-table{width:100%;border-collapse:collapse;}
-th,td{padding:12px;border-bottom:1px solid #e5e7eb;text-align:left;}
-th{background:#2563eb;color:white;}
-</style>
+
+{% if student %}
+<div class="dashboard-panel premium-panel">
+    <div class="panel-header">
+        <h3>{{ student.first_name }} {{ student.last_name }}</h3>
+        <p>{{ student.class_name or 'No Class' }}</p>
+    </div>
+</div>
+{% endif %}
+
+<div class="table-card">
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Term</th>
+                    <th>Subject</th>
+                    <th>Marks</th>
+                    <th>Grade</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for result in result_records %}
+                <tr>
+                    <td>{{ result.term }}</td>
+                    <td>{{ result.subject }}</td>
+                    <td>{{ result.marks }}</td>
+                    <td>{{ result.grade }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4">No results available.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
 {% endblock %}

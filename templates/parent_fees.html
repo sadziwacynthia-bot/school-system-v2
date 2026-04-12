@@ -1,42 +1,55 @@
 {% extends "base.html" %}
+
 {% block title %}Parent Fees{% endblock %}
 
 {% block content %}
-<h1 style="color:#2563eb;">Fees</h1>
-<div class="card-box">
-    {% if fee_records %}
-    <table>
-        <thead>
-            <tr>
-                <th>Term</th>
-                <th>Total Fee</th>
-                <th>Paid</th>
-                <th>Balance</th>
-                <th>Status</th>
-                <th>Due Date</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for fee in fee_records %}
-            <tr>
-                <td>{{ fee.term_name }}</td>
-                <td>${{ fee.amount }}</td>
-                <td>${{ fee.paid_amount }}</td>
-                <td>${{ fee.balance }}</td>
-                <td>{{ fee.status }}</td>
-                <td>{{ fee.due_date or "-" }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <p>No fee records found.</p>
-    {% endif %}
+<div class="page-header">
+    <div>
+        <h2 class="page-title">Fees</h2>
+        <p class="page-subtitle">View your child’s school fee records</p>
+    </div>
 </div>
-<style>
-.card-box{background:white;padding:24px;border-radius:16px;box-shadow:0 4px 14px rgba(0,0,0,0.08);}
-table{width:100%;border-collapse:collapse;}
-th,td{padding:12px;border-bottom:1px solid #e5e7eb;text-align:left;}
-th{background:#2563eb;color:white;}
-</style>
+
+<div class="table-card">
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Term</th>
+                    <th>Student</th>
+                    <th>Class</th>
+                    <th>Amount</th>
+                    <th>Paid</th>
+                    <th>Balance</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for fee in fee_records %}
+                <tr>
+                    <td>{{ fee.term_name }}</td>
+                    <td>{{ fee.first_name }} {{ fee.last_name }}</td>
+                    <td>{{ fee.class_name }}</td>
+                    <td>${{ "%.2f"|format(fee.amount or 0) }}</td>
+                    <td>${{ "%.2f"|format(fee.paid_amount or 0) }}</td>
+                    <td>${{ "%.2f"|format(fee.balance or 0) }}</td>
+                    <td>
+                        {% if fee.status == 'Paid' %}
+                            <span class="status-badge status-paid">Paid</span>
+                        {% elif fee.status == 'Partially Paid' %}
+                            <span class="status-badge status-pending">Partially Paid</span>
+                        {% else %}
+                            <span class="status-badge status-inactive">Pending</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7">No fee records found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
 {% endblock %}
