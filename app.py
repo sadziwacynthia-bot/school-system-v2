@@ -21,8 +21,12 @@ CLASS_OPTIONS = [
 # =========================================================
 # DATABASE HELPERS
 # =========================================================
+import os
+
+DB_PATH = os.path.join(os.path.dirname(__file__), "school_v2.db")
+
 def get_db():
-    conn = sqlite3.connect("school_v2.db")
+    conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -2045,11 +2049,37 @@ Thank you.
 
     return redirect(whatsapp_link)
 
-with app.app_context():
-    init_db()
-    create_default_school()
-    create_super_admin()
+#with app.app_context():
+ #   init_db()
+  #  create_default_school()
+   # create_super_admin()
 
+def setup_app():
+    try:
+        with app.app_context():
+            init_db()
+            create_default_school()
+            create_super_admin()
+        print("App setup complete")
+    except Exception as e:
+        print(f"App setup failed: {e}")
 
+setup_app()
+def init_db():
+    print("Running init_db")
+    conn = get_db()
+    cursor = conn.cursor()
+    ...
+    conn.commit()
+    conn.close()
+    print("init_db complete")
+def create_default_school():
+    print("Running create_default_school")
+    ...
+    print("create_default_school complete")
+def create_super_admin():
+    print("Running create_super_admin")
+    ...
+    print("create_super_admin complete")   
 if __name__ == "__main__":
     app.run(debug=True)
