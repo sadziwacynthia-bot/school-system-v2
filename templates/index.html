@@ -1,7 +1,50 @@
-{% extends "base.html" %}
-{% block title %}Home{% endblock %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>School Management System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="auth-page">
+    <div class="landing-wrapper">
+        <div class="landing-card">
+            <div class="landing-left">
+                <span class="landing-badge">School Management Platform</span>
+                <h1>Welcome to School System V2</h1>
+                <p>
+                    Manage students, teachers, fees, attendance, assignments,
+                    results, and timetables in one professional system.
+                </p>
 
-{% block content %}
-<h1>Welcome to School System V2</h1>
-<p>This version is built for multiple schools safely.</p>
-{% endblock %}
+                <div class="landing-features">
+                    <div class="landing-feature">Student Management</div>
+                    <div class="landing-feature">Fees & Payments</div>
+                    <div class="landing-feature">Attendance Tracking</div>
+                    <div class="landing-feature">Results & Reports</div>
+                    <div class="landing-feature">Teacher Tools</div>
+                    <div class="landing-feature">Parent Portal</div>
+                </div>
+
+                <div class="landing-actions">
+                    <a href="{{ url_for('login') }}" class="btn btn-primary">Login</a>
+                    <a href="{{ url_for('parent_setup') }}" class="btn btn-secondary">Parent Setup</a>
+                </div>
+            </div>
+
+            <div class="landing-right">
+                <div class="preview-card">
+                    <h3>Why schools will love it</h3>
+                    <ul>
+                        <li>Easy student registration</li>
+                        <li>Organized fee tracking</li>
+                        <li>Fast attendance entry</li>
+                        <li>Professional results management</li>
+                        <li>Multi-school ready structure</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
