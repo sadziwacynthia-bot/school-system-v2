@@ -2056,30 +2056,23 @@ Thank you.
 
 def setup_app():
     try:
+        print("Starting setup...")
+
         with app.app_context():
             init_db()
+            print("DB initialized")
+
             create_default_school()
+            print("School created")
+
             create_super_admin()
-        print("App setup complete")
+            print("Admin created")
+
+        print("Setup complete")
+
     except Exception as e:
-        print(f"App setup failed: {e}")
+        print("SETUP ERROR:", e)
 
 setup_app()
-def init_db():
-    print("Running init_db")
-    conn = get_db()
-    cursor = conn.cursor()
-    ...
-    conn.commit()
-    conn.close()
-    print("init_db complete")
-def create_default_school():
-    print("Running create_default_school")
-    ...
-    print("create_default_school complete")
-def create_super_admin():
-    print("Running create_super_admin")
-    ...
-    print("create_super_admin complete")   
 if __name__ == "__main__":
     app.run(debug=True)
