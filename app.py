@@ -262,6 +262,13 @@ def init_db():
                 room VARCHAR(100)
             )
         """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS subjects (
+                id SERIAL PRIMARY KEY,
+                school_id INTEGER,
+                subject_name VARCHAR(100) NOT NULL
+            )
+        """)
     else:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS schools (
@@ -425,7 +432,13 @@ def init_db():
                 room TEXT
             )
         """)
-
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS subjects (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                school_id INTEGER,
+                subject_name TEXT NOT NULL
+            )
+        """)
     conn.commit()
     conn.close()
 
@@ -587,6 +600,7 @@ def login():
         password = request.form.get("password", "").strip()
 
         user = fetch_one("SELECT * FROM users WHERE username = ?", (username,))
+
         if user and check_password_hash(user["password"], password):
             session["user_id"] = user["id"]
             session["school_id"] = user["school_id"]
@@ -595,9 +609,10 @@ def login():
 
             if user["role"] == "parent":
                 return redirect(url_for("parent_dashboard"))
-            if user["role"] == "teacher":
+            elif user["role"] == "teacher":
                 return redirect(url_for("teacher_dashboard"))
-            return redirect(url_for("dashboard"))
+            else:
+                return redirect(url_for("dashboard"))
 
         flash("Invalid login details.", "danger")
 
@@ -613,6 +628,7 @@ def logout():
 
 @app.route("/dashboard")
 @login_required
+@roles_required("school_admin", "super_admin")
 def dashboard():
     school_id = session.get("school_id")
     role = session.get("role")
@@ -623,6 +639,19 @@ def dashboard():
         total_teachers = fetch_one("SELECT COUNT(*) AS total FROM teachers")["total"]
         total_users = fetch_one("SELECT COUNT(*) AS total FROM users")["total"]
         total_fee_records = fetch_one("SELECT COUNT(*) AS total FROM fees")["total"]
+
+        fee_totals = fetch_one("""
+            SELECT
+                COALESCE(SUM(amount), 0) AS total_billed,
+                COALESCE(SUM(paid_amount), 0) AS total_paid,
+                COALESCE(SUM(balance), 0) AS total_balance
+            FROM fees
+        """)
+
+        paid_count = fetch_one("SELECT COUNT(*) AS total FROM fees WHERE status = ?", ("Paid",))["total"]
+        partial_count = fetch_one("SELECT COUNT(*) AS total FROM fees WHERE status = ?", ("Partially Paid",))["total"]
+        pending_count = fetch_one("SELECT COUNT(*) AS total FROM fees WHERE status = ?", ("Pending",))["total"]
+
     else:
         total_schools = 0
         total_students = fetch_one("SELECT COUNT(*) AS total FROM students WHERE school_id = ?", (school_id,))["total"]
@@ -630,15 +659,33 @@ def dashboard():
         total_users = fetch_one("SELECT COUNT(*) AS total FROM users WHERE school_id = ?", (school_id,))["total"]
         total_fee_records = fetch_one("SELECT COUNT(*) AS total FROM fees WHERE school_id = ?", (school_id,))["total"]
 
+        fee_totals = fetch_one("""
+            SELECT
+                COALESCE(SUM(amount), 0) AS total_billed,
+                COALESCE(SUM(paid_amount), 0) AS total_paid,
+                COALESCE(SUM(balance), 0) AS total_balance
+            FROM fees
+            WHERE school_id = ?
+        """, (school_id,))
+
+        paid_count = fetch_one("SELECT COUNT(*) AS total FROM fees WHERE school_id = ? AND status = ?", (school_id, "Paid"))["total"]
+        partial_count = fetch_one("SELECT COUNT(*) AS total FROM fees WHERE school_id = ? AND status = ?", (school_id, "Partially Paid"))["total"]
+        pending_count = fetch_one("SELECT COUNT(*) AS total FROM fees WHERE school_id = ? AND status = ?", (school_id, "Pending"))["total"]
+
     return render_template(
         "dashboard.html",
         total_schools=total_schools,
         total_students=total_students,
         total_teachers=total_teachers,
         total_users=total_users,
-        total_fee_records=total_fee_records
+        total_fee_records=total_fee_records,
+        total_billed=fee_totals["total_billed"] or 0,
+        total_paid=fee_totals["total_paid"] or 0,
+        total_balance=fee_totals["total_balance"] or 0,
+        paid_count=paid_count,
+        partial_count=partial_count,
+        pending_count=pending_count
     )
-
 
 # =========================================================
 # SCHOOL ADMINISTRATION
@@ -1533,24 +1580,25 @@ def enter_result():
 
     if role == "super_admin":
         students_list = fetch_all("SELECT * FROM students ORDER BY first_name, last_name")
-        subjects_rows = fetch_all("""
-            SELECT DISTINCT subject
-            FROM teacher_assignments
-            WHERE subject IS NOT NULL AND subject != ''
-            ORDER BY subject
-        """)
+        subjects_rows = fetch_all("SELECT * FROM subjects ORDER BY subject_name")
     else:
-        students_list = fetch_all("SELECT * FROM students WHERE school_id = ? ORDER BY first_name, last_name", (school_id,))
-        subjects_rows = fetch_all("""
-            SELECT DISTINCT subject
-            FROM teacher_assignments
-            WHERE school_id = ? AND subject IS NOT NULL AND subject != ''
-            ORDER BY subject
-        """, (school_id,))
+        students_list = fetch_all(
+            "SELECT * FROM students WHERE school_id = ? ORDER BY first_name, last_name",
+            (school_id,)
+        )
+        subjects_rows = fetch_all(
+            "SELECT * FROM subjects WHERE school_id = ? ORDER BY subject_name",
+            (school_id,)
+        )
 
-    subjects_list = [row["subject"] for row in subjects_rows]
-    return render_template("enter_result.html", class_options=CLASS_OPTIONS, students=students_list, subjects=subjects_list)
+    subjects_list = [row["subject_name"] for row in subjects_rows]
 
+    return render_template(
+        "enter_result.html",
+        class_options=CLASS_OPTIONS,
+        students=students_list,
+        subjects=subjects_list
+    )
 
 @app.route("/save_result", methods=["POST"])
 @login_required
@@ -1767,21 +1815,14 @@ def add_assignment():
     role = session.get("role")
 
     if role == "super_admin":
-        subjects_rows = fetch_all("""
-            SELECT DISTINCT subject
-            FROM teacher_assignments
-            WHERE subject IS NOT NULL AND subject != ''
-            ORDER BY subject
-        """)
+        subjects_rows = fetch_all("SELECT * FROM subjects ORDER BY subject_name")
     else:
-        subjects_rows = fetch_all("""
-            SELECT DISTINCT subject
-            FROM teacher_assignments
-            WHERE school_id = ? AND subject IS NOT NULL AND subject != ''
-            ORDER BY subject
-        """, (school_id,))
+        subjects_rows = fetch_all(
+            "SELECT * FROM subjects WHERE school_id = ? ORDER BY subject_name",
+            (school_id,)
+        )
 
-    subjects_list = [row["subject"] for row in subjects_rows]
+    subjects_list = [row["subject_name"] for row in subjects_rows]
 
     if request.method == "POST":
         class_name = request.form.get("class_name")
@@ -2053,7 +2094,88 @@ def timetable():
         selected_class=selected_class,
         timetable_rows=timetable_rows,
     )
+@app.route("/classes")
+@login_required
+@roles_required("school_admin", "super_admin", "teacher")
+def classes():
+    return render_template("classes.html", class_options=CLASS_OPTIONS)
 
+@app.route("/class/<class_name>")
+@login_required
+@roles_required("school_admin", "super_admin", "teacher")
+def class_students(class_name):
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    if role == "super_admin":
+        students = fetch_all(
+            "SELECT * FROM students WHERE class_name = ? ORDER BY first_name, last_name",
+            (class_name,)
+        )
+    else:
+        students = fetch_all(
+            "SELECT * FROM students WHERE school_id = ? AND class_name = ? ORDER BY first_name, last_name",
+            (school_id, class_name)
+        )
+
+    return render_template(
+        "class_students.html",
+        students=students,
+        class_name=class_name
+    )
+@app.route("/subjects")
+@login_required
+@roles_required("school_admin", "super_admin", "teacher")
+def subjects():
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    if role == "super_admin":
+        subject_list = fetch_all("SELECT * FROM subjects ORDER BY subject_name")
+    else:
+        subject_list = fetch_all(
+            "SELECT * FROM subjects WHERE school_id = ? ORDER BY subject_name",
+            (school_id,)
+        )
+
+    return render_template("subjects.html", subjects=subject_list)
+
+@app.route("/add_subject", methods=["GET", "POST"])
+@login_required
+@roles_required("school_admin", "super_admin")
+def add_subject():
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    if request.method == "POST":
+        if role == "super_admin":
+            school_id = request.form.get("school_id")
+
+        subject_name = request.form.get("subject_name", "").strip()
+
+        if not subject_name:
+            flash("Subject name is required.", "danger")
+            return redirect(url_for("add_subject"))
+
+        existing = fetch_one(
+            "SELECT * FROM subjects WHERE school_id = ? AND subject_name = ?",
+            (school_id, subject_name)
+        )
+
+        if existing:
+            flash("Subject already exists for this school.", "danger")
+            return redirect(url_for("add_subject"))
+
+        execute_commit(
+            "INSERT INTO subjects (school_id, subject_name) VALUES (?, ?)",
+            (school_id, subject_name)
+        )
+
+        flash("Subject added successfully.", "success")
+        return redirect(url_for("subjects"))
+
+    schools = fetch_all("SELECT * FROM schools ORDER BY school_name") if role == "super_admin" else []
+    return render_template("add_subject.html", schools=schools)
 
 @app.route("/add_timetable", methods=["GET", "POST"])
 @login_required
@@ -2064,20 +2186,15 @@ def add_timetable():
 
     if role == "super_admin":
         teachers_list = fetch_all("SELECT * FROM teachers ORDER BY full_name")
-        subjects_rows = fetch_all("""
-            SELECT DISTINCT subject
-            FROM teacher_assignments
-            WHERE subject IS NOT NULL AND subject != ''
-            ORDER BY subject
-        """)
+        subjects_rows = fetch_all("SELECT * FROM subjects ORDER BY subject_name")
     else:
         teachers_list = fetch_all("SELECT * FROM teachers WHERE school_id = ? ORDER BY full_name", (school_id,))
-        subjects_rows = fetch_all("""
-            SELECT DISTINCT subject
-            FROM teacher_assignments
-            WHERE school_id = ? AND subject IS NOT NULL AND subject != ''
-            ORDER BY subject
-        """, (school_id,))
+        subjects_rows = fetch_all(
+            "SELECT * FROM subjects WHERE school_id = ? ORDER BY subject_name",
+            (school_id,)
+        )
+
+    subjects = [row["subject_name"] for row in subjects_rows]
 
     subjects = [row["subject"] for row in subjects_rows]
 
@@ -2269,6 +2386,31 @@ Thank you.
     whatsapp_link = f"https://wa.me/{phone}?text={encoded_message}"
     return redirect(whatsapp_link)
 
+def run_subjects_migration():
+    conn = get_db()
+    cursor = conn.cursor()
+
+    try:
+        if is_postgres():
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS subjects (
+                    id SERIAL PRIMARY KEY,
+                    school_id INTEGER,
+                    subject_name VARCHAR(100) NOT NULL
+                )
+            """)
+        else:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS subjects (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    school_id INTEGER,
+                    subject_name TEXT NOT NULL
+                )
+            """)
+
+        conn.commit()
+    finally:
+        conn.close()
 
 def setup_app():
     try:
@@ -2279,6 +2421,9 @@ def setup_app():
 
             run_migrations()
             print("Migrations completed")
+
+            run_subjects_migration()
+            print("Subjects migration completed")
 
             create_default_school()
             print("Default school ready")

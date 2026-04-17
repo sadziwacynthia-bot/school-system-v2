@@ -16,39 +16,40 @@
             </div>
 
             <nav class="sidebar-menu">
-                <a href="{{ url_for('dashboard') }}" class="nav-link">Dashboard</a>
 
-                {% if session.get('role') in ['school_admin', 'super_admin'] %}
-                    <a href="{{ url_for('students') }}" class="nav-link">Students</a>
-                    <a href="{{ url_for('teachers') }}" class="nav-link">Teachers</a>
-                    <a href="{{ url_for('fees') }}" class="nav-link">Fees</a>
-                    <a href="{{ url_for('results') }}" class="nav-link">Results</a>
-                    <a href="{{ url_for('attendance') }}" class="nav-link">Attendance</a>
-                    <a href="{{ url_for('assignments') }}" class="nav-link">Assignments</a>
-                    <a href="{{ url_for('timetable') }}" class="nav-link">Timetable</a>
-                {% endif %}
+    {% if session.get('role') in ['school_admin', 'super_admin'] %}
+        <div class="menu-section-title">School Management</div>
 
-                {% if session.get('role') == 'teacher' %}
-                    <a href="{{ url_for('teacher_dashboard') }}" class="nav-link">My Dashboard</a>
-                    <a href="{{ url_for('attendance') }}" class="nav-link">Attendance</a>
-                    <a href="{{ url_for('results') }}" class="nav-link">Results</a>
-                    <a href="{{ url_for('assignments') }}" class="nav-link">Assignments</a>
-                    <a href="{{ url_for('timetable') }}" class="nav-link">Timetable</a>
-                {% endif %}
+        <a href="{{ url_for('dashboard') }}" class="nav-link">Dashboard</a>
+        <a href="{{ url_for('students') }}" class="nav-link">Students</a>
+        <a href="{{ url_for('classes') }}" class="nav-link">Classes</a>
+        <a href="{{ url_for('teachers') }}" class="nav-link">Teachers</a>
+        <a href="{{ url_for('fees') }}" class="nav-link">Fees</a>
+        <a href="{{ url_for('results') }}" class="nav-link">Results</a>
+        <a href="{{ url_for('attendance') }}" class="nav-link">Attendance</a>
+        <a href="{{ url_for('assignments') }}" class="nav-link">Assignments</a>
+        <a href="{{ url_for('timetable') }}" class="nav-link">Timetable</a>
+        <a href="{{ url_for('subjects') }}" class="nav-link">Subjects</a>
+        <a href="{{ url_for('add_subject') }}" class="nav-link">Add Subject</a>
+    {% endif %}
 
-                {% if session.get('role') == 'parent' %}
-                    <a href="{{ url_for('parent_dashboard') }}" class="nav-link">Parent Dashboard</a>
-                    <a href="{{ url_for('parent_fees') }}" class="nav-link">Fees</a>
-                    <a href="{{ url_for('parent_results') }}" class="nav-link">Results</a>
-                    <a href="{{ url_for('parent_attendance') }}" class="nav-link">Attendance</a>
-                    <a href="{{ url_for('parent_assignments') }}" class="nav-link">Assignments</a>
-                {% endif %}
+    {% if session.get('role') == 'super_admin' %}
+        <div class="menu-section-title">Platform Control</div>
 
-                {% if session.get('role') == 'super_admin' %}
-                    <a href="{{ url_for('schools') }}" class="nav-link">Schools</a>
-                    <a href="{{ url_for('add_school_admin') }}" class="nav-link">Add School Admin</a>
-                {% endif %}
-            </nav>
+        <a href="{{ url_for('schools') }}" class="nav-link">Schools</a>
+        <a href="{{ url_for('add_school') }}" class="nav-link">Add School</a>
+        <a href="{{ url_for('add_school_admin') }}" class="nav-link">Add School Admin</a>
+    {% endif %}
+
+    {% if session.get('role') == 'teacher' %}
+        <a href="{{ url_for('teacher_dashboard') }}" class="nav-link">Dashboard</a>
+    {% endif %}
+
+    {% if session.get('role') == 'parent' %}
+        <a href="{{ url_for('parent_dashboard') }}" class="nav-link">Dashboard</a>
+    {% endif %}
+
+</nav>
         </aside>
         {% endif %}
 

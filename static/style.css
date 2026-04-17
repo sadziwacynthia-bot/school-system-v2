@@ -27,6 +27,9 @@ a {
     position: sticky;
     top: 0;
     height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
 }
 
 .sidebar-brand {
@@ -49,15 +52,17 @@ a {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    padding-bottom: 30px;
 }
 
 .nav-link {
     display: block;
-    padding: 12px 14px;
+    padding: 10px 14px;
     border-radius: 10px;
     color: #e2e8f0;
     font-weight: 600;
     transition: 0.2s ease;
+    font-size: 15px;
 }
 
 .nav-link:hover {
@@ -1114,4 +1119,29 @@ table tr:nth-child(even) {
         flex-direction: column;
         align-items: stretch;
     }
+}
+.sidebar::-webkit-scrollbar {
+    width: 8px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 10px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4);
+}
+.menu-section-title {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #cbd5e1;
+    margin: 14px 8px 6px;
+    font-weight: 700;
 }

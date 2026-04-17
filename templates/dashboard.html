@@ -58,7 +58,34 @@
         <div class="stats-card-note">Tracked fee entries</div>
     </div>
 </div>
+<div class="dashboard-grid premium-stats-grid">
+    <div class="stats-card premium-card fees-card">
+        <div class="stats-top">
+            <span class="stats-card-label">Total Billed</span>
+            <span class="stats-icon">📄</span>
+        </div>
+        <div class="stats-card-value">${{ "%.2f"|format(total_billed or 0) }}</div>
+        <div class="stats-card-note">All fee amounts billed</div>
+    </div>
 
+    <div class="stats-card premium-card teachers-card">
+        <div class="stats-top">
+            <span class="stats-card-label">Total Paid</span>
+            <span class="stats-icon">💵</span>
+        </div>
+        <div class="stats-card-value">${{ "%.2f"|format(total_paid or 0) }}</div>
+        <div class="stats-card-note">Payments received</div>
+    </div>
+
+    <div class="stats-card premium-card users-card">
+        <div class="stats-top">
+            <span class="stats-card-label">Outstanding Balance</span>
+            <span class="stats-icon">⚠️</span>
+        </div>
+        <div class="stats-card-value">${{ "%.2f"|format(total_balance or 0) }}</div>
+        <div class="stats-card-note">Unpaid fees remaining</div>
+    </div>
+</div>
 <div class="dashboard-main-grid">
     <div class="dashboard-left-column">
         <div class="dashboard-panel premium-panel">
@@ -161,7 +188,31 @@
             </div>
         </div>
     </div>
+<div class="dashboard-panel premium-panel">
+    <div class="panel-header">
+        <h3>Fee Status Summary</h3>
+        <p>Quick breakdown of payment progress</p>
+    </div>
 
+    <div class="highlights-grid">
+        <div class="highlight-box">
+            <span class="highlight-label">Paid Records</span>
+            <strong>{{ paid_count }}</strong>
+        </div>
+        <div class="highlight-box">
+            <span class="highlight-label">Partially Paid</span>
+            <strong>{{ partial_count }}</strong>
+        </div>
+        <div class="highlight-box">
+            <span class="highlight-label">Pending</span>
+            <strong>{{ pending_count }}</strong>
+        </div>
+        <div class="highlight-box">
+            <span class="highlight-label">Total Fee Records</span>
+            <strong>{{ total_fee_records }}</strong>
+        </div>
+    </div>
+</div>
     <div class="dashboard-right-column">
         <div class="dashboard-panel premium-panel">
             <div class="panel-header">
