@@ -42,11 +42,23 @@
     {% endif %}
 
     {% if session.get('role') == 'teacher' %}
+        <div class="menu-section-title">Teacher Portal</div>
+
         <a href="{{ url_for('teacher_dashboard') }}" class="nav-link">Dashboard</a>
+        <a href="{{ url_for('attendance') }}" class="nav-link">Attendance</a>
+        <a href="{{ url_for('results') }}" class="nav-link">Results</a>
+        <a href="{{ url_for('assignments') }}" class="nav-link">Assignments</a>
+        <a href="{{ url_for('timetable') }}" class="nav-link">Timetable</a>
     {% endif %}
 
     {% if session.get('role') == 'parent' %}
+        <div class="menu-section-title">Parent Portal</div>
+
         <a href="{{ url_for('parent_dashboard') }}" class="nav-link">Dashboard</a>
+        <a href="{{ url_for('parent_fees') }}" class="nav-link">Fees</a>
+        <a href="{{ url_for('parent_results') }}" class="nav-link">Results</a>
+        <a href="{{ url_for('parent_attendance') }}" class="nav-link">Attendance</a>
+        <a href="{{ url_for('parent_assignments') }}" class="nav-link">Assignments</a>
     {% endif %}
 
 </nav>
