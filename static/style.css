@@ -1145,3 +1145,32 @@ table tr:nth-child(even) {
     margin: 14px 8px 6px;
     font-weight: 700;
 }
+.checkbox-group {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+    margin: 18px 0 20px;
+}
+
+.checkbox-group label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-weight: 600;
+    color: #374151;
+}
+
+.checkbox-group input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+}
+
+@media (max-width: 768px) {
+    .checkbox-group {
+        grid-template-columns: 1fr;
+    }
+}

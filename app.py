@@ -266,7 +266,26 @@ def init_db():
             CREATE TABLE IF NOT EXISTS subjects (
                 id SERIAL PRIMARY KEY,
                 school_id INTEGER,
-                subject_name VARCHAR(100) NOT NULL
+                subject_name VARCHAR(100) NOT NULL,
+                weekly_periods INTEGER DEFAULT 1,
+                preferred_session VARCHAR(20) DEFAULT 'any',
+                is_practical INTEGER DEFAULT 0,
+                requires_double_period INTEGER DEFAULT 0,
+                requires_four_block INTEGER DEFAULT 0,
+                requires_two_block INTEGER DEFAULT 0
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS timetable_settings (
+                id SERIAL PRIMARY KEY,
+                school_id INTEGER UNIQUE,
+                start_time VARCHAR(20),
+                period_length INTEGER DEFAULT 35,
+                periods_per_day INTEGER DEFAULT 8,
+                break_after_period INTEGER DEFAULT 3,
+                break_duration INTEGER DEFAULT 20,
+                lunch_after_period INTEGER DEFAULT 5,
+                lunch_duration INTEGER DEFAULT 40
             )
         """)
     else:
@@ -436,7 +455,26 @@ def init_db():
             CREATE TABLE IF NOT EXISTS subjects (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 school_id INTEGER,
-                subject_name TEXT NOT NULL
+                subject_name TEXT NOT NULL,
+                weekly_periods INTEGER DEFAULT 1,
+                preferred_session TEXT DEFAULT 'any',
+                is_practical INTEGER DEFAULT 0,
+                requires_double_period INTEGER DEFAULT 0,
+                requires_four_block INTEGER DEFAULT 0,
+                requires_two_block INTEGER DEFAULT 0
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS timetable_settings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                school_id INTEGER UNIQUE,
+                start_time TEXT,
+                period_length INTEGER DEFAULT 35,
+                periods_per_day INTEGER DEFAULT 8,
+                break_after_period INTEGER DEFAULT 3,
+                break_duration INTEGER DEFAULT 20,
+                lunch_after_period INTEGER DEFAULT 5,
+                lunch_duration INTEGER DEFAULT 40
             )
         """)
     conn.commit()
@@ -2094,6 +2132,84 @@ def timetable():
         selected_class=selected_class,
         timetable_rows=timetable_rows,
     )
+@app.route("/timetable_settings", methods=["GET", "POST"])
+@login_required
+@roles_required("school_admin", "super_admin")
+def timetable_settings():
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    schools = []
+    if role == "super_admin":
+        schools = fetch_all("SELECT * FROM schools ORDER BY school_name")
+
+    if request.method == "POST":
+        if role == "super_admin":
+            school_id = request.form.get("school_id")
+
+        start_time = request.form.get("start_time")
+        period_length = request.form.get("period_length") or 35
+        periods_per_day = request.form.get("periods_per_day") or 8
+        break_after_period = request.form.get("break_after_period") or 3
+        break_duration = request.form.get("break_duration") or 20
+        lunch_after_period = request.form.get("lunch_after_period") or 5
+        lunch_duration = request.form.get("lunch_duration") or 40
+
+        existing = fetch_one(
+            "SELECT * FROM timetable_settings WHERE school_id = ?",
+            (school_id,)
+        )
+
+        if existing:
+            execute_commit(
+                """
+                UPDATE timetable_settings
+                SET start_time = ?, period_length = ?, periods_per_day = ?,
+                    break_after_period = ?, break_duration = ?,
+                    lunch_after_period = ?, lunch_duration = ?
+                WHERE school_id = ?
+                """,
+                (
+                    start_time, period_length, periods_per_day,
+                    break_after_period, break_duration,
+                    lunch_after_period, lunch_duration,
+                    school_id
+                )
+            )
+        else:
+            execute_commit(
+                """
+                INSERT INTO timetable_settings (
+                    school_id, start_time, period_length, periods_per_day,
+                    break_after_period, break_duration,
+                    lunch_after_period, lunch_duration
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    school_id, start_time, period_length, periods_per_day,
+                    break_after_period, break_duration,
+                    lunch_after_period, lunch_duration
+                )
+            )
+
+        flash("Timetable settings saved successfully.", "success")
+        return redirect(url_for("timetable_settings"))
+
+    if role == "super_admin" and request.args.get("school_id"):
+        school_id = request.args.get("school_id")
+
+    settings = fetch_one(
+        "SELECT * FROM timetable_settings WHERE school_id = ?",
+        (school_id,)
+    )
+
+    return render_template(
+        "timetable_settings.html",
+        settings=settings,
+        schools=schools
+    )
+
 @app.route("/classes")
 @login_required
 @roles_required("school_admin", "super_admin", "teacher")
@@ -2147,11 +2263,19 @@ def add_subject():
     school_id = session.get("school_id")
     role = session.get("role")
 
+    schools = fetch_all("SELECT * FROM schools ORDER BY school_name") if role == "super_admin" else []
+
     if request.method == "POST":
         if role == "super_admin":
             school_id = request.form.get("school_id")
 
         subject_name = request.form.get("subject_name", "").strip()
+        weekly_periods = request.form.get("weekly_periods") or 1
+        preferred_session = request.form.get("preferred_session") or "any"
+        is_practical = 1 if request.form.get("is_practical") == "on" else 0
+        requires_double_period = 1 if request.form.get("requires_double_period") == "on" else 0
+        requires_four_block = 1 if request.form.get("requires_four_block") == "on" else 0
+        requires_two_block = 1 if request.form.get("requires_two_block") == "on" else 0
 
         if not subject_name:
             flash("Subject name is required.", "danger")
@@ -2167,14 +2291,22 @@ def add_subject():
             return redirect(url_for("add_subject"))
 
         execute_commit(
-            "INSERT INTO subjects (school_id, subject_name) VALUES (?, ?)",
-            (school_id, subject_name)
+            """
+            INSERT INTO subjects (
+                school_id, subject_name, weekly_periods, preferred_session,
+                is_practical, requires_double_period, requires_four_block, requires_two_block
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                school_id, subject_name, weekly_periods, preferred_session,
+                is_practical, requires_double_period, requires_four_block, requires_two_block
+            )
         )
 
         flash("Subject added successfully.", "success")
         return redirect(url_for("subjects"))
 
-    schools = fetch_all("SELECT * FROM schools ORDER BY school_name") if role == "super_admin" else []
     return render_template("add_subject.html", schools=schools)
 
 @app.route("/add_timetable", methods=["GET", "POST"])
@@ -2411,7 +2543,71 @@ def run_subjects_migration():
         conn.commit()
     finally:
         conn.close()
+def run_timetable_foundation_migrations():
+    conn = get_db()
+    cursor = conn.cursor()
 
+    try:
+        if is_postgres():
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS timetable_settings (
+                    id SERIAL PRIMARY KEY,
+                    school_id INTEGER UNIQUE,
+                    start_time VARCHAR(20),
+                    period_length INTEGER DEFAULT 35,
+                    periods_per_day INTEGER DEFAULT 8,
+                    break_after_period INTEGER DEFAULT 3,
+                    break_duration INTEGER DEFAULT 20,
+                    lunch_after_period INTEGER DEFAULT 5,
+                    lunch_duration INTEGER DEFAULT 40
+                )
+            """)
+
+            statements = [
+                "ALTER TABLE subjects ADD COLUMN IF NOT EXISTS weekly_periods INTEGER DEFAULT 1",
+                "ALTER TABLE subjects ADD COLUMN IF NOT EXISTS preferred_session VARCHAR(20) DEFAULT 'any'",
+                "ALTER TABLE subjects ADD COLUMN IF NOT EXISTS is_practical INTEGER DEFAULT 0",
+                "ALTER TABLE subjects ADD COLUMN IF NOT EXISTS requires_double_period INTEGER DEFAULT 0",
+                "ALTER TABLE subjects ADD COLUMN IF NOT EXISTS requires_four_block INTEGER DEFAULT 0",
+                "ALTER TABLE subjects ADD COLUMN IF NOT EXISTS requires_two_block INTEGER DEFAULT 0"
+            ]
+
+            for stmt in statements:
+                cursor.execute(stmt)
+
+        else:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS timetable_settings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    school_id INTEGER UNIQUE,
+                    start_time TEXT,
+                    period_length INTEGER DEFAULT 35,
+                    periods_per_day INTEGER DEFAULT 8,
+                    break_after_period INTEGER DEFAULT 3,
+                    break_duration INTEGER DEFAULT 20,
+                    lunch_after_period INTEGER DEFAULT 5,
+                    lunch_duration INTEGER DEFAULT 40
+                )
+            """)
+
+            sqlite_statements = [
+                "ALTER TABLE subjects ADD COLUMN weekly_periods INTEGER DEFAULT 1",
+                "ALTER TABLE subjects ADD COLUMN preferred_session TEXT DEFAULT 'any'",
+                "ALTER TABLE subjects ADD COLUMN is_practical INTEGER DEFAULT 0",
+                "ALTER TABLE subjects ADD COLUMN requires_double_period INTEGER DEFAULT 0",
+                "ALTER TABLE subjects ADD COLUMN requires_four_block INTEGER DEFAULT 0",
+                "ALTER TABLE subjects ADD COLUMN requires_two_block INTEGER DEFAULT 0"
+            ]
+
+            for stmt in sqlite_statements:
+                try:
+                    cursor.execute(stmt)
+                except Exception:
+                    pass
+
+        conn.commit()
+    finally:
+        conn.close()
 def setup_app():
     try:
         print("Starting setup...")
@@ -2424,6 +2620,9 @@ def setup_app():
 
             run_subjects_migration()
             print("Subjects migration completed")
+
+            run_timetable_foundation_migrations()
+            print("Timetable foundation migrations completed")
 
             create_default_school()
             print("Default school ready")
@@ -2440,6 +2639,17 @@ def setup_app():
         print("Setup complete")
     except Exception as e:
         print("SETUP ERROR:", e)
+        
+def run_timetable_foundation_migrations():
+    conn = get_db()
+    cursor = conn.cursor()
+
+    try:
+        # your migration code here
+
+        conn.commit()
+    finally:
+        conn.close()
 
 @app.route("/fix_old_data_school")
 @login_required
