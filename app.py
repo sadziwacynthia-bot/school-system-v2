@@ -2531,6 +2531,19 @@ def run_subjects_migration():
                     subject_name VARCHAR(100) NOT NULL
                 )
             """)
+
+            statements = [
+                "ALTER TABLE subjects ADD COLUMN IF NOT EXISTS weekly_periods INTEGER DEFAULT 1",
+                "ALTER TABLE subjects ADD COLUMN IF NOT EXISTS preferred_session VARCHAR(20) DEFAULT 'any'",
+                "ALTER TABLE subjects ADD COLUMN IF NOT EXISTS is_practical INTEGER DEFAULT 0",
+                "ALTER TABLE subjects ADD COLUMN IF NOT EXISTS requires_double_period INTEGER DEFAULT 0",
+                "ALTER TABLE subjects ADD COLUMN IF NOT EXISTS requires_four_block INTEGER DEFAULT 0",
+                "ALTER TABLE subjects ADD COLUMN IF NOT EXISTS requires_two_block INTEGER DEFAULT 0"
+            ]
+
+            for stmt in statements:
+                cursor.execute(stmt)
+
         else:
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS subjects (
@@ -2539,6 +2552,21 @@ def run_subjects_migration():
                     subject_name TEXT NOT NULL
                 )
             """)
+
+            sqlite_statements = [
+                "ALTER TABLE subjects ADD COLUMN weekly_periods INTEGER DEFAULT 1",
+                "ALTER TABLE subjects ADD COLUMN preferred_session TEXT DEFAULT 'any'",
+                "ALTER TABLE subjects ADD COLUMN is_practical INTEGER DEFAULT 0",
+                "ALTER TABLE subjects ADD COLUMN requires_double_period INTEGER DEFAULT 0",
+                "ALTER TABLE subjects ADD COLUMN requires_four_block INTEGER DEFAULT 0",
+                "ALTER TABLE subjects ADD COLUMN requires_two_block INTEGER DEFAULT 0"
+            ]
+
+            for stmt in sqlite_statements:
+                try:
+                    cursor.execute(stmt)
+                except Exception:
+                    pass
 
         conn.commit()
     finally:
