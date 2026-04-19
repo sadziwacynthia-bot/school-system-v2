@@ -2344,6 +2344,8 @@ def timetable():
     selected_class = request.args.get("class_name", "").strip()
     schools = []
 
+    timetable_rows = []
+
     if role == "teacher":
         teacher = fetch_one("""
             SELECT * FROM teachers
@@ -2351,7 +2353,6 @@ def timetable():
             LIMIT 1
         """, (session["user_id"], school_id))
 
-        timetable_rows = []
         if teacher:
             timetable_rows = fetch_all("""
                 SELECT t.*, tr.full_name
@@ -2371,9 +2372,7 @@ def timetable():
                     t.start_time
             """, (school_id, teacher["id"]))
 
-        return render_template("teacher_timetable.html", timetable_rows=timetable_rows)
-
-    if role == "super_admin":
+    elif role == "super_admin":
         schools = fetch_all("SELECT * FROM schools ORDER BY school_name")
 
         if selected_class:
@@ -2394,8 +2393,7 @@ def timetable():
                     END,
                     t.start_time
             """, (selected_class,))
-        else:
-            timetable_rows = []
+
     else:
         if selected_class:
             timetable_rows = fetch_all("""
@@ -2415,15 +2413,30 @@ def timetable():
                     END,
                     t.start_time
             """, (school_id, selected_class))
-        else:
-            timetable_rows = []
+
+    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+
+    time_slots = []
+    grid = {}
+
+    for row in timetable_rows:
+        slot = f"{row['start_time']} - {row['end_time']}"
+        if slot not in time_slots:
+            time_slots.append(slot)
+
+        grid[(slot, row["day_of_week"])] = row
+
+    time_slots.sort()
 
     return render_template(
         "timetable.html",
         class_options=CLASS_OPTIONS,
         selected_class=selected_class,
         timetable_rows=timetable_rows,
-        schools=schools
+        schools=schools,
+        days=days,
+        time_slots=time_slots,
+        grid=grid
     )
 
 @app.route("/timetable_settings", methods=["GET", "POST"])

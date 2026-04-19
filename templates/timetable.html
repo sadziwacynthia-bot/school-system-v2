@@ -1,80 +1,19 @@
 {% extends "base.html" %}
+
 {% block title %}Timetable{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1>Class Timetable</h1>
-    <p>Select a class to view its timetable.</p>
-</div>
-
-<div class="card-box">
-    <form method="GET" action="{{ url_for('timetable') }}" class="filter-form">
-        <div class="form-group">
-            <label>Select Class</label>
-            <select name="class_name" required>
-                <option value="">Select class</option>
-                {% for class_name in class_options %}
-                    <option value="{{ class_name }}" {% if selected_class == class_name %}selected{% endif %}>
-                        {{ class_name }}
-                    </option>
-                {% endfor %}
-            </select>
-        </div>
-
-        <div class="form-actions">
-            <button type="submit" class="btn-primary">Load Timetable</button>
-            <a href="{{ url_for('add_timetable') }}" class="btn-secondary">Add Entry</a>
-        </div>
-    </form>
-</div>
-
-{% if timetable_rows %}
-<div class="card-box">
-    <h2>{{ selected_class }}</h2>
-    <div class="table-wrapper">
-        <table>
-            <thead>
-                <tr>
-                    <th>Day</th>
-                    <th>Start</th>
-                    <th>End</th>
-                    <th>Subject</th>
-                    <th>Teacher</th>
-                    <th>Room</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in timetable_rows %}
-                <tr>
-                    <td>{{ row.day_of_week }}</td>
-                    <td>{{ row.start_time }}</td>
-                    <td>{{ row.end_time }}</td>
-                    <td>{{ row.subject }}</td>
-                    <td>{{ row.full_name or "-" }}</td>
-                    <td>{{ row.room or "-" }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <div>
+        <h2 class="page-title">Timetable</h2>
+        <p class="page-subtitle">Weekly class timetable view</p>
     </div>
 </div>
-{% elif selected_class %}
-<div class="card-box">
-    <p>No timetable entries found for this class.</p>
-</div>
-<div class="table-card">
-    <form method="POST" action="{{ url_for('generate_timetable') }}" class="search-bar">
-        {% if session.get('role') == 'super_admin' and schools %}
-        <select name="school_id">
-            <option value="">Select School</option>
-            {% for school in schools %}
-            <option value="{{ school.id }}">{{ school.school_name }}</option>
-            {% endfor %}
-        </select>
-        {% endif %}
 
+<div class="table-card">
+    <form method="GET" action="{{ url_for('timetable') }}" class="search-bar">
         <select name="class_name">
-            <option value="">All Classes</option>
+            <option value="">Select Class</option>
             {% for class_name in class_options %}
             <option value="{{ class_name }}" {% if selected_class == class_name %}selected{% endif %}>
                 {{ class_name }}
@@ -82,57 +21,58 @@
             {% endfor %}
         </select>
 
-        <button type="submit" class="btn btn-success">Generate Timetable</button>
-        <a href="{{ url_for('add_timetable') }}" class="btn btn-primary">Add Entry</a>
+        <button type="submit" class="btn btn-primary">Load Timetable</button>
+        <a href="{{ url_for('add_timetable') }}" class="btn btn-secondary">Add Entry</a>
     </form>
 </div>
-{% endif %}
 
-<style>
-.page-header { margin-bottom: 24px; }
-.page-header h1 { margin: 0; color: #2563eb; font-size: 30px; }
-.page-header p { margin-top: 8px; color: #6b7280; }
-.card-box {
-    background: white;
-    border-radius: 16px;
-    padding: 24px;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.08);
-    margin-bottom: 20px;
-}
-.form-group label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 600;
-}
-.form-group select {
-    width: 100%;
-    max-width: 380px;
-    padding: 12px;
-    border: 1px solid #d1d5db;
-    border-radius: 10px;
-}
-.form-actions {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-top: 18px;
-}
-.btn-primary, .btn-secondary {
-    display: inline-block;
-    padding: 12px 18px;
-    border-radius: 10px;
-    text-decoration: none;
-    font-weight: 600;
-}
-.btn-primary { background: #2563eb; color: white; border: none; }
-.btn-secondary { background: #e5e7eb; color: #111827; }
-.table-wrapper { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; min-width: 850px; }
-th, td {
-    padding: 12px;
-    border-bottom: 1px solid #e5e7eb;
-    text-align: left;
-}
-th { background: #2563eb; color: white; }
-</style>
+{% if selected_class %}
+<div class="table-card">
+    <div class="section-title-row">
+        <h3>{{ selected_class }} Timetable</h3>
+    </div>
+
+    {% if time_slots %}
+    <div class="timetable-grid-wrapper">
+        <table class="timetable-grid-table">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    {% for day in days %}
+                    <th>{{ day }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for slot in time_slots %}
+                <tr>
+                    <td class="time-slot-cell">{{ slot }}</td>
+                    {% for day in days %}
+                    <td class="timetable-cell">
+                        {% set entry = grid.get((slot, day)) %}
+                        {% if entry %}
+                            <div class="lesson-card">
+                                <div class="lesson-subject">{{ entry.subject }}</div>
+                                <div class="lesson-teacher">{{ entry.full_name or 'Teacher' }}</div>
+                                <div class="lesson-room">{{ entry.room or 'No room' }}</div>
+                            </div>
+                        {% else %}
+                            <span class="empty-cell">—</span>
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+        <p>No timetable entries found for this class.</p>
+    {% endif %}
+</div>
+{% else %}
+<div class="table-card">
+    <p>Select a class to view the timetable grid.</p>
+</div>
+{% endif %}
 {% endblock %}

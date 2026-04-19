@@ -1174,3 +1174,76 @@ table tr:nth-child(even) {
         grid-template-columns: 1fr;
     }
 }
+.timetable-grid-wrapper {
+    overflow-x: auto;
+}
+
+.timetable-grid-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    min-width: 900px;
+}
+
+.timetable-grid-table th {
+    background: #1e3a8a;
+    color: white;
+    padding: 14px;
+    text-align: center;
+    font-size: 14px;
+}
+
+.timetable-grid-table td {
+    border: 1px solid #e5e7eb;
+    vertical-align: top;
+    padding: 10px;
+    min-height: 100px;
+    background: white;
+}
+
+.time-slot-cell {
+    background: #f8fafc !important;
+    font-weight: 700;
+    color: #334155;
+    white-space: nowrap;
+    text-align: center;
+}
+
+.timetable-cell {
+    min-width: 160px;
+    height: 110px;
+}
+
+.lesson-card {
+    background: linear-gradient(135deg, #eff6ff, #dbeafe);
+    border: 1px solid #bfdbfe;
+    border-radius: 14px;
+    padding: 10px;
+    min-height: 80px;
+}
+
+.lesson-subject {
+    font-weight: 700;
+    color: #1e3a8a;
+    margin-bottom: 6px;
+    font-size: 14px;
+}
+
+.lesson-teacher {
+    font-size: 13px;
+    color: #334155;
+    margin-bottom: 4px;
+}
+
+.lesson-room {
+    font-size: 12px;
+    color: #64748b;
+}
+
+.empty-cell {
+    color: #cbd5e1;
+    font-size: 18px;
+    display: block;
+    text-align: center;
+    padding-top: 20px;
+}
