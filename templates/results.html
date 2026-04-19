@@ -36,15 +36,16 @@
                     <td>{{ result.term }}</td>
                     <td>{{ result.marks }}</td>
                     <td>{{ result.grade }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        <a href="{{ url_for('print_result', student_id=result.student_id, term=result.term) }}"
+                    <a href="{{ url_for('print_result', student_id=result.student_id, term=result.term) }}"
    class="btn btn-secondary btn-sm"
    target="_blank">
     Print
 </a>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
     </div>
     {% else %}
         <p>No results found yet.</p>
