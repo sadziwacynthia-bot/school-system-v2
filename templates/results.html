@@ -40,6 +40,11 @@
                 {% endfor %}
             </tbody>
         </table>
+        <a href="{{ url_for('print_result', student_id=result.student_id, term=result.term) }}"
+   class="btn btn-secondary btn-sm"
+   target="_blank">
+    Print
+</a>
     </div>
     {% else %}
         <p>No results found yet.</p>
