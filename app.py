@@ -1332,58 +1332,76 @@ def assign_teacher():
 
     if role == "super_admin":
         teachers_list = fetch_all("SELECT * FROM teachers ORDER BY full_name")
+        subjects_rows = fetch_all("SELECT * FROM subjects ORDER BY subject_name")
         assignments_list = fetch_all("""
             SELECT ta.*, t.full_name
             FROM teacher_assignments ta
             JOIN teachers t ON ta.teacher_id = t.id
-            ORDER BY t.full_name, ta.class_name, ta.subject
+            ORDER BY ta.class_name, ta.subject, t.full_name
         """)
     else:
-        teachers_list = fetch_all("SELECT * FROM teachers WHERE school_id = ? ORDER BY full_name", (school_id,))
+        teachers_list = fetch_all(
+            "SELECT * FROM teachers WHERE school_id = ? ORDER BY full_name",
+            (school_id,)
+        )
+        subjects_rows = fetch_all(
+            "SELECT * FROM subjects WHERE school_id = ? ORDER BY subject_name",
+            (school_id,)
+        )
         assignments_list = fetch_all("""
             SELECT ta.*, t.full_name
             FROM teacher_assignments ta
             JOIN teachers t ON ta.teacher_id = t.id
             WHERE ta.school_id = ?
-            ORDER BY t.full_name, ta.class_name, ta.subject
+            ORDER BY ta.class_name, ta.subject, t.full_name
         """, (school_id,))
 
-    subjects_list = ["Math", "English", "Science", "History", "Geography", "Biology"]
+    subjects_list = [row["subject_name"] for row in subjects_rows]
+    schools = fetch_all("SELECT * FROM schools ORDER BY school_name") if role == "super_admin" else []
 
     if request.method == "POST":
+        selected_school_id = request.form.get("school_id") if role == "super_admin" else school_id
         teacher_id = request.form.get("teacher_id")
         class_name = request.form.get("class_name")
         subject = request.form.get("subject")
 
-        if not teacher_id or not class_name or not subject:
-            flash("Teacher, class, and subject are required.", "danger")
+        if not selected_school_id or not teacher_id or not class_name or not subject:
+            flash("School, teacher, class, and subject are required.", "danger")
             return redirect(url_for("assign_teacher"))
 
-        if role != "super_admin":
-            teacher = fetch_one("SELECT * FROM teachers WHERE id = ? AND school_id = ?", (teacher_id, school_id))
-            if not teacher:
-                flash("Invalid teacher selected.", "danger")
-                return redirect(url_for("assign_teacher"))
+        teacher = fetch_one(
+            "SELECT * FROM teachers WHERE id = ? AND school_id = ?",
+            (teacher_id, selected_school_id)
+        )
+        if not teacher:
+            flash("Invalid teacher selected.", "danger")
+            return redirect(url_for("assign_teacher"))
 
-        execute_commit(
-            """
+        existing = fetch_one("""
+            SELECT * FROM teacher_assignments
+            WHERE school_id = ? AND teacher_id = ? AND class_name = ? AND subject = ?
+        """, (selected_school_id, teacher_id, class_name, subject))
+
+        if existing:
+            flash("This subject is already assigned to that teacher for this class.", "warning")
+            return redirect(url_for("assign_teacher"))
+
+        execute_commit("""
             INSERT INTO teacher_assignments (school_id, teacher_id, class_name, subject)
             VALUES (?, ?, ?, ?)
-            """,
-            (school_id, teacher_id, class_name, subject),
-        )
+        """, (selected_school_id, teacher_id, class_name, subject))
 
-        flash("Teacher assigned successfully.", "success")
+        flash("Subject assigned successfully.", "success")
         return redirect(url_for("assign_teacher"))
 
     return render_template(
         "assign_teacher.html",
         teachers=teachers_list,
-        class_options=CLASS_OPTIONS,
         subjects=subjects_list,
         assignments=assignments_list,
+        class_options=CLASS_OPTIONS,
+        schools=schools
     )
-
 
 @app.route("/teacher_dashboard")
 @login_required
