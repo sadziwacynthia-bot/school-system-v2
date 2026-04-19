@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Students</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            color: #111;
+            margin: 30px;
+        }
+
+        .print-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .print-header h1 {
+            margin: 0;
+            font-size: 28px;
+        }
+
+        .print-header p {
+            margin: 6px 0;
+            color: #555;
+        }
+
+        .print-actions {
+            margin-bottom: 20px;
+            text-align: right;
+        }
+
+        .print-btn {
+            background: #1d4ed8;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            border: 1px solid #d1d5db;
+            padding: 10px;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th {
+            background: #f3f4f6;
+        }
+
+        @media print {
+            .print-actions {
+                display: none;
+            }
+
+            body {
+                margin: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="print-actions">
+        <button class="print-btn" onclick="window.print()">Print</button>
+    </div>
+
+    <div class="print-header">
+        <h1>EduTrack</h1>
+        <p>All Students List</p>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Class</th>
+                <th>Student Number</th>
+                <th>Full Name</th>
+                <th>Gender</th>
+                <th>Guardian</th>
+                <th>Phone</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for student in students %}
+            <tr>
+                <td>{{ student.class_name or '-' }}</td>
+                <td>{{ student.student_number or '-' }}</td>
+                <td>{{ student.first_name }} {{ student.last_name }}</td>
+                <td>{{ student.gender or '-' }}</td>
+                <td>{{ student.guardian1_name or '-' }}</td>
+                <td>{{ student.guardian1_phone or '-' }}</td>
+                <td>{{ student.current_status or 'Active' }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="7">No students found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

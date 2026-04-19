@@ -2521,7 +2521,30 @@ def timetable_settings():
 @login_required
 @roles_required("school_admin", "super_admin", "teacher")
 def classes():
-    return render_template("classes.html", class_options=CLASS_OPTIONS)
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    class_summary = []
+
+    for class_name in CLASS_OPTIONS:
+        if role == "super_admin":
+            total_students = fetch_one(
+                "SELECT COUNT(*) AS total FROM students WHERE class_name = ?",
+                (class_name,)
+            )["total"]
+        else:
+            total_students = fetch_one(
+                "SELECT COUNT(*) AS total FROM students WHERE school_id = ? AND class_name = ?",
+                (school_id, class_name)
+            )["total"]
+
+        class_summary.append({
+            "class_name": class_name,
+            "total_students": total_students
+        })
+
+    return render_template("classes.html", class_summary=class_summary)
+
 
 @app.route("/class/<class_name>")
 @login_required
@@ -2546,6 +2569,67 @@ def class_students(class_name):
         students=students,
         class_name=class_name
     )
+
+
+@app.route("/print_class_list/<class_name>")
+@login_required
+@roles_required("school_admin", "super_admin", "teacher")
+def print_class_list(class_name):
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    if role == "super_admin":
+        students = fetch_all(
+            """
+            SELECT * FROM students
+            WHERE class_name = ?
+            ORDER BY first_name, last_name
+            """,
+            (class_name,)
+        )
+    else:
+        students = fetch_all(
+            """
+            SELECT * FROM students
+            WHERE school_id = ? AND class_name = ?
+            ORDER BY first_name, last_name
+            """,
+            (school_id, class_name)
+        )
+
+    return render_template(
+        "print_class_list.html",
+        students=students,
+        class_name=class_name
+    )
+
+
+@app.route("/print_all_students")
+@login_required
+@roles_required("school_admin", "super_admin")
+def print_all_students():
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    if role == "super_admin":
+        students = fetch_all(
+            """
+            SELECT * FROM students
+            ORDER BY class_name, first_name, last_name
+            """
+        )
+    else:
+        students = fetch_all(
+            """
+            SELECT * FROM students
+            WHERE school_id = ?
+            ORDER BY class_name, first_name, last_name
+            """,
+            (school_id,)
+        )
+
+    return render_template("print_all_students.html", students=students)
+
 @app.route("/subjects")
 @login_required
 @roles_required("school_admin", "super_admin", "teacher")
