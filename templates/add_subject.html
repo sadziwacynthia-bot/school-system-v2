@@ -6,7 +6,7 @@
 <div class="page-header">
     <div>
         <h2 class="page-title">Add Subject</h2>
-        <p class="page-subtitle">Register a subject for the school</p>
+        <p class="page-subtitle">Register a subject and define timetable rules</p>
     </div>
 </div>
 
@@ -22,8 +22,32 @@
         </select>
         {% endif %}
 
-        <label for="subject_name">Subject Name</label>
-        <input type="text" name="subject_name" placeholder="e.g. Mathematics" required>
+        <div class="form-grid">
+            <div>
+                <label for="subject_name">Subject Name</label>
+                <input type="text" name="subject_name" placeholder="e.g. Mathematics" required>
+            </div>
+
+            <div>
+                <label for="weekly_periods">Weekly Periods</label>
+                <input type="number" name="weekly_periods" min="1" value="1" required>
+            </div>
+
+            <div>
+                <label for="preferred_session">Preferred Session</label>
+                <select name="preferred_session" required>
+                    <option value="any">Any Time</option>
+                    <option value="morning">Morning</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="checkbox-group">
+            <label><input type="checkbox" name="is_practical"> Practical Subject</label>
+            <label><input type="checkbox" name="requires_double_period"> Needs Double Periods</label>
+            <label><input type="checkbox" name="requires_four_block"> Needs 4 Consecutive Periods</label>
+            <label><input type="checkbox" name="requires_two_block"> Needs 2 Consecutive Periods</label>
+        </div>
 
         <button type="submit" class="btn btn-primary">Save Subject</button>
     </form>

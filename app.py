@@ -1403,6 +1403,7 @@ def assign_teacher():
         schools=schools
     )
 
+
 @app.route("/teacher_dashboard")
 @login_required
 @roles_required("teacher")
@@ -2060,7 +2061,276 @@ def parent_setup():
         return redirect(url_for("login"))
 
     return render_template("parent_setup.html")
+from datetime import datetime, timedelta
 
+WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+
+
+def to_int(value, default=0):
+    try:
+        return int(value)
+    except Exception:
+        return default
+
+
+def build_period_slots(settings):
+    start_time = settings["start_time"] or "07:30"
+    period_length = to_int(settings["period_length"], 35)
+    periods_per_day = to_int(settings["periods_per_day"], 8)
+    break_after_period = to_int(settings["break_after_period"], 3)
+    break_duration = to_int(settings["break_duration"], 20)
+    lunch_after_period = to_int(settings["lunch_after_period"], 5)
+    lunch_duration = to_int(settings["lunch_duration"], 40)
+
+    current = datetime.strptime(start_time, "%H:%M")
+    slots = []
+
+    for period_no in range(1, periods_per_day + 1):
+        slot_start = current
+        slot_end = slot_start + timedelta(minutes=period_length)
+
+        slots.append({
+            "period_no": period_no,
+            "start_time": slot_start.strftime("%H:%M"),
+            "end_time": slot_end.strftime("%H:%M")
+        })
+
+        current = slot_end
+
+        if period_no == break_after_period:
+            current += timedelta(minutes=break_duration)
+
+        if period_no == lunch_after_period:
+            current += timedelta(minutes=lunch_duration)
+
+    return slots
+
+
+def is_morning_period(period_no):
+    return period_no <= 3
+
+
+def find_subject_rule(subject_rules, subject_name):
+    return subject_rules.get(subject_name)
+
+
+def get_subject_priority(subject_name, rule):
+    name = (subject_name or "").lower()
+    if "math" in name or "mathematics" in name:
+        return 1
+    if rule and rule.get("preferred_session") == "morning":
+        return 2
+    if rule and to_int(rule.get("is_practical"), 0) == 1:
+        return 3
+    return 4
+
+
+def can_place_block(class_schedule, teacher_schedule, teacher_id, day, start_index, block_size):
+    for i in range(start_index, start_index + block_size):
+        if (day, i) in class_schedule:
+            return False
+        if (teacher_id, day, i) in teacher_schedule:
+            return False
+    return True
+
+
+def place_block(entries, class_schedule, teacher_schedule, teacher_id, class_name, subject, day, slots, start_index, block_size):
+    start_slot = slots[start_index]
+    end_slot = slots[start_index + block_size - 1]
+
+    entries.append({
+        "class_name": class_name,
+        "subject": subject,
+        "teacher_id": teacher_id,
+        "day_of_week": day,
+        "start_time": start_slot["start_time"],
+        "end_time": end_slot["end_time"],
+        "room": ""
+    })
+
+    for i in range(start_index, start_index + block_size):
+        class_schedule[(day, i)] = subject
+        teacher_schedule[(teacher_id, day, i)] = class_name
+
+
+def try_place_block(entries, class_schedule, teacher_schedule, teacher_id, class_name, subject, slots, preferred_morning, block_size):
+    candidate_days = WEEKDAYS[:]
+
+    for day in candidate_days:
+        indexes = list(range(0, len(slots) - block_size + 1))
+
+        if preferred_morning:
+            indexes = [i for i in indexes if is_morning_period(slots[i]["period_no"])]
+
+        for idx in indexes:
+            if can_place_block(class_schedule, teacher_schedule, teacher_id, day, idx, block_size):
+                place_block(entries, class_schedule, teacher_schedule, teacher_id, class_name, subject, day, slots, idx, block_size)
+                return True
+
+    if preferred_morning:
+        return try_place_block(entries, class_schedule, teacher_schedule, teacher_id, class_name, subject, slots, False, block_size)
+
+    return False
+
+
+def auto_generate_timetable_for_school(school_id, selected_class=None):
+    settings = fetch_one(
+        "SELECT * FROM timetable_settings WHERE school_id = ?",
+        (school_id,)
+    )
+
+    if not settings:
+        return False, "Please set timetable settings first."
+
+    slots = build_period_slots(settings)
+
+    if selected_class:
+        assignments = fetch_all("""
+            SELECT ta.*, t.full_name
+            FROM teacher_assignments ta
+            JOIN teachers t ON ta.teacher_id = t.id
+            WHERE ta.school_id = ? AND ta.class_name = ?
+            ORDER BY ta.class_name, ta.subject
+        """, (school_id, selected_class))
+    else:
+        assignments = fetch_all("""
+            SELECT ta.*, t.full_name
+            FROM teacher_assignments ta
+            JOIN teachers t ON ta.teacher_id = t.id
+            WHERE ta.school_id = ?
+            ORDER BY ta.class_name, ta.subject
+        """, (school_id,))
+
+    if not assignments:
+        return False, "No subject assignments found. Assign subjects first."
+
+    subject_rows = fetch_all(
+        "SELECT * FROM subjects WHERE school_id = ?",
+        (school_id,)
+    )
+    subject_rules = {row["subject_name"]: row for row in subject_rows}
+
+    grouped = {}
+    for row in assignments:
+        grouped.setdefault(row["class_name"], []).append(row)
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    try:
+        if selected_class:
+            cursor.execute(
+                convert_query("DELETE FROM timetables WHERE school_id = ? AND class_name = ?"),
+                (school_id, selected_class)
+            )
+        else:
+            cursor.execute(
+                convert_query("DELETE FROM timetables WHERE school_id = ?"),
+                (school_id,)
+            )
+
+        teacher_schedule = {}
+        created_entries = []
+
+        for class_name, class_assignments in grouped.items():
+            class_schedule = {}
+
+            work_items = []
+            for item in class_assignments:
+                rule = find_subject_rule(subject_rules, item["subject"])
+                weekly_periods = to_int(rule["weekly_periods"], 1) if rule else 1
+                preferred_session = (rule["preferred_session"] if rule else "any") or "any"
+                is_practical = to_int(rule["is_practical"], 0) if rule else 0
+                requires_four_block = to_int(rule["requires_four_block"], 0) if rule else 0
+                requires_two_block = to_int(rule["requires_two_block"], 0) if rule else 0
+                requires_double_period = to_int(rule["requires_double_period"], 0) if rule else 0
+
+                work_items.append({
+                    "teacher_id": item["teacher_id"],
+                    "class_name": class_name,
+                    "subject": item["subject"],
+                    "weekly_periods": weekly_periods,
+                    "preferred_session": preferred_session,
+                    "is_practical": is_practical,
+                    "requires_four_block": requires_four_block,
+                    "requires_two_block": requires_two_block,
+                    "requires_double_period": requires_double_period,
+                    "priority": get_subject_priority(item["subject"], rule),
+                })
+
+            work_items.sort(key=lambda x: x["priority"])
+
+            for item in work_items:
+                remaining = item["weekly_periods"]
+                prefers_morning = item["preferred_session"] == "morning" or "math" in item["subject"].lower()
+
+                if item["requires_four_block"] == 1 and remaining >= 4:
+                    if try_place_block(
+                        created_entries, class_schedule, teacher_schedule,
+                        item["teacher_id"], item["class_name"], item["subject"],
+                        slots, prefers_morning, 4
+                    ):
+                        remaining -= 4
+
+                if item["requires_two_block"] == 1 and remaining >= 2:
+                    if try_place_block(
+                        created_entries, class_schedule, teacher_schedule,
+                        item["teacher_id"], item["class_name"], item["subject"],
+                        slots, prefers_morning, 2
+                    ):
+                        remaining -= 2
+
+                if item["requires_double_period"] == 1:
+                    while remaining >= 2:
+                        placed = try_place_block(
+                            created_entries, class_schedule, teacher_schedule,
+                            item["teacher_id"], item["class_name"], item["subject"],
+                            slots, prefers_morning, 2
+                        )
+                        if not placed:
+                            break
+                        remaining -= 2
+
+                while remaining > 0:
+                    placed = try_place_block(
+                        created_entries, class_schedule, teacher_schedule,
+                        item["teacher_id"], item["class_name"], item["subject"],
+                        slots, prefers_morning, 1
+                    )
+                    if not placed:
+                        break
+                    remaining -= 1
+
+        for entry in created_entries:
+            cursor.execute(
+                convert_query("""
+                    INSERT INTO timetables (
+                        school_id, class_name, subject, teacher_id,
+                        day_of_week, start_time, end_time, room
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """),
+                (
+                    school_id,
+                    entry["class_name"],
+                    entry["subject"],
+                    entry["teacher_id"],
+                    entry["day_of_week"],
+                    entry["start_time"],
+                    entry["end_time"],
+                    entry["room"],
+                )
+            )
+
+        conn.commit()
+        return True, "Timetable generated successfully."
+
+    except Exception as e:
+        conn.rollback()
+        return False, str(e)
+
+    finally:
+        conn.close()
 
 # =========================================================
 # TIMETABLE
@@ -2072,6 +2342,7 @@ def timetable():
     school_id = session.get("school_id")
     role = session.get("role")
     selected_class = request.args.get("class_name", "").strip()
+    schools = []
 
     if role == "teacher":
         teacher = fetch_one("""
@@ -2099,9 +2370,12 @@ def timetable():
                     END,
                     t.start_time
             """, (school_id, teacher["id"]))
+
         return render_template("teacher_timetable.html", timetable_rows=timetable_rows)
 
     if role == "super_admin":
+        schools = fetch_all("SELECT * FROM schools ORDER BY school_name")
+
         if selected_class:
             timetable_rows = fetch_all("""
                 SELECT t.*, tr.full_name
@@ -2149,7 +2423,9 @@ def timetable():
         class_options=CLASS_OPTIONS,
         selected_class=selected_class,
         timetable_rows=timetable_rows,
+        schools=schools
     )
+
 @app.route("/timetable_settings", methods=["GET", "POST"])
 @login_required
 @roles_required("school_admin", "super_admin")

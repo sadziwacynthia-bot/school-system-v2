@@ -62,6 +62,30 @@
 <div class="card-box">
     <p>No timetable entries found for this class.</p>
 </div>
+<div class="table-card">
+    <form method="POST" action="{{ url_for('generate_timetable') }}" class="search-bar">
+        {% if session.get('role') == 'super_admin' and schools %}
+        <select name="school_id">
+            <option value="">Select School</option>
+            {% for school in schools %}
+            <option value="{{ school.id }}">{{ school.school_name }}</option>
+            {% endfor %}
+        </select>
+        {% endif %}
+
+        <select name="class_name">
+            <option value="">All Classes</option>
+            {% for class_name in class_options %}
+            <option value="{{ class_name }}" {% if selected_class == class_name %}selected{% endif %}>
+                {{ class_name }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <button type="submit" class="btn btn-success">Generate Timetable</button>
+        <a href="{{ url_for('add_timetable') }}" class="btn btn-primary">Add Entry</a>
+    </form>
+</div>
 {% endif %}
 
 <style>
