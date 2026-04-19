@@ -2328,7 +2328,6 @@ def add_timetable():
 
     subjects = [row["subject_name"] for row in subjects_rows]
 
-    subjects = [row["subject"] for row in subjects_rows]
 
     if request.method == "POST":
         class_name = request.form.get("class_name")
