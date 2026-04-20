@@ -3,17 +3,16 @@
 
 {% block content %}
 <div class="page-header">
-    <h1>Student Results</h1>
-    <p>View all recorded student results by subject and term.</p>
+    <div>
+        <h2 class="page-title">Student Results</h2>
+        <p class="page-subtitle">View all recorded student results by subject and term</p>
+    </div>
+    <a href="{{ url_for('enter_result') }}" class="btn btn-primary">+ Enter Result</a>
 </div>
 
-<div class="page-actions">
-    <a href="{{ url_for('enter_result') }}" class="btn-primary">Enter Result</a>
-</div>
-
-<div class="card-box">
+<div class="table-card">
     {% if result_records %}
-    <div class="table-wrapper">
+    <div class="table-responsive">
         <table>
             <thead>
                 <tr>
@@ -24,81 +23,33 @@
                     <th>Term</th>
                     <th>Marks</th>
                     <th>Grade</th>
+                    <th>Print</th>
                 </tr>
             </thead>
             <tbody>
                 {% for result in result_records %}
                 <tr>
-                    <td>{{ result.student_number }}</td>
+                    <td>{{ result.student_number or '-' }}</td>
                     <td>{{ result.first_name }} {{ result.last_name }}</td>
-                    <td>{{ result.class_name }}</td>
-                    <td>{{ result.subject }}</td>
-                    <td>{{ result.term }}</td>
-                    <td>{{ result.marks }}</td>
-                    <td>{{ result.grade }}</td>
-                    <a href="{{ url_for('print_result', student_id=result.student_id, term=result.term) }}"
-   class="btn btn-secondary btn-sm"
-   target="_blank">
-    Print
-</a>
+                    <td>{{ result.class_name or '-' }}</td>
+                    <td>{{ result.subject or '-' }}</td>
+                    <td>{{ result.term or '-' }}</td>
+                    <td>{{ result.marks or '-' }}</td>
+                    <td>{{ result.grade or '-' }}</td>
+                    <td>
+                        <a href="{{ url_for('print_result', student_id=result.student_id, term=result.term) }}"
+                           class="btn btn-secondary btn-sm"
+                           target="_blank">
+                            Print
+                        </a>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
-        
     </div>
     {% else %}
         <p>No results found yet.</p>
     {% endif %}
 </div>
-
-<style>
-.page-header {
-    margin-bottom: 24px;
-}
-.page-header h1 {
-    margin: 0;
-    color: #2563eb;
-    font-size: 30px;
-}
-.page-header p {
-    margin-top: 8px;
-    color: #6b7280;
-}
-.page-actions {
-    margin-bottom: 20px;
-}
-.btn-primary {
-    display: inline-block;
-    background: #2563eb;
-    color: white;
-    text-decoration: none;
-    padding: 12px 18px;
-    border-radius: 10px;
-    font-weight: 600;
-}
-.card-box {
-    background: #ffffff;
-    border-radius: 16px;
-    padding: 24px;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
-}
-.table-wrapper {
-    overflow-x: auto;
-}
-table {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 900px;
-}
-th, td {
-    padding: 12px;
-    text-align: left;
-    border-bottom: 1px solid #e5e7eb;
-}
-th {
-    background: #2563eb;
-    color: white;
-}
-</style>
 {% endblock %}
