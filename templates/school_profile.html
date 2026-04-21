@@ -10,6 +10,7 @@
     <div class="action-group">
         <a href="{{ url_for('update_school_subscription', school_id=school.id) }}" class="btn btn-primary">Update Subscription</a>
         <a href="{{ url_for('schools') }}" class="btn btn-secondary">Back to Schools</a>
+        <a href="{{ url_for('school_payments', school_id=school.id) }}" class="btn btn-primary">Payment History</a>
     </div>
 </div>
 

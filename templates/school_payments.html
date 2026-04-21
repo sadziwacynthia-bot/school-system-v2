@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}School Payments{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h2 class="page-title">{{ school.school_name }} Payments</h2>
+        <p class="page-subtitle">Track subscription payments for this school</p>
+    </div>
+    <div class="action-group">
+        <a href="{{ url_for('add_school_payment', school_id=school.id) }}" class="btn btn-primary">+ Add Payment</a>
+        <a href="{{ url_for('school_profile', school_id=school.id) }}" class="btn btn-secondary">Back</a>
+    </div>
+</div>
+
+<div class="table-card">
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Payment Date</th>
+                    <th>Amount</th>
+                    <th>Period Start</th>
+                    <th>Period End</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for payment in payments %}
+                <tr>
+                    <td>{{ payment.payment_date or '-' }}</td>
+                    <td>${{ "%.2f"|format(payment.amount or 0) }}</td>
+                    <td>{{ payment.period_start or '-' }}</td>
+                    <td>{{ payment.period_end or '-' }}</td>
+                    <td>{{ payment.notes or '-' }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5">No payments recorded yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

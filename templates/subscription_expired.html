@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subscription Expired</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #eff6ff, #dbeafe);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            color: #1e293b;
+        }
+
+        .expired-card {
+            background: white;
+            width: 100%;
+            max-width: 520px;
+            border-radius: 20px;
+            padding: 40px 30px;
+            box-shadow: 0 12px 40px rgba(15, 23, 42, 0.12);
+            text-align: center;
+        }
+
+        .expired-icon {
+            font-size: 56px;
+            margin-bottom: 18px;
+        }
+
+        h1 {
+            margin: 0 0 12px;
+            color: #1e3a8a;
+            font-size: 30px;
+        }
+
+        p {
+            color: #475569;
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 18px;
+            border-radius: 10px;
+            background: #2563eb;
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <h1>
+    {% if school %}
+        {{ school.school_name }}
+    {% else %}
+        School Account
+    {% endif %}
+</h1>
+<pre>{{ school }}</pre>
+    <div class="expired-card">
+        <div class="expired-icon">⚠️</div>
+        <h1>Subscription Expired</h1>
+        <p>
+            This school account is currently inactive because the subscription has expired or been suspended.
+            Please contact support or the system administrator to restore access.
+        </p>
+        <a href="{{ url_for('login') }}" class="btn">Back to Login</a>
+    </div>
+</body>
+</html>

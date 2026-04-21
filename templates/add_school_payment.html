@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Add School Payment{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h2 class="page-title">Add School Payment</h2>
+        <p class="page-subtitle">{{ school.school_name }}</p>
+    </div>
+</div>
+
+<div class="form-card">
+    <form method="POST">
+        <label>Payment Date</label>
+        <input type="date" name="payment_date" required>
+
+        <label>Amount</label>
+        <input type="number" step="0.01" name="amount" required>
+
+        <label>Period Start</label>
+        <input type="date" name="period_start">
+
+        <label>Period End</label>
+        <input type="date" name="period_end">
+
+        <label>Notes</label>
+        <textarea name="notes" rows="3"></textarea>
+
+        <button type="submit" class="btn btn-primary">Save Payment</button>
+    </form>
+</div>
+{% endblock %}

@@ -314,6 +314,18 @@ def init_db():
                 logo_url TEXT
             )
         """)
+        cursor.execute("""
+    CREATE TABLE IF NOT EXISTS school_payments (
+        id SERIAL PRIMARY KEY,
+        school_id INTEGER,
+        payment_date VARCHAR(50),
+        amount NUMERIC(10,2),
+        period_start VARCHAR(50),
+        period_end VARCHAR(50),
+        notes TEXT
+    )
+""")
+        
     else:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS schools (
@@ -503,6 +515,18 @@ def init_db():
                 lunch_duration INTEGER DEFAULT 40
             )
         """)
+        cursor.execute("""
+    CREATE TABLE IF NOT EXISTS school_payments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        school_id INTEGER,
+        payment_date TEXT,
+        amount REAL,
+        period_start TEXT,
+        period_end TEXT,
+        notes TEXT
+    )
+""")
+        
     conn.commit()
     conn.close()
 
@@ -621,10 +645,18 @@ def login_required(f):
             flash("Please log in first.", "warning")
             return redirect(url_for("login"))
 
-        if not school_access_allowed():
-            flash("Your school account is currently suspended. Please contact support.", "danger")
-            session.clear()
-            return redirect(url_for("login"))
+        school_id = session.get("school_id")
+        role = session.get("role")
+
+        if role != "super_admin" and school_id:
+            school = fetch_one("SELECT * FROM schools WHERE id = ?", (school_id,))
+            if school:
+                is_active = school["is_active"] if "is_active" in school.keys() else 1
+                subscription_status = school["subscription_status"] if "subscription_status" in school.keys() else "active"
+
+                if not is_active or subscription_status in ["suspended", "overdue"]:
+                    session.clear()
+                    return redirect(url_for("subscription_expired"))
 
         return f(*args, **kwargs)
     return wrapper
@@ -768,7 +800,7 @@ def school_access_allowed():
         return False
 
     end_date = parse_date_safe(school["subscription_end_date"])
-    if end_date and end_date < datetime.utcnow().date():
+    if end_date and end_date < datetime.now().date():
         return False
 
     return True
@@ -786,7 +818,7 @@ def school_is_overdue(school):
     end_date = parse_date_safe(school["subscription_end_date"])
     if not end_date:
         return False
-    return end_date < datetime.utcnow().date()
+    return end_date < datetime.now().date()
 # =========================================================
 # BASIC ROUTES
 # =========================================================
@@ -3389,7 +3421,7 @@ def billing_dashboard():
     }
 
     processed = []
-    today = datetime.utcnow().date()
+    today = datetime.now().date()
 
     for school in schools:
         end_date = parse_date_safe(row_get(school, "subscription_end_date"))
@@ -3418,6 +3450,61 @@ def billing_dashboard():
         })
 
     return render_template("billing_dashboard.html", schools=processed, summary=summary)
+
+@app.route("/school_payments/<int:school_id>")
+@login_required
+@roles_required("super_admin")
+def school_payments(school_id):
+    school = fetch_one("SELECT * FROM schools WHERE id = ?", (school_id,))
+    if not school:
+        flash("School not found.", "danger")
+        return redirect(url_for("schools"))
+
+    payments = fetch_all("""
+        SELECT * FROM school_payments
+        WHERE school_id = ?
+        ORDER BY payment_date DESC, id DESC
+    """, (school_id,))
+
+    return render_template("school_payments.html", school=school, payments=payments)
+
+
+@app.route("/add_school_payment/<int:school_id>", methods=["GET", "POST"])
+@login_required
+@roles_required("super_admin")
+def add_school_payment(school_id):
+    school = fetch_one("SELECT * FROM schools WHERE id = ?", (school_id,))
+    if not school:
+        flash("School not found.", "danger")
+        return redirect(url_for("schools"))
+
+    if request.method == "POST":
+        payment_date = request.form.get("payment_date")
+        amount = request.form.get("amount")
+        period_start = request.form.get("period_start")
+        period_end = request.form.get("period_end")
+        notes = request.form.get("notes")
+
+        execute_commit("""
+            INSERT INTO school_payments (school_id, payment_date, amount, period_start, period_end, notes)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (school_id, payment_date, amount, period_start, period_end, notes))
+
+        flash("School payment recorded successfully.", "success")
+        return redirect(url_for("school_payments", school_id=school_id))
+
+    return render_template("add_school_payment.html", school=school)
+
+@app.route("/subscription_expired")
+def subscription_expired():
+    school = None
+
+    school_id = session.get("school_id")
+
+    if school_id:
+        school = fetch_one("SELECT * FROM schools WHERE id = ?", (school_id,))
+
+    return render_template("subscription_expired.html", school=school)
 
 @app.route("/send_fee_reminder/<int:student_id>")
 @login_required
@@ -3697,7 +3784,7 @@ def run_school_control_migration():
 def update_school_subscription_states():
     school_list = fetch_all("SELECT * FROM schools")
 
-    today = datetime.utcnow().date()
+    today = datetime.now().date()
 
     for school in school_list:
         end_date = parse_date_safe(school["subscription_end_date"])
