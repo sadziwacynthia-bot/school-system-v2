@@ -1657,6 +1657,59 @@ def update_fee(fee_id):
         )
 
     return render_template("update_fee.html", fee=fee, payment_history=payment_history)
+@app.route("/print_fee_receipt/<int:payment_id>")
+@login_required
+@roles_required("school_admin", "super_admin")
+def print_fee_receipt(payment_id):
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    if role == "super_admin":
+        payment = fetch_one("""
+            SELECT
+                fp.*,
+                f.student_id,
+                f.term_name,
+                f.balance,
+                s.first_name,
+                s.last_name,
+                s.student_number,
+                s.class_name,
+                s.school_id
+            FROM fee_payments fp
+            JOIN fees f ON fp.fee_id = f.id
+            JOIN students s ON f.student_id = s.id
+            WHERE fp.id = ?
+        """, (payment_id,))
+    else:
+        payment = fetch_one("""
+            SELECT
+                fp.*,
+                f.student_id,
+                f.term_name,
+                f.balance,
+                s.first_name,
+                s.last_name,
+                s.student_number,
+                s.class_name,
+                s.school_id
+            FROM fee_payments fp
+            JOIN fees f ON fp.fee_id = f.id
+            JOIN students s ON f.student_id = s.id
+            WHERE fp.id = ? AND fp.school_id = ?
+        """, (payment_id, school_id))
+
+    if not payment:
+        flash("Receipt not found or access denied.", "danger")
+        return redirect(url_for("fees"))
+
+    settings = get_school_settings(payment["school_id"]) if payment["school_id"] else None
+
+    return render_template(
+        "print_fee_receipt.html",
+        payment=payment,
+        school_settings=settings
+    )
 
 
 # =========================================================

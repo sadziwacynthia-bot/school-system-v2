@@ -59,6 +59,7 @@
                     <th>Payment Date</th>
                     <th>Receipt Number</th>
                     <th>Amount Paid</th>
+                    <th>Receipt</th>
                 </tr>
             </thead>
             <tbody>
@@ -67,6 +68,13 @@
                     <td>{{ payment.payment_date or "-" }}</td>
                     <td>{{ payment.receipt_number or "-" }}</td>
                     <td>${{ payment.amount_paid }}</td>
+                    <td>
+    <a href="{{ url_for('print_fee_receipt', payment_id=payment.id) }}"
+       class="btn btn-secondary btn-sm"
+       target="_blank">
+        Print Receipt
+    </a>
+</td>
                 </tr>
                 {% endfor %}
             </tbody>

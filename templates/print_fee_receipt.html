@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fee Receipt</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            color: #111827;
+            margin: 30px;
+            background: white;
+        }
+
+        .print-actions {
+            text-align: right;
+            margin-bottom: 20px;
+        }
+
+        .print-btn {
+            background: #1d4ed8;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .receipt-card {
+            border: 2px solid #1e3a8a;
+            border-radius: 12px;
+            padding: 28px;
+        }
+
+        .receipt-header {
+            text-align: center;
+            border-bottom: 2px solid #dbeafe;
+            padding-bottom: 16px;
+            margin-bottom: 24px;
+        }
+
+        .receipt-header img {
+            max-height: 70px;
+            margin-bottom: 10px;
+        }
+
+        .receipt-header h1 {
+            margin: 0;
+            font-size: 30px;
+            color: #1e3a8a;
+        }
+
+        .receipt-header p {
+            margin: 6px 0;
+            color: #475569;
+            font-size: 14px;
+        }
+
+        .receipt-title {
+            text-align: center;
+            font-size: 20px;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 20px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 14px 22px;
+            margin-bottom: 24px;
+        }
+
+        .info-box {
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 12px 14px;
+        }
+
+        .info-box span {
+            display: block;
+            font-size: 12px;
+            color: #64748b;
+            text-transform: uppercase;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .info-box strong {
+            font-size: 15px;
+            color: #111827;
+        }
+
+        .payment-summary {
+            margin-top: 10px;
+            margin-bottom: 26px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            border: 1px solid #d1d5db;
+            padding: 12px;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th {
+            background: #eff6ff;
+            color: #1e3a8a;
+            font-weight: 700;
+        }
+
+        .signature-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 28px;
+            margin-top: 36px;
+        }
+
+        .signature-line {
+            border-top: 1px solid #111827;
+            padding-top: 8px;
+            text-align: center;
+            font-size: 13px;
+            color: #374151;
+        }
+
+        .footer-note {
+            margin-top: 20px;
+            text-align: center;
+            color: #64748b;
+            font-size: 12px;
+        }
+
+        @media print {
+            .print-actions {
+                display: none;
+            }
+
+            body {
+                margin: 0;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .info-grid,
+            .signature-section {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="print-actions">
+        <button class="print-btn" onclick="window.print()">Print Receipt</button>
+    </div>
+
+    <div class="receipt-card">
+        <div class="receipt-header">
+            {% if school_settings and school_settings.logo_url %}
+                <img src="{{ school_settings.logo_url }}" alt="School Logo">
+            {% endif %}
+
+            <h1>{{ school_settings.display_name if school_settings and school_settings.display_name else 'EduTrack' }}</h1>
+
+            <p>
+                {{ school_settings.report_header if school_settings and school_settings.report_header else 'School Fee Receipt' }}
+            </p>
+
+            {% if school_settings and school_settings.address %}
+                <p>{{ school_settings.address }}</p>
+            {% endif %}
+
+            {% if school_settings and (school_settings.phone or school_settings.email) %}
+                <p>
+                    {{ school_settings.phone or '' }}
+                    {% if school_settings.phone and school_settings.email %} | {% endif %}
+                    {{ school_settings.email or '' }}
+                </p>
+            {% endif %}
+        </div>
+
+        <div class="receipt-title">Official Fee Receipt</div>
+
+        <div class="info-grid">
+            <div class="info-box">
+                <span>Receipt Number</span>
+                <strong>{{ payment.receipt_number or ('RCPT-' ~ payment.id) }}</strong>
+            </div>
+            <div class="info-box">
+                <span>Payment Date</span>
+                <strong>{{ payment.payment_date or '-' }}</strong>
+            </div>
+            <div class="info-box">
+                <span>Student Name</span>
+                <strong>{{ payment.first_name }} {{ payment.last_name }}</strong>
+            </div>
+            <div class="info-box">
+                <span>Student Number</span>
+                <strong>{{ payment.student_number or '-' }}</strong>
+            </div>
+            <div class="info-box">
+                <span>Class</span>
+                <strong>{{ payment.class_name or '-' }}</strong>
+            </div>
+            <div class="info-box">
+                <span>Term</span>
+                <strong>{{ payment.term_name or '-' }}</strong>
+            </div>
+        </div>
+
+        <div class="payment-summary">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th>Amount Paid</th>
+                        <th>Balance Remaining</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>School Fees Payment</td>
+                        <td>${{ "%.2f"|format(payment.amount_paid or 0) }}</td>
+                        <td>${{ "%.2f"|format(payment.balance or 0) }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="signature-section">
+            <div class="signature-line">Authorized By</div>
+            <div class="signature-line">School Stamp</div>
+        </div>
+
+        <div class="footer-note">
+            Generated by {{ school_settings.display_name if school_settings and school_settings.display_name else 'EduTrack' }}
+        </div>
+    </div>
+</body>
+</html>
