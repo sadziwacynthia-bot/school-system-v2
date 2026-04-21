@@ -288,6 +288,18 @@ def init_db():
                 lunch_duration INTEGER DEFAULT 40
             )
         """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS school_settings (
+                id SERIAL PRIMARY KEY,
+                school_id INTEGER UNIQUE,
+                display_name VARCHAR(255),
+                phone VARCHAR(100),
+                email VARCHAR(255),
+                address TEXT,
+                report_header TEXT,
+                logo_url TEXT
+            )
+        """)
     else:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS schools (
@@ -621,6 +633,28 @@ def roles_required(*allowed_roles):
 
 def delete_by_scope(cursor, query, params):
     cursor.execute(convert_query(query), params)
+def get_school_settings(school_id):
+    settings = fetch_one(
+        "SELECT * FROM school_settings WHERE school_id = ?",
+        (school_id,)
+    )
+
+    if settings:
+        return settings
+
+    school = fetch_one("SELECT * FROM schools WHERE id = ?", (school_id,))
+    if not school:
+        return None
+
+    return {
+        "school_id": school_id,
+        "display_name": school["school_name"],
+        "phone": "",
+        "email": "",
+        "address": "",
+        "report_header": "School Management System",
+        "logo_url": "",
+    }
 
 
 # =========================================================
@@ -2817,6 +2851,7 @@ def print_result(student_id, term):
             FROM fees
             WHERE student_id = ?
         """, (student_id,))
+        school_settings = get_school_settings(student["school_id"]) if student else None
     else:
         student = fetch_one("""
             SELECT * FROM students
@@ -2836,6 +2871,7 @@ def print_result(student_id, term):
             FROM fees
             WHERE student_id = ? AND school_id = ?
         """, (student_id, school_id))
+        school_settings = get_school_settings(school_id)
 
     if not student:
         flash("Student not found.", "danger")
@@ -2852,7 +2888,70 @@ def print_result(student_id, term):
         term=term,
         total_marks=total_marks,
         average=average,
-        total_balance=float(fee_summary["total_balance"] or 0)
+        total_balance=float(fee_summary["total_balance"] or 0),
+        school_settings=school_settings
+    )
+
+@app.route("/school_settings", methods=["GET", "POST"])
+@login_required
+@roles_required("school_admin", "super_admin")
+def school_settings():
+    role = session.get("role")
+    school_id = session.get("school_id")
+
+    schools = []
+    if role == "super_admin":
+        schools = fetch_all("SELECT * FROM schools ORDER BY school_name")
+
+    if request.method == "POST":
+        if role == "super_admin":
+            school_id = request.form.get("school_id")
+
+        display_name = request.form.get("display_name", "").strip()
+        phone = request.form.get("phone", "").strip()
+        email = request.form.get("email", "").strip()
+        address = request.form.get("address", "").strip()
+        report_header = request.form.get("report_header", "").strip()
+        logo_url = request.form.get("logo_url", "").strip()
+
+        if not school_id:
+            flash("School is required.", "danger")
+            return redirect(url_for("school_settings"))
+
+        existing = fetch_one(
+            "SELECT * FROM school_settings WHERE school_id = ?",
+            (school_id,)
+        )
+
+        if existing:
+            execute_commit("""
+                UPDATE school_settings
+                SET display_name = ?, phone = ?, email = ?, address = ?, report_header = ?, logo_url = ?
+                WHERE school_id = ?
+            """, (
+                display_name, phone, email, address, report_header, logo_url, school_id
+            ))
+        else:
+            execute_commit("""
+                INSERT INTO school_settings (
+                    school_id, display_name, phone, email, address, report_header, logo_url
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                school_id, display_name, phone, email, address, report_header, logo_url
+            ))
+
+        flash("School settings saved successfully.", "success")
+        return redirect(url_for("school_settings"))
+
+    selected_school_id = request.args.get("school_id") if role == "super_admin" else school_id
+    settings = get_school_settings(selected_school_id) if selected_school_id else None
+
+    return render_template(
+        "school_settings.html",
+        settings=settings,
+        schools=schools,
+        selected_school_id=selected_school_id
     )
 
 
@@ -2907,6 +3006,41 @@ Thank you.
     encoded_message = urllib.parse.quote(message)
     whatsapp_link = f"https://wa.me/{phone}?text={encoded_message}"
     return redirect(whatsapp_link)
+def run_school_settings_migration():
+    conn = get_db()
+    cursor = conn.cursor()
+
+    try:
+        if is_postgres():
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS school_settings (
+                    id SERIAL PRIMARY KEY,
+                    school_id INTEGER UNIQUE,
+                    display_name VARCHAR(255),
+                    phone VARCHAR(100),
+                    email VARCHAR(255),
+                    address TEXT,
+                    report_header TEXT,
+                    logo_url TEXT
+                )
+            """)
+        else:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS school_settings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    school_id INTEGER UNIQUE,
+                    display_name TEXT,
+                    phone TEXT,
+                    email TEXT,
+                    address TEXT,
+                    report_header TEXT,
+                    logo_url TEXT
+                )
+            """)
+
+        conn.commit()
+    finally:
+        conn.close()
 
 def run_subjects_migration():
     conn = get_db()
@@ -3041,6 +3175,9 @@ def setup_app():
 
             run_timetable_foundation_migrations()
             print("Timetable foundation migrations completed")
+
+            run_school_settings_migration()
+            print("School settings migration completed")
 
             create_default_school()
             print("Default school ready")
