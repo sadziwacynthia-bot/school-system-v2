@@ -6,6 +6,8 @@ import random
 import string
 import urllib.parse
 from functools import wraps
+from datetime import datetime
+from datetime import datetime, timedelta
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -286,6 +288,18 @@ def init_db():
                 break_duration INTEGER DEFAULT 20,
                 lunch_after_period INTEGER DEFAULT 5,
                 lunch_duration INTEGER DEFAULT 40
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS school_settings (
+                id SERIAL PRIMARY KEY,
+                school_id INTEGER UNIQUE,
+                display_name VARCHAR(255),
+                phone VARCHAR(100),
+                email VARCHAR(255),
+                address TEXT,
+                report_header TEXT,
+                logo_url TEXT
             )
         """)
         cursor.execute("""
@@ -638,6 +652,80 @@ def roles_required(*allowed_roles):
 
 def delete_by_scope(cursor, query, params):
     cursor.execute(convert_query(query), params)
+
+
+def row_get(row, key, default=None):
+    try:
+        if row is None:
+            return default
+        if isinstance(row, dict):
+            return row.get(key, default)
+        return row[key]
+    except Exception:
+        return default
+
+
+def parse_date_safe(date_str):
+    if not date_str:
+        return None
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d").date()
+    except Exception:
+        return None
+
+
+def get_school_settings(school_id):
+    if not school_id:
+        return None
+
+    settings = fetch_one(
+        "SELECT * FROM school_settings WHERE school_id = ?",
+        (school_id,)
+    )
+    if settings:
+        return settings
+
+    school = fetch_one("SELECT * FROM schools WHERE id = ?", (school_id,))
+    if not school:
+        return None
+
+    return {
+        "school_id": school_id,
+        "display_name": row_get(school, "school_name", "EduTrack"),
+        "phone": "",
+        "email": "",
+        "address": "",
+        "report_header": "School Management System",
+        "logo_url": "",
+    }
+
+
+def run_school_control_migration():
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        if is_postgres():
+            statements = [
+                "ALTER TABLE schools ADD COLUMN IF NOT EXISTS is_active INTEGER DEFAULT 1",
+                "ALTER TABLE schools ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(50) DEFAULT 'active'",
+                "ALTER TABLE schools ADD COLUMN IF NOT EXISTS subscription_end_date VARCHAR(50)"
+            ]
+            for stmt in statements:
+                cursor.execute(stmt)
+        else:
+            sqlite_statements = [
+                "ALTER TABLE schools ADD COLUMN is_active INTEGER DEFAULT 1",
+                "ALTER TABLE schools ADD COLUMN subscription_status TEXT DEFAULT 'active'",
+                "ALTER TABLE schools ADD COLUMN subscription_end_date TEXT"
+            ]
+            for stmt in sqlite_statements:
+                try:
+                    cursor.execute(stmt)
+                except Exception:
+                    pass
+        conn.commit()
+    finally:
+        conn.close()
 def get_school_settings(school_id):
     settings = fetch_one(
         "SELECT * FROM school_settings WHERE school_id = ?",
@@ -676,8 +764,29 @@ def school_access_allowed():
     if not school:
         return False
 
-    return int(school["is_active"] or 0) == 1
+    if int(school["is_active"] or 0) != 1:
+        return False
 
+    end_date = parse_date_safe(school["subscription_end_date"])
+    if end_date and end_date < datetime.utcnow().date():
+        return False
+
+    return True
+
+def parse_date_safe(date_str):
+    if not date_str:
+        return None
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d").date()
+    except Exception:
+        return None
+
+
+def school_is_overdue(school):
+    end_date = parse_date_safe(school["subscription_end_date"])
+    if not end_date:
+        return False
+    return end_date < datetime.utcnow().date()
 # =========================================================
 # BASIC ROUTES
 # =========================================================
@@ -845,8 +954,18 @@ def dashboard():
 @login_required
 @roles_required("super_admin")
 def schools():
-    school_list = fetch_all("SELECT * FROM schools ORDER BY school_name")
-    return render_template("schools.html", schools=school_list)
+    school_rows = fetch_all("SELECT * FROM schools ORDER BY school_name")
+    schools_data = []
+    for school in school_rows:
+        schools_data.append({
+            "id": school["id"],
+            "school_name": school["school_name"],
+            "school_code": school["school_code"],
+            "is_active": row_get(school, "is_active", 1),
+            "subscription_status": row_get(school, "subscription_status", "active"),
+            "subscription_end_date": row_get(school, "subscription_end_date", None),
+        })
+    return render_template("schools.html", schools=schools_data)
 
 
 @app.route("/add_school", methods=["GET", "POST"])
@@ -2783,64 +2902,6 @@ def class_students(class_name):
     )
 
 
-@app.route("/print_class_list/<class_name>")
-@login_required
-@roles_required("school_admin", "super_admin", "teacher")
-def print_class_list(class_name):
-    school_id = session.get("school_id")
-    role = session.get("role")
-
-    if role == "super_admin":
-        students = fetch_all(
-            """
-            SELECT * FROM students
-            WHERE class_name = ?
-            ORDER BY first_name, last_name
-            """,
-            (class_name,)
-        )
-    else:
-        students = fetch_all(
-            """
-            SELECT * FROM students
-            WHERE school_id = ? AND class_name = ?
-            ORDER BY first_name, last_name
-            """,
-            (school_id, class_name)
-        )
-
-    return render_template(
-        "print_class_list.html",
-        students=students,
-        class_name=class_name
-    )
-
-
-@app.route("/print_all_students")
-@login_required
-@roles_required("school_admin", "super_admin")
-def print_all_students():
-    school_id = session.get("school_id")
-    role = session.get("role")
-
-    if role == "super_admin":
-        students = fetch_all(
-            """
-            SELECT * FROM students
-            ORDER BY class_name, first_name, last_name
-            """
-        )
-    else:
-        students = fetch_all(
-            """
-            SELECT * FROM students
-            WHERE school_id = ?
-            ORDER BY class_name, first_name, last_name
-            """,
-            (school_id,)
-        )
-
-    return render_template("print_all_students.html", students=students)
 
 @app.route("/subjects")
 @login_required
@@ -3045,6 +3106,57 @@ def print_filtered_students():
 
     return render_template("print_all_students.html", students=students)
 
+@app.route("/print_class_list/<class_name>")
+@login_required
+@roles_required("school_admin", "super_admin", "teacher")
+def print_class_list(class_name):
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    if role == "super_admin":
+        students = fetch_all(
+            """
+            SELECT * FROM students
+            WHERE class_name = ?
+            ORDER BY first_name, last_name
+            """,
+            (class_name,)
+        )
+    else:
+        students = fetch_all(
+            """
+            SELECT * FROM students
+            WHERE school_id = ? AND class_name = ?
+            ORDER BY first_name, last_name
+            """,
+            (school_id, class_name)
+        )
+
+    return render_template(
+        "print_class_list.html",
+        students=students,
+        class_name=class_name
+    )
+
+@app.route("/print_all_students")
+@login_required
+@roles_required("school_admin", "super_admin")
+def print_all_students():
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    if role == "super_admin":
+        students = fetch_all("SELECT * FROM students ORDER BY class_name, first_name, last_name")
+    else:
+        students = fetch_all(
+            "SELECT * FROM students WHERE school_id = ? ORDER BY class_name, first_name, last_name",
+            (school_id,)
+        )
+
+    return render_template("print_all_students.html", students=students)
+
+
+
 @app.route("/print_result/<int:student_id>/<term>")
 @login_required
 @roles_required("school_admin", "super_admin")
@@ -3189,7 +3301,6 @@ def activate_school(school_id):
     )
     flash("School activated successfully.", "success")
     return redirect(url_for("schools"))
-
 @app.route("/school/<int:school_id>")
 @login_required
 @roles_required("super_admin")
@@ -3214,6 +3325,8 @@ def school_profile(school_id):
         WHERE school_id = ?
     """, (school_id,))
 
+    overdue = school_is_overdue(school)
+
     return render_template(
         "school_profile.html",
         school=school,
@@ -3223,9 +3336,88 @@ def school_profile(school_id):
         total_fee_records=total_fee_records,
         total_billed=fee_totals["total_billed"] or 0,
         total_paid=fee_totals["total_paid"] or 0,
-        total_balance=fee_totals["total_balance"] or 0
+        total_balance=fee_totals["total_balance"] or 0,
+        overdue=overdue
     )
 
+@app.route("/update_school_subscription/<int:school_id>", methods=["GET", "POST"])
+@login_required
+@roles_required("super_admin")
+def update_school_subscription(school_id):
+    school = fetch_one("SELECT * FROM schools WHERE id = ?", (school_id,))
+
+    if not school:
+        flash("School not found.", "danger")
+        return redirect(url_for("schools"))
+
+    if request.method == "POST":
+        subscription_end_date = request.form.get("subscription_end_date")
+        subscription_status = request.form.get("subscription_status", "active").strip()
+
+        is_active = 1 if subscription_status in ["active", "trial"] else 0
+
+        execute_commit(
+            """
+            UPDATE schools
+            SET subscription_end_date = ?, subscription_status = ?, is_active = ?
+            WHERE id = ?
+            """,
+            (subscription_end_date, subscription_status, is_active, school_id)
+        )
+
+        flash("School subscription updated successfully.", "success")
+        return redirect(url_for("school_profile", school_id=school_id))
+
+    return render_template("update_school_subscription.html", school=school)
+
+@app.route("/billing_dashboard")
+@login_required
+@roles_required("super_admin")
+def billing_dashboard():
+    schools = fetch_all("""
+        SELECT *
+        FROM schools
+        ORDER BY school_name
+    """)
+
+    summary = {
+        "total_schools": len(schools),
+        "active_schools": 0,
+        "suspended_schools": 0,
+        "overdue_schools": 0,
+        "trial_schools": 0
+    }
+
+    processed = []
+    today = datetime.utcnow().date()
+
+    for school in schools:
+        end_date = parse_date_safe(row_get(school, "subscription_end_date"))
+        overdue = bool(end_date and end_date < today)
+
+        status = row_get(school, "subscription_status", "active") or "active"
+        if overdue:
+            status = "overdue"
+
+        if status == "active":
+            summary["active_schools"] += 1
+        elif status == "suspended":
+            summary["suspended_schools"] += 1
+        elif status == "overdue":
+            summary["overdue_schools"] += 1
+        elif status == "trial":
+            summary["trial_schools"] += 1
+
+        processed.append({
+            "id": school["id"],
+            "school_name": school["school_name"],
+            "school_code": school["school_code"],
+            "subscription_status": status,
+            "subscription_end_date": row_get(school, "subscription_end_date"),
+            "is_active": row_get(school, "is_active", 1),
+        })
+
+    return render_template("billing_dashboard.html", schools=processed, summary=summary)
 
 @app.route("/send_fee_reminder/<int:student_id>")
 @login_required
@@ -3454,6 +3646,9 @@ def setup_app():
             run_school_control_migration()
             print("School control migration completed")
 
+            update_school_subscription_states()
+            print("School subscription states updated")
+
             create_default_school()
             print("Default school ready")
 
@@ -3469,6 +3664,7 @@ def setup_app():
         print("Setup complete")
     except Exception as e:
         print("SETUP ERROR:", e)
+     
         
 def run_school_control_migration():
     conn = get_db()
@@ -3498,6 +3694,28 @@ def run_school_control_migration():
         conn.commit()
     finally:
         conn.close()
+def update_school_subscription_states():
+    school_list = fetch_all("SELECT * FROM schools")
+
+    today = datetime.utcnow().date()
+
+    for school in school_list:
+        end_date = parse_date_safe(school["subscription_end_date"])
+        if not end_date:
+            continue
+
+        if end_date < today:
+            execute_commit(
+                "UPDATE schools SET is_active = ?, subscription_status = ? WHERE id = ?",
+                (0, "overdue", school["id"])
+            )
+        elif school["subscription_status"] in ["overdue", "suspended"]:
+            # leave manually suspended schools alone; only reactivate overdue schools
+            if school["subscription_status"] == "overdue":
+                execute_commit(
+                    "UPDATE schools SET is_active = ?, subscription_status = ? WHERE id = ?",
+                    (1, "active", school["id"])
+                )
 
 def run_timetable_foundation_migrations():
     conn = get_db()

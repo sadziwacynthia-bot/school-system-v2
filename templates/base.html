@@ -47,6 +47,7 @@
                     <a href="{{ url_for('schools') }}" class="nav-link">Schools</a>
                     <a href="{{ url_for('add_school') }}" class="nav-link">Add School</a>
                     <a href="{{ url_for('add_school_admin') }}" class="nav-link">Add School Admin</a>
+                    <a href="{{ url_for('billing_dashboard') }}" class="nav-link">Billing Dashboard</a>
                 {% endif %}
 
                 {% if session.get('role') == 'teacher' %}
