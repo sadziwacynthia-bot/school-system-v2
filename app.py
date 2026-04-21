@@ -606,9 +606,14 @@ def login_required(f):
         if "user_id" not in session:
             flash("Please log in first.", "warning")
             return redirect(url_for("login"))
+
+        if not school_access_allowed():
+            flash("Your school account is currently suspended. Please contact support.", "danger")
+            session.clear()
+            return redirect(url_for("login"))
+
         return f(*args, **kwargs)
     return wrapper
-
 
 def roles_required(*allowed_roles):
     def decorator(f):
@@ -655,7 +660,23 @@ def get_school_settings(school_id):
         "report_header": "School Management System",
         "logo_url": "",
     }
+def school_access_allowed():
+    if "user_id" not in session:
+        return True
 
+    role = session.get("role")
+    if role == "super_admin":
+        return True
+
+    school_id = session.get("school_id")
+    if not school_id:
+        return False
+
+    school = fetch_one("SELECT * FROM schools WHERE id = ?", (school_id,))
+    if not school:
+        return False
+
+    return int(school["is_active"] or 0) == 1
 
 # =========================================================
 # BASIC ROUTES
@@ -845,7 +866,13 @@ def add_school():
             flash("School code already exists.", "danger")
             return redirect(url_for("add_school"))
 
-        execute_commit("INSERT INTO schools (school_name, school_code) VALUES (?, ?)", (school_name, school_code))
+        execute_commit(
+    """
+    INSERT INTO schools (school_name, school_code, is_active, subscription_status)
+    VALUES (?, ?, ?, ?)
+    """,
+    (school_name, school_code, 1, "active")
+)
         flash("School created successfully.", "success")
         return redirect(url_for("schools"))
 
@@ -3140,6 +3167,65 @@ def school_settings():
         selected_school_id=selected_school_id
     )
 
+@app.route("/suspend_school/<int:school_id>", methods=["POST"])
+@login_required
+@roles_required("super_admin")
+def suspend_school(school_id):
+    execute_commit(
+        "UPDATE schools SET is_active = ?, subscription_status = ? WHERE id = ?",
+        (0, "suspended", school_id)
+    )
+    flash("School suspended successfully.", "success")
+    return redirect(url_for("schools"))
+
+
+@app.route("/activate_school/<int:school_id>", methods=["POST"])
+@login_required
+@roles_required("super_admin")
+def activate_school(school_id):
+    execute_commit(
+        "UPDATE schools SET is_active = ?, subscription_status = ? WHERE id = ?",
+        (1, "active", school_id)
+    )
+    flash("School activated successfully.", "success")
+    return redirect(url_for("schools"))
+
+@app.route("/school/<int:school_id>")
+@login_required
+@roles_required("super_admin")
+def school_profile(school_id):
+    school = fetch_one("SELECT * FROM schools WHERE id = ?", (school_id,))
+
+    if not school:
+        flash("School not found.", "danger")
+        return redirect(url_for("schools"))
+
+    total_students = fetch_one("SELECT COUNT(*) AS total FROM students WHERE school_id = ?", (school_id,))["total"]
+    total_teachers = fetch_one("SELECT COUNT(*) AS total FROM teachers WHERE school_id = ?", (school_id,))["total"]
+    total_users = fetch_one("SELECT COUNT(*) AS total FROM users WHERE school_id = ?", (school_id,))["total"]
+    total_fee_records = fetch_one("SELECT COUNT(*) AS total FROM fees WHERE school_id = ?", (school_id,))["total"]
+
+    fee_totals = fetch_one("""
+        SELECT
+            COALESCE(SUM(amount), 0) AS total_billed,
+            COALESCE(SUM(paid_amount), 0) AS total_paid,
+            COALESCE(SUM(balance), 0) AS total_balance
+        FROM fees
+        WHERE school_id = ?
+    """, (school_id,))
+
+    return render_template(
+        "school_profile.html",
+        school=school,
+        total_students=total_students,
+        total_teachers=total_teachers,
+        total_users=total_users,
+        total_fee_records=total_fee_records,
+        total_billed=fee_totals["total_billed"] or 0,
+        total_paid=fee_totals["total_paid"] or 0,
+        total_balance=fee_totals["total_balance"] or 0
+    )
+
 
 @app.route("/send_fee_reminder/<int:student_id>")
 @login_required
@@ -3364,6 +3450,9 @@ def setup_app():
 
             run_school_settings_migration()
             print("School settings migration completed")
+            
+            run_school_control_migration()
+            print("School control migration completed")
 
             create_default_school()
             print("Default school ready")
@@ -3381,6 +3470,35 @@ def setup_app():
     except Exception as e:
         print("SETUP ERROR:", e)
         
+def run_school_control_migration():
+    conn = get_db()
+    cursor = conn.cursor()
+
+    try:
+        if is_postgres():
+            statements = [
+                "ALTER TABLE schools ADD COLUMN IF NOT EXISTS is_active INTEGER DEFAULT 1",
+                "ALTER TABLE schools ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(50) DEFAULT 'active'",
+                "ALTER TABLE schools ADD COLUMN IF NOT EXISTS subscription_end_date VARCHAR(50)"
+            ]
+            for stmt in statements:
+                cursor.execute(stmt)
+        else:
+            sqlite_statements = [
+                "ALTER TABLE schools ADD COLUMN is_active INTEGER DEFAULT 1",
+                "ALTER TABLE schools ADD COLUMN subscription_status TEXT DEFAULT 'active'",
+                "ALTER TABLE schools ADD COLUMN subscription_end_date TEXT"
+            ]
+            for stmt in sqlite_statements:
+                try:
+                    cursor.execute(stmt)
+                except Exception:
+                    pass
+
+        conn.commit()
+    finally:
+        conn.close()
+
 def run_timetable_foundation_migrations():
     conn = get_db()
     cursor = conn.cursor()

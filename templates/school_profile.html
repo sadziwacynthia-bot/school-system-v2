@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}School Profile{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h2 class="page-title">{{ school.school_name }}</h2>
+        <p class="page-subtitle">School overview and analytics</p>
+    </div>
+    <a href="{{ url_for('schools') }}" class="btn btn-secondary">Back to Schools</a>
+</div>
+
+<div class="dashboard-grid premium-stats-grid">
+    <div class="stats-card premium-card students-card">
+        <div class="stats-top">
+            <span class="stats-card-label">Students</span>
+            <span class="stats-icon">👨‍🎓</span>
+        </div>
+        <div class="stats-card-value">{{ total_students }}</div>
+    </div>
+
+    <div class="stats-card premium-card teachers-card">
+        <div class="stats-top">
+            <span class="stats-card-label">Teachers</span>
+            <span class="stats-icon">👩‍🏫</span>
+        </div>
+        <div class="stats-card-value">{{ total_teachers }}</div>
+    </div>
+
+    <div class="stats-card premium-card users-card">
+        <div class="stats-top">
+            <span class="stats-card-label">Users</span>
+            <span class="stats-icon">👥</span>
+        </div>
+        <div class="stats-card-value">{{ total_users }}</div>
+    </div>
+
+    <div class="stats-card premium-card fees-card">
+        <div class="stats-top">
+            <span class="stats-card-label">Fee Records</span>
+            <span class="stats-icon">💳</span>
+        </div>
+        <div class="stats-card-value">{{ total_fee_records }}</div>
+    </div>
+
+    <div class="stats-card premium-card schools-card">
+        <div class="stats-top">
+            <span class="stats-card-label">Total Billed</span>
+            <span class="stats-icon">📄</span>
+        </div>
+        <div class="stats-card-value">${{ "%.2f"|format(total_billed or 0) }}</div>
+    </div>
+
+    <div class="stats-card premium-card users-card">
+        <div class="stats-top">
+            <span class="stats-card-label">Outstanding</span>
+            <span class="stats-icon">⚠️</span>
+        </div>
+        <div class="stats-card-value">${{ "%.2f"|format(total_balance or 0) }}</div>
+    </div>
+</div>
+
+<div class="table-card">
+    <div class="summary-list modern-summary-list">
+        <div class="summary-item">
+            <span>School Code</span>
+            <strong>{{ school.school_code }}</strong>
+        </div>
+        <div class="summary-item">
+            <span>Status</span>
+            <strong>{{ 'Active' if school.is_active else 'Suspended' }}</strong>
+        </div>
+        <div class="summary-item">
+            <span>Subscription</span>
+            <strong>{{ school.subscription_status or 'active' }}</strong>
+        </div>
+        <div class="summary-item">
+            <span>Subscription End Date</span>
+            <strong>{{ school.subscription_end_date or '-' }}</strong>
+        </div>
+        <div class="summary-item">
+            <span>Total Paid</span>
+            <strong>${{ "%.2f"|format(total_paid or 0) }}</strong>
+        </div>
+    </div>
+</div>
+{% endblock %}
