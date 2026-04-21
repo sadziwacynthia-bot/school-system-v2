@@ -3,10 +3,10 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-<div class="page-header dashboard-header">
+<div class="page-header">
     <div>
         <h2 class="page-title">Dashboard</h2>
-        <p class="page-subtitle">Overview of your school system</p>
+        <p class="page-subtitle">Overview of your school operations</p>
     </div>
 </div>
 
@@ -24,7 +24,7 @@
 
     <div class="stats-card premium-card students-card">
         <div class="stats-top">
-            <span class="stats-card-label">Total Students</span>
+            <span class="stats-card-label">Students</span>
             <span class="stats-icon">👨‍🎓</span>
         </div>
         <div class="stats-card-value">{{ total_students }}</div>
@@ -33,20 +33,20 @@
 
     <div class="stats-card premium-card teachers-card">
         <div class="stats-top">
-            <span class="stats-card-label">Total Teachers</span>
+            <span class="stats-card-label">Teachers</span>
             <span class="stats-icon">👩‍🏫</span>
         </div>
         <div class="stats-card-value">{{ total_teachers }}</div>
-        <div class="stats-card-note">Teaching staff records</div>
+        <div class="stats-card-note">Teaching staff</div>
     </div>
 
     <div class="stats-card premium-card users-card">
         <div class="stats-top">
-            <span class="stats-card-label">Total Users</span>
+            <span class="stats-card-label">Users</span>
             <span class="stats-icon">👥</span>
         </div>
         <div class="stats-card-value">{{ total_users }}</div>
-        <div class="stats-card-note">Accounts in the system</div>
+        <div class="stats-card-note">System accounts</div>
     </div>
 
     <div class="stats-card premium-card fees-card">
@@ -57,9 +57,8 @@
         <div class="stats-card-value">{{ total_fee_records }}</div>
         <div class="stats-card-note">Tracked fee entries</div>
     </div>
-</div>
-<div class="dashboard-grid premium-stats-grid">
-    <div class="stats-card premium-card fees-card">
+
+    <div class="stats-card premium-card schools-card">
         <div class="stats-top">
             <span class="stats-card-label">Total Billed</span>
             <span class="stats-icon">📄</span>
@@ -86,8 +85,100 @@
         <div class="stats-card-note">Unpaid fees remaining</div>
     </div>
 </div>
+
 <div class="dashboard-main-grid">
     <div class="dashboard-left-column">
+        <div class="dashboard-panel premium-panel">
+            <div class="panel-header">
+                <h3>Fee Status Summary</h3>
+                <p>Quick breakdown of payment progress</p>
+            </div>
+
+            <div class="highlights-grid">
+                <div class="highlight-box">
+                    <span class="highlight-label">Paid Records</span>
+                    <strong>{{ paid_count }}</strong>
+                </div>
+                <div class="highlight-box">
+                    <span class="highlight-label">Partially Paid</span>
+                    <strong>{{ partial_count }}</strong>
+                </div>
+                <div class="highlight-box">
+                    <span class="highlight-label">Pending</span>
+                    <strong>{{ pending_count }}</strong>
+                </div>
+                <div class="highlight-box">
+                    <span class="highlight-label">Total Records</span>
+                    <strong>{{ total_fee_records }}</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-panel premium-panel">
+            <div class="panel-header">
+                <h3>Recent Students</h3>
+                <p>Latest registered students</p>
+            </div>
+
+            <div class="summary-list modern-summary-list">
+                {% for student in recent_students %}
+                <div class="summary-item">
+                    <span>{{ student.first_name }} {{ student.last_name }} — {{ student.class_name or '-' }}</span>
+                    <strong>{{ student.student_number or '-' }}</strong>
+                </div>
+                {% else %}
+                <div class="summary-item">
+                    <span>No recent students</span>
+                    <strong>—</strong>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="dashboard-panel premium-panel">
+            <div class="panel-header">
+                <h3>Recent Payments</h3>
+                <p>Latest fee payments received</p>
+            </div>
+
+            <div class="summary-list modern-summary-list">
+                {% for payment in recent_payments %}
+                <div class="summary-item">
+                    <span>{{ payment.first_name }} {{ payment.last_name }}</span>
+                    <strong>${{ "%.2f"|format(payment.amount_paid or 0) }}</strong>
+                </div>
+                {% else %}
+                <div class="summary-item">
+                    <span>No recent payments</span>
+                    <strong>—</strong>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-right-column">
+        <div class="dashboard-panel premium-panel">
+            <div class="panel-header">
+                <h3>Students by Class</h3>
+                <p>Enrollment summary per class</p>
+            </div>
+
+            <div class="summary-list modern-summary-list">
+                {% for item in students_by_class %}
+                <div class="summary-item">
+                    <span>{{ item.class_name or 'Unassigned' }}</span>
+                    <strong>{{ item.total }}</strong>
+                </div>
+                {% else %}
+                <div class="summary-item">
+                    <span>No student records</span>
+                    <strong>0</strong>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
         <div class="dashboard-panel premium-panel">
             <div class="panel-header">
                 <h3>Quick Actions</h3>
@@ -95,168 +186,30 @@
             </div>
 
             <div class="quick-actions-grid">
-                {% if session.get('role') in ['school_admin', 'super_admin'] %}
-                    <a href="{{ url_for('add_student') }}" class="quick-action-tile">
-                        <span class="quick-action-icon">➕</span>
-                        <span>Add Student</span>
-                    </a>
-                    <a href="{{ url_for('teacher_registration') }}" class="quick-action-tile">
-                        <span class="quick-action-icon">🧑‍🏫</span>
-                        <span>Register Teacher</span>
-                    </a>
-                    <a href="{{ url_for('add_fee') }}" class="quick-action-tile">
-                        <span class="quick-action-icon">💰</span>
-                        <span>Add Fee</span>
-                    </a>
-                    <a href="{{ url_for('attendance') }}" class="quick-action-tile">
-                        <span class="quick-action-icon">📝</span>
-                        <span>Take Attendance</span>
-                    </a>
-                    <a href="{{ url_for('add_assignment') }}" class="quick-action-tile">
-                        <span class="quick-action-icon">📚</span>
-                        <span>Add Assignment</span>
-                    </a>
-                    <a href="{{ url_for('add_timetable') }}" class="quick-action-tile">
-                        <span class="quick-action-icon">🕒</span>
-                        <span>Add Timetable</span>
-                    </a>
-                {% endif %}
-
-                {% if session.get('role') == 'teacher' %}
-                    <a href="{{ url_for('attendance') }}" class="quick-action-tile">
-                        <span class="quick-action-icon">📝</span>
-                        <span>Take Attendance</span>
-                    </a>
-                    <a href="{{ url_for('enter_result') }}" class="quick-action-tile">
-                        <span class="quick-action-icon">📊</span>
-                        <span>Enter Results</span>
-                    </a>
-                    <a href="{{ url_for('add_assignment') }}" class="quick-action-tile">
-                        <span class="quick-action-icon">📚</span>
-                        <span>Add Assignment</span>
-                    </a>
-                    <a href="{{ url_for('timetable') }}" class="quick-action-tile">
-                        <span class="quick-action-icon">🗓️</span>
-                        <span>View Timetable</span>
-                    </a>
-                {% endif %}
-
-                {% if session.get('role') == 'parent' %}
-                    <a href="{{ url_for('parent_fees') }}" class="quick-action-tile">
-                        <span class="quick-action-icon">💳</span>
-                        <span>View Fees</span>
-                    </a>
-                    <a href="{{ url_for('parent_results') }}" class="quick-action-tile">
-                        <span class="quick-action-icon">📘</span>
-                        <span>View Results</span>
-                    </a>
-                    <a href="{{ url_for('parent_attendance') }}" class="quick-action-tile">
-                        <span class="quick-action-icon">✅</span>
-                        <span>View Attendance</span>
-                    </a>
-                    <a href="{{ url_for('parent_assignments') }}" class="quick-action-tile">
-                        <span class="quick-action-icon">📌</span>
-                        <span>View Assignments</span>
-                    </a>
-                {% endif %}
-            </div>
-        </div>
-
-        <div class="dashboard-panel premium-panel">
-            <div class="panel-header">
-                <h3>Platform Highlights</h3>
-                <p>A quick view of what your system is handling</p>
-            </div>
-
-            <div class="highlights-grid">
-                <div class="highlight-box">
-                    <span class="highlight-label">Students</span>
-                    <strong>{{ total_students }}</strong>
-                </div>
-                <div class="highlight-box">
-                    <span class="highlight-label">Teachers</span>
-                    <strong>{{ total_teachers }}</strong>
-                </div>
-                <div class="highlight-box">
-                    <span class="highlight-label">Users</span>
-                    <strong>{{ total_users }}</strong>
-                </div>
-                <div class="highlight-box">
-                    <span class="highlight-label">Fee Records</span>
-                    <strong>{{ total_fee_records }}</strong>
-                </div>
-            </div>
-        </div>
-    </div>
-<div class="dashboard-panel premium-panel">
-    <div class="panel-header">
-        <h3>Fee Status Summary</h3>
-        <p>Quick breakdown of payment progress</p>
-    </div>
-
-    <div class="highlights-grid">
-        <div class="highlight-box">
-            <span class="highlight-label">Paid Records</span>
-            <strong>{{ paid_count }}</strong>
-        </div>
-        <div class="highlight-box">
-            <span class="highlight-label">Partially Paid</span>
-            <strong>{{ partial_count }}</strong>
-        </div>
-        <div class="highlight-box">
-            <span class="highlight-label">Pending</span>
-            <strong>{{ pending_count }}</strong>
-        </div>
-        <div class="highlight-box">
-            <span class="highlight-label">Total Fee Records</span>
-            <strong>{{ total_fee_records }}</strong>
-        </div>
-    </div>
-</div>
-    <div class="dashboard-right-column">
-        <div class="dashboard-panel premium-panel">
-            <div class="panel-header">
-                <h3>System Summary</h3>
-                <p>Current records in the system</p>
-            </div>
-
-            <div class="summary-list modern-summary-list">
-                {% if session.get('role') == 'super_admin' %}
-                <div class="summary-item">
-                    <span>Schools on Platform</span>
-                    <strong>{{ total_schools }}</strong>
-                </div>
-                {% endif %}
-                <div class="summary-item">
-                    <span>Students Registered</span>
-                    <strong>{{ total_students }}</strong>
-                </div>
-                <div class="summary-item">
-                    <span>Teachers Registered</span>
-                    <strong>{{ total_teachers }}</strong>
-                </div>
-                <div class="summary-item">
-                    <span>Users in System</span>
-                    <strong>{{ total_users }}</strong>
-                </div>
-                <div class="summary-item">
-                    <span>Fee Records Available</span>
-                    <strong>{{ total_fee_records }}</strong>
-                </div>
-            </div>
-        </div>
-
-        <div class="dashboard-panel premium-panel">
-            <div class="panel-header">
-                <h3>Admin Note</h3>
-                <p>Helpful reminder for daily use</p>
-            </div>
-
-            <div class="dashboard-note-box">
-                <p>
-                    Keep student records updated, enter results on time,
-                    and monitor fees regularly so the school stays organized.
-                </p>
+                <a href="{{ url_for('add_student') }}" class="quick-action-tile">
+                    <span class="quick-action-icon">➕</span>
+                    <span>Add Student</span>
+                </a>
+                <a href="{{ url_for('teacher_registration') }}" class="quick-action-tile">
+                    <span class="quick-action-icon">🧑‍🏫</span>
+                    <span>Register Teacher</span>
+                </a>
+                <a href="{{ url_for('add_fee') }}" class="quick-action-tile">
+                    <span class="quick-action-icon">💰</span>
+                    <span>Add Fee</span>
+                </a>
+                <a href="{{ url_for('enter_result') }}" class="quick-action-tile">
+                    <span class="quick-action-icon">📘</span>
+                    <span>Enter Result</span>
+                </a>
+                <a href="{{ url_for('assign_teacher') }}" class="quick-action-tile">
+                    <span class="quick-action-icon">📚</span>
+                    <span>Assign Subject</span>
+                </a>
+                <a href="{{ url_for('timetable') }}" class="quick-action-tile">
+                    <span class="quick-action-icon">🗓️</span>
+                    <span>View Timetable</span>
+                </a>
             </div>
         </div>
     </div>

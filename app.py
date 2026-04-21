@@ -724,6 +724,32 @@ def dashboard():
         partial_count = fetch_one("SELECT COUNT(*) AS total FROM fees WHERE status = ?", ("Partially Paid",))["total"]
         pending_count = fetch_one("SELECT COUNT(*) AS total FROM fees WHERE status = ?", ("Pending",))["total"]
 
+        recent_students = fetch_all("""
+            SELECT * FROM students
+            ORDER BY id DESC
+            LIMIT 5
+        """)
+
+        recent_payments = fetch_all("""
+            SELECT
+                fp.*,
+                s.first_name,
+                s.last_name,
+                s.student_number
+            FROM fee_payments fp
+            JOIN fees f ON fp.fee_id = f.id
+            JOIN students s ON f.student_id = s.id
+            ORDER BY fp.id DESC
+            LIMIT 5
+        """)
+
+        students_by_class = fetch_all("""
+            SELECT class_name, COUNT(*) AS total
+            FROM students
+            GROUP BY class_name
+            ORDER BY class_name
+        """)
+
     else:
         total_schools = 0
         total_students = fetch_one("SELECT COUNT(*) AS total FROM students WHERE school_id = ?", (school_id,))["total"]
@@ -744,6 +770,35 @@ def dashboard():
         partial_count = fetch_one("SELECT COUNT(*) AS total FROM fees WHERE school_id = ? AND status = ?", (school_id, "Partially Paid"))["total"]
         pending_count = fetch_one("SELECT COUNT(*) AS total FROM fees WHERE school_id = ? AND status = ?", (school_id, "Pending"))["total"]
 
+        recent_students = fetch_all("""
+            SELECT * FROM students
+            WHERE school_id = ?
+            ORDER BY id DESC
+            LIMIT 5
+        """, (school_id,))
+
+        recent_payments = fetch_all("""
+            SELECT
+                fp.*,
+                s.first_name,
+                s.last_name,
+                s.student_number
+            FROM fee_payments fp
+            JOIN fees f ON fp.fee_id = f.id
+            JOIN students s ON f.student_id = s.id
+            WHERE fp.school_id = ?
+            ORDER BY fp.id DESC
+            LIMIT 5
+        """, (school_id,))
+
+        students_by_class = fetch_all("""
+            SELECT class_name, COUNT(*) AS total
+            FROM students
+            WHERE school_id = ?
+            GROUP BY class_name
+            ORDER BY class_name
+        """, (school_id,))
+
     return render_template(
         "dashboard.html",
         total_schools=total_schools,
@@ -756,7 +811,10 @@ def dashboard():
         total_balance=fee_totals["total_balance"] or 0,
         paid_count=paid_count,
         partial_count=partial_count,
-        pending_count=pending_count
+        pending_count=pending_count,
+        recent_students=recent_students,
+        recent_payments=recent_payments,
+        students_by_class=students_by_class
     )
 
 # =========================================================
