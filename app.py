@@ -833,38 +833,46 @@ def add_school_admin():
 # =========================================================
 @app.route("/students")
 @login_required
-@roles_required("school_admin", "super_admin")
+@roles_required("school_admin", "super_admin", "teacher")
 def students():
     school_id = session.get("school_id")
     role = session.get("role")
-    search = request.args.get("search", "").strip()
 
+    search = request.args.get("search", "").strip()
+    class_filter = request.args.get("class_name", "").strip()
+    status_filter = request.args.get("status", "").strip()
+
+    query = "SELECT * FROM students WHERE 1=1"
     params = []
-    query = "SELECT * FROM students"
-    conditions = []
 
     if role != "super_admin":
-        conditions.append("school_id = ?")
+        query += " AND school_id = ?"
         params.append(school_id)
 
     if search:
-        conditions.append("(first_name LIKE ? OR last_name LIKE ? OR student_number LIKE ? OR class_name LIKE ?)")
-        like = f"%{search}%"
-        params.extend([like, like, like, like])
+        query += " AND (first_name LIKE ? OR last_name LIKE ? OR student_number LIKE ?)"
+        params.extend([f"%{search}%", f"%{search}%", f"%{search}%"])
 
-    if conditions:
-        query += " WHERE " + " AND ".join(conditions)
+    if class_filter:
+        query += " AND class_name = ?"
+        params.append(class_filter)
+
+    if status_filter:
+        query += " AND current_status = ?"
+        params.append(status_filter)
 
     query += " ORDER BY class_name, first_name, last_name"
 
-    students_list = fetch_all(query, tuple(params))
-    grouped_students = {}
-    for student in students_list:
-        class_name = student["class_name"] or "Unassigned Class"
-        grouped_students.setdefault(class_name, []).append(student)
+    students = fetch_all(query, tuple(params))
 
-    return render_template("students.html", grouped_students=grouped_students, search=search)
-
+    return render_template(
+        "students.html",
+        students=students,
+        search=search,
+        class_filter=class_filter,
+        status_filter=status_filter,
+        class_options=CLASS_OPTIONS
+    )
 
 @app.route("/add_student")
 @login_required
@@ -2916,6 +2924,41 @@ def add_timetable():
 
     return render_template("add_timetable.html", class_options=CLASS_OPTIONS, teachers=teachers_list, subjects=subjects)
 
+@app.route("/print_filtered_students")
+@login_required
+@roles_required("school_admin", "super_admin")
+def print_filtered_students():
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    search = request.args.get("search", "")
+    class_filter = request.args.get("class_name", "")
+    status_filter = request.args.get("status", "")
+
+    query = "SELECT * FROM students WHERE 1=1"
+    params = []
+
+    if role != "super_admin":
+        query += " AND school_id = ?"
+        params.append(school_id)
+
+    if search:
+        query += " AND (first_name LIKE ? OR last_name LIKE ? OR student_number LIKE ?)"
+        params.extend([f"%{search}%", f"%{search}%", f"%{search}%"])
+
+    if class_filter:
+        query += " AND class_name = ?"
+        params.append(class_filter)
+
+    if status_filter:
+        query += " AND current_status = ?"
+        params.append(status_filter)
+
+    query += " ORDER BY class_name, first_name"
+
+    students = fetch_all(query, tuple(params))
+
+    return render_template("print_all_students.html", students=students)
 
 @app.route("/print_result/<int:student_id>/<term>")
 @login_required
