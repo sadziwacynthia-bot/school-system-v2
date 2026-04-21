@@ -5,13 +5,13 @@
 <div class="page-header">
     <div>
         <h2 class="page-title">Student Results</h2>
-        <p class="page-subtitle">View all recorded student results by subject and term</p>
+        <p class="page-subtitle">View results grouped by student and term</p>
     </div>
     <a href="{{ url_for('enter_result') }}" class="btn btn-primary">+ Enter Result</a>
 </div>
 
 <div class="table-card">
-    {% if result_records %}
+    {% if result_groups %}
     <div class="table-responsive">
         <table>
             <thead>
@@ -19,28 +19,28 @@
                     <th>Student Number</th>
                     <th>Name</th>
                     <th>Class</th>
-                    <th>Subject</th>
                     <th>Term</th>
-                    <th>Marks</th>
-                    <th>Grade</th>
+                    <th>Subjects</th>
+                    <th>Total Marks</th>
+                    <th>Average</th>
                     <th>Print</th>
                 </tr>
             </thead>
             <tbody>
-                {% for result in result_records %}
+                {% for result in result_groups %}
                 <tr>
                     <td>{{ result.student_number or '-' }}</td>
                     <td>{{ result.first_name }} {{ result.last_name }}</td>
                     <td>{{ result.class_name or '-' }}</td>
-                    <td>{{ result.subject or '-' }}</td>
                     <td>{{ result.term or '-' }}</td>
-                    <td>{{ result.marks or '-' }}</td>
-                    <td>{{ result.grade or '-' }}</td>
+                    <td>{{ result.subject_count or 0 }}</td>
+                    <td>{{ result.total_marks or 0 }}</td>
+                    <td>{{ "%.2f"|format(result.average_marks or 0) }}</td>
                     <td>
                         <a href="{{ url_for('print_result', student_id=result.student_id, term=result.term) }}"
                            class="btn btn-secondary btn-sm"
                            target="_blank">
-                            Print
+                            Print Slip
                         </a>
                     </td>
                 </tr>

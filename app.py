@@ -1804,22 +1804,54 @@ def results():
     role = session.get("role")
 
     if role == "super_admin":
-        result_records = fetch_all("""
-            SELECT r.*, s.first_name, s.last_name, s.student_number
+        result_groups = fetch_all("""
+            SELECT
+                r.student_id,
+                r.term,
+                s.student_number,
+                s.first_name,
+                s.last_name,
+                s.class_name,
+                COUNT(*) AS subject_count,
+                COALESCE(SUM(r.marks), 0) AS total_marks,
+                COALESCE(AVG(r.marks), 0) AS average_marks
             FROM results r
             JOIN students s ON r.student_id = s.id
-            ORDER BY s.first_name, s.last_name, r.subject
+            GROUP BY
+                r.student_id,
+                r.term,
+                s.student_number,
+                s.first_name,
+                s.last_name,
+                s.class_name
+            ORDER BY s.class_name, s.first_name, s.last_name, r.term
         """)
     else:
-        result_records = fetch_all("""
-            SELECT r.*, s.first_name, s.last_name, s.student_number
+        result_groups = fetch_all("""
+            SELECT
+                r.student_id,
+                r.term,
+                s.student_number,
+                s.first_name,
+                s.last_name,
+                s.class_name,
+                COUNT(*) AS subject_count,
+                COALESCE(SUM(r.marks), 0) AS total_marks,
+                COALESCE(AVG(r.marks), 0) AS average_marks
             FROM results r
             JOIN students s ON r.student_id = s.id
             WHERE r.school_id = ?
-            ORDER BY s.first_name, s.last_name, r.subject
+            GROUP BY
+                r.student_id,
+                r.term,
+                s.student_number,
+                s.first_name,
+                s.last_name,
+                s.class_name
+            ORDER BY s.class_name, s.first_name, s.last_name, r.term
         """, (school_id,))
 
-    return render_template("results.html", result_records=result_records)
+    return render_template("results.html", result_groups=result_groups)
 
 
 # =========================================================
