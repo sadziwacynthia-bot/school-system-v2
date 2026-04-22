@@ -1733,7 +1733,6 @@ def fees():
     fee_records = fetch_all(query, tuple(params))
     return render_template("fees.html", fee_records=fee_records, search=search)
 
-
 @app.route("/add_fee", methods=["GET", "POST"])
 @login_required
 @roles_required("school_admin", "super_admin")
@@ -1741,10 +1740,24 @@ def add_fee():
     school_id = session.get("school_id")
     role = session.get("role")
 
+    selected_class = request.args.get("class_name", "").strip()
+
     if role == "super_admin":
-        students = fetch_all("SELECT * FROM students ORDER BY first_name, last_name")
+        if selected_class:
+            students = fetch_all(
+                "SELECT * FROM students WHERE class_name = ? ORDER BY first_name, last_name",
+                (selected_class,)
+            )
+        else:
+            students = []
     else:
-        students = fetch_all("SELECT * FROM students WHERE school_id = ? ORDER BY first_name, last_name", (school_id,))
+        if selected_class:
+            students = fetch_all(
+                "SELECT * FROM students WHERE school_id = ? AND class_name = ? ORDER BY first_name, last_name",
+                (school_id, selected_class)
+            )
+        else:
+            students = []
 
     if request.method == "POST":
         student_id = request.form.get("student_id")
@@ -1800,11 +1813,16 @@ def add_fee():
         except Exception as e:
             conn.rollback()
             flash(f"Error adding fee: {str(e)}", "danger")
-            return redirect(url_for("add_fee"))
+            return redirect(url_for("add_fee", class_name=selected_class))
         finally:
             conn.close()
 
-    return render_template("add_fee.html", students=students)
+    return render_template(
+        "add_fee.html",
+        students=students,
+        class_options=CLASS_OPTIONS,
+        selected_class=selected_class
+    )
 
 
 @app.route("/update_fee/<int:fee_id>", methods=["GET", "POST"])

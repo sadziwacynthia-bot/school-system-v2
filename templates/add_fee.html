@@ -1,135 +1,86 @@
 {% extends "base.html" %}
 {% block title %}Add Fee{% endblock %}
+{% block page_heading %}Add Fee{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1>Add Fee Record</h1>
-    <p>Create a fee record for a student.</p>
+    <div>
+        <h2 class="page-title">Add Fee Record</h2>
+        <p class="page-subtitle">Choose a class first, then select a student</p>
+    </div>
 </div>
 
-<div class="card-box">
-    <form method="POST" class="form-grid">
-        <div class="form-group full-width">
-            <label>Student</label>
-            <select name="student_id" required>
-                <option value="">Select student</option>
-                {% for student in students %}
-                    <option value="{{ student.id }}">
-                        {{ student.first_name }} {{ student.last_name }} - {{ student.class_name }}
-                    </option>
+<div class="form-card">
+    <form method="GET" action="{{ url_for('add_fee') }}">
+        <label>Select Class</label>
+        <div class="search-bar">
+            <select name="class_name" required>
+                <option value="">Choose class</option>
+                {% for c in class_options %}
+                <option value="{{ c }}" {% if selected_class == c %}selected{% endif %}>{{ c }}</option>
                 {% endfor %}
             </select>
-        </div>
 
-        <div class="form-group">
-            <label>Term</label>
-            <select name="term_name" required>
-                <option value="">Select term</option>
-                <option value="Term 1">Term 1</option>
-                <option value="Term 2">Term 2</option>
-                <option value="Term 3">Term 3</option>
-            </select>
-        </div>
-
-        <div class="form-group">
-            <label>Total Amount</label>
-            <input type="number" step="0.01" name="amount" required>
-        </div>
-
-        <div class="form-group">
-            <label>Paid Amount</label>
-            <input type="number" step="0.01" name="paid_amount">
-        </div>
-
-        <div class="form-group">
-            <label>Due Date</label>
-            <input type="date" name="due_date">
-        </div>
-
-        <div class="form-group">
-            <label>Payment Date</label>
-            <input type="date" name="payment_date">
-        </div>
-
-        <div class="form-group full-width">
-            <label>Receipt Number</label>
-            <input type="text" name="receipt_number" placeholder="Enter receipt number if payment has been made">
-        </div>
-
-        <div class="form-actions">
-            <button type="submit" class="btn-primary">Save Fee</button>
-            <a href="{{ url_for('fees') }}" class="btn-secondary">Back</a>
+            <button type="submit" class="btn btn-primary">Load Students</button>
         </div>
     </form>
 </div>
 
-<style>
-.page-header {
-    margin-bottom: 24px;
-}
-.page-header h1 {
-    color: #2563eb;
-    margin: 0;
-}
-.page-header p {
-    color: #6b7280;
-    margin-top: 8px;
-}
-.card-box {
-    background: white;
-    border-radius: 16px;
-    padding: 24px;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.08);
-    max-width: 850px;
-}
-.form-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 18px;
-}
-.full-width {
-    grid-column: 1 / -1;
-}
-.form-group label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 600;
-}
-.form-group input,
-.form-group select {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid #d1d5db;
-    border-radius: 10px;
-    box-sizing: border-box;
-}
-.form-actions {
-    grid-column: 1 / -1;
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-}
-.btn-primary,
-.btn-secondary {
-    display: inline-block;
-    padding: 12px 18px;
-    border-radius: 10px;
-    font-weight: 600;
-    text-decoration: none;
-}
-.btn-primary {
-    background: #2563eb;
-    color: white;
-    border: none;
-}
-.btn-secondary {
-    background: #e5e7eb;
-    color: #111827;
-}
-@media (max-width: 700px) {
-    .form-grid {
-        grid-template-columns: 1fr;
-    }
-}
-</style>
+{% if selected_class %}
+<div class="form-card">
+    <form method="POST">
+        <div class="form-grid">
+            <div>
+                <label>Student</label>
+                <select name="student_id" required>
+                    <option value="">Select student</option>
+                    {% for student in students %}
+                    <option value="{{ student.id }}">
+                        {{ student.first_name }} {{ student.last_name }} - {{ student.student_number }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label>Term</label>
+                <select name="term_name" required>
+                    <option value="">Select term</option>
+                    <option value="Term 1">Term 1</option>
+                    <option value="Term 2">Term 2</option>
+                    <option value="Term 3">Term 3</option>
+                </select>
+            </div>
+
+            <div>
+                <label>Total Amount</label>
+                <input type="number" step="0.01" name="amount" required>
+            </div>
+
+            <div>
+                <label>Initial Payment</label>
+                <input type="number" step="0.01" name="paid_amount" value="0">
+            </div>
+
+            <div>
+                <label>Due Date</label>
+                <input type="date" name="due_date">
+            </div>
+
+            <div>
+                <label>Payment Date</label>
+                <input type="date" name="payment_date">
+            </div>
+        </div>
+
+        <label>Receipt Number</label>
+        <input type="text" name="receipt_number" placeholder="Optional receipt number">
+
+        <div class="action-group" style="margin-top: 18px;">
+            <button type="submit" class="btn btn-primary">Save Fee Record</button>
+            <a href="{{ url_for('fees') }}" class="btn btn-secondary">Back to Fees</a>
+        </div>
+    </form>
+</div>
+{% endif %}
 {% endblock %}
