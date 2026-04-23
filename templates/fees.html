@@ -1,92 +1,190 @@
 {% extends "base.html" %}
-
 {% block title %}Fees{% endblock %}
+{% block page_heading %}Fees{% endblock %}
 
 {% block content %}
 <div class="page-header">
     <div>
         <h2 class="page-title">Fees Management</h2>
-        <p class="page-subtitle">Track school fees, payments, and outstanding balances</p>
+        <p class="page-subtitle">Track billing, payments, balances, and follow up on outstanding fees</p>
     </div>
-    <a href="{{ url_for('add_fee') }}" class="btn btn-primary">+ Add Fee</a>
+    <div class="action-group">
+        <a href="{{ url_for('add_fee') }}" class="btn btn-primary">+ Add Fee</a>
+    </div>
 </div>
 
-<div class="table-card">
-    <form method="GET" action="{{ url_for('fees') }}" class="search-bar">
-        <input
-            type="text"
-            name="search"
-            placeholder="Search by student name or student number"
-            value="{{ search or '' }}"
-        >
-        <button type="submit" class="btn btn-primary">Search</button>
-    </form>
-</div>
-
-<div class="table-card">
-    <div class="section-title-row">
-        <h3>Fee Records</h3>
+<div class="dashboard-stat-grid">
+    <div class="metric-card metric-card-blue">
+        <div class="metric-top">
+            <span class="metric-label">Total Billed</span>
+            <span class="metric-icon">📄</span>
+        </div>
+        <div class="metric-value">${{ "%.2f"|format(total_billed or 0) }}</div>
+        <div class="metric-note">Total amount billed</div>
     </div>
 
-    <div class="table-responsive">
-        <table>
-            <thead>
-                <tr>
-                    <th>Student Number</th>
-                    <th>Student Name</th>
-                    <th>Class</th>
-                    <th>Term</th>
-                    <th>Amount</th>
-                    <th>Paid</th>
-                    <th>Balance</th>
-                    <th>Status</th>
-                    <th>Due Date</th>
-                    <th style="width: 140px;">Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for fee in fee_records %}
-                <tr>
-                    <td>{{ fee.student_number or '-' }}</td>
-                    <td>{{ fee.first_name }} {{ fee.last_name }}</td>
-                    <td>{{ fee.class_name or '-' }}</td>
-                    <td>{{ fee.term_name or '-' }}</td>
-                    <td>${{ "%.2f"|format(fee.amount or 0) }}</td>
-                    <td>${{ "%.2f"|format(fee.paid_amount or 0) }}</td>
-                    <td>
-                        {% if (fee.balance or 0) > 0 %}
-                            <span class="balance-text danger-balance">
-                                ${{ "%.2f"|format(fee.balance or 0) }}
-                            </span>
-                        {% else %}
-                            <span class="balance-text success-balance">
-                                ${{ "%.2f"|format(fee.balance or 0) }}
-                            </span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if fee.status == 'Paid' %}
-                            <span class="status-badge status-paid">Paid</span>
-                        {% elif fee.status == 'Partially Paid' %}
-                            <span class="status-badge status-pending">Partially Paid</span>
-                        {% else %}
-                            <span class="status-badge status-inactive">Pending</span>
-                        {% endif %}
-                    </td>
-                    <td>{{ fee.due_date or '-' }}</td>
-                    <td>
-                        <a href="{{ url_for('update_fee', fee_id=fee.id) }}" class="btn btn-primary btn-sm">
-                            Update
-                        </a>
-                    </td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="10">No fee records found.</td>
-                </tr>
+    <div class="metric-card metric-card-emerald">
+        <div class="metric-top">
+            <span class="metric-label">Total Paid</span>
+            <span class="metric-icon">💵</span>
+        </div>
+        <div class="metric-value">${{ "%.2f"|format(total_paid or 0) }}</div>
+        <div class="metric-note">Payments received</div>
+    </div>
+
+    <div class="metric-card metric-card-rose">
+        <div class="metric-top">
+            <span class="metric-label">Outstanding</span>
+            <span class="metric-icon">⚠️</span>
+        </div>
+        <div class="metric-value">${{ "%.2f"|format(total_balance or 0) }}</div>
+        <div class="metric-note">Remaining unpaid balance</div>
+    </div>
+
+    <div class="metric-card metric-card-amber">
+        <div class="metric-top">
+            <span class="metric-label">Records</span>
+            <span class="metric-icon">💳</span>
+        </div>
+        <div class="metric-value">{{ total_records }}</div>
+        <div class="metric-note">Total fee records</div>
+    </div>
+</div>
+
+<div class="dashboard-layout">
+    <section class="dashboard-panel premium-surface">
+        <div class="panel-header-row">
+            <div>
+                <p class="panel-kicker">Filters</p>
+                <h3>Search and Narrow Results</h3>
+            </div>
+        </div>
+
+        <form method="GET" class="fees-filter-grid">
+            <input type="text" name="search" placeholder="Search by name or student number" value="{{ search or '' }}">
+
+            <select name="class_name">
+                <option value="">All Classes</option>
+                {% for c in class_options %}
+                <option value="{{ c }}" {% if class_filter == c %}selected{% endif %}>{{ c }}</option>
                 {% endfor %}
-            </tbody>
-        </table>
-    </div>
+            </select>
+
+            <select name="term_name">
+                <option value="">All Terms</option>
+                <option value="Term 1" {% if term_filter == 'Term 1' %}selected{% endif %}>Term 1</option>
+                <option value="Term 2" {% if term_filter == 'Term 2' %}selected{% endif %}>Term 2</option>
+                <option value="Term 3" {% if term_filter == 'Term 3' %}selected{% endif %}>Term 3</option>
+            </select>
+
+            <select name="status">
+                <option value="">All Status</option>
+                <option value="Paid" {% if status_filter == 'Paid' %}selected{% endif %}>Paid</option>
+                <option value="Partially Paid" {% if status_filter == 'Partially Paid' %}selected{% endif %}>Partially Paid</option>
+                <option value="Pending" {% if status_filter == 'Pending' %}selected{% endif %}>Pending</option>
+            </select>
+
+            <div class="action-group">
+                <button type="submit" class="btn btn-primary">Apply Filters</button>
+                <a href="{{ url_for('fees') }}" class="btn btn-secondary">Reset</a>
+            </div>
+        </form>
+    </section>
+
+    <section class="dashboard-panel premium-surface">
+        <div class="panel-header-row">
+            <div>
+                <p class="panel-kicker">Status Summary</p>
+                <h3>Fee Status Breakdown</h3>
+            </div>
+        </div>
+
+        <div class="status-tiles">
+            <div class="status-tile">
+                <span class="status-dot status-dot-green"></span>
+                <div>
+                    <p>Paid</p>
+                    <strong>{{ paid_count }}</strong>
+                </div>
+            </div>
+
+            <div class="status-tile">
+                <span class="status-dot status-dot-yellow"></span>
+                <div>
+                    <p>Partially Paid</p>
+                    <strong>{{ partial_count }}</strong>
+                </div>
+            </div>
+
+            <div class="status-tile">
+                <span class="status-dot status-dot-red"></span>
+                <div>
+                    <p>Pending</p>
+                    <strong>{{ pending_count }}</strong>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="dashboard-panel premium-surface dashboard-panel-wide">
+        <div class="panel-header-row">
+            <div>
+                <p class="panel-kicker">Fee Records</p>
+                <h3>Student Fees</h3>
+            </div>
+        </div>
+
+        <div class="payments-table-wrap">
+            <table class="dashboard-mini-table">
+                <thead>
+                    <tr>
+                        <th>Student Number</th>
+                        <th>Student Name</th>
+                        <th>Class</th>
+                        <th>Term</th>
+                        <th>Total Fee</th>
+                        <th>Paid</th>
+                        <th>Balance</th>
+                        <th>Status</th>
+                        <th>Due Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fee in fee_records %}
+                    <tr>
+                        <td>{{ fee.student_number or '-' }}</td>
+                        <td>{{ fee.first_name }} {{ fee.last_name }}</td>
+                        <td>{{ fee.class_name or '-' }}</td>
+                        <td>{{ fee.term_name or '-' }}</td>
+                        <td>${{ "%.2f"|format(fee.amount or 0) }}</td>
+                        <td>${{ "%.2f"|format(fee.paid_amount or 0) }}</td>
+                        <td>${{ "%.2f"|format(fee.balance or 0) }}</td>
+                        <td>
+                            {% if fee.status == 'Paid' %}
+                                <span class="status-badge status-active">Paid</span>
+                            {% elif fee.status == 'Partially Paid' %}
+                                <span class="status-badge status-pending">Partially Paid</span>
+                            {% else %}
+                                <span class="status-badge status-inactive">Pending</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ fee.due_date or '-' }}</td>
+                        <td>
+                            <div class="action-group">
+                                <a href="{{ url_for('update_fee', fee_id=fee.id) }}" class="btn btn-primary btn-sm">Update</a>
+                                <a href="{{ url_for('send_fee_reminder', student_id=fee.student_id) }}" class="btn btn-secondary btn-sm">Reminder</a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="10">No fee records found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
 </div>
 {% endblock %}

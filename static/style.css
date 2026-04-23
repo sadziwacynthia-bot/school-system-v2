@@ -1658,3 +1658,25 @@ table tr:nth-child(even) {
         font-size: 26px;
     }
 }
+.fees-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    align-items: end;
+}
+
+.fees-filter-grid .action-group {
+    align-self: end;
+}
+
+@media (max-width: 1024px) {
+    .fees-filter-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .fees-filter-grid {
+        grid-template-columns: 1fr;
+    }
+}

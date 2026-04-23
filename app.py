@@ -1707,31 +1707,94 @@ def teacher_dashboard():
 def fees():
     school_id = session.get("school_id")
     role = session.get("role")
+
     search = request.args.get("search", "").strip()
+    class_filter = request.args.get("class_name", "").strip()
+    term_filter = request.args.get("term_name", "").strip()
+    status_filter = request.args.get("status", "").strip()
 
     params = []
     query = """
         SELECT f.*, s.first_name, s.last_name, s.student_number, s.class_name
         FROM fees f
         JOIN students s ON f.student_id = s.id
+        WHERE 1=1
     """
-    conditions = []
 
     if role != "super_admin":
-        conditions.append("f.school_id = ?")
+        query += " AND f.school_id = ?"
         params.append(school_id)
 
     if search:
-        conditions.append("(s.first_name LIKE ? OR s.last_name LIKE ? OR s.student_number LIKE ?)")
+        query += " AND (s.first_name LIKE ? OR s.last_name LIKE ? OR s.student_number LIKE ?)"
         like = f"%{search}%"
         params.extend([like, like, like])
 
-    if conditions:
-        query += " WHERE " + " AND ".join(conditions)
+    if class_filter:
+        query += " AND s.class_name = ?"
+        params.append(class_filter)
+
+    if term_filter:
+        query += " AND f.term_name = ?"
+        params.append(term_filter)
+
+    if status_filter:
+        query += " AND f.status = ?"
+        params.append(status_filter)
 
     query += " ORDER BY s.class_name, s.first_name, s.last_name, f.term_name"
     fee_records = fetch_all(query, tuple(params))
-    return render_template("fees.html", fee_records=fee_records, search=search)
+
+    summary_query = """
+        SELECT
+            COALESCE(SUM(amount), 0) AS total_billed,
+            COALESCE(SUM(paid_amount), 0) AS total_paid,
+            COALESCE(SUM(balance), 0) AS total_balance,
+            COUNT(*) AS total_records
+        FROM fees
+        WHERE 1=1
+    """
+    summary_params = []
+
+    if role != "super_admin":
+        summary_query += " AND school_id = ?"
+        summary_params.append(school_id)
+
+    fee_totals = fetch_one(summary_query, tuple(summary_params))
+
+    paid_count_query = "SELECT COUNT(*) AS total FROM fees WHERE status = ?"
+    partial_count_query = "SELECT COUNT(*) AS total FROM fees WHERE status = ?"
+    pending_count_query = "SELECT COUNT(*) AS total FROM fees WHERE status = ?"
+
+    if role != "super_admin":
+        paid_count_query += " AND school_id = ?"
+        partial_count_query += " AND school_id = ?"
+        pending_count_query += " AND school_id = ?"
+
+        paid_count = fetch_one(paid_count_query, ("Paid", school_id))["total"]
+        partial_count = fetch_one(partial_count_query, ("Partially Paid", school_id))["total"]
+        pending_count = fetch_one(pending_count_query, ("Pending", school_id))["total"]
+    else:
+        paid_count = fetch_one(paid_count_query, ("Paid",))["total"]
+        partial_count = fetch_one(partial_count_query, ("Partially Paid",))["total"]
+        pending_count = fetch_one(pending_count_query, ("Pending",))["total"]
+
+    return render_template(
+        "fees.html",
+        fee_records=fee_records,
+        search=search,
+        class_filter=class_filter,
+        term_filter=term_filter,
+        status_filter=status_filter,
+        class_options=CLASS_OPTIONS,
+        total_billed=fee_totals["total_billed"] or 0,
+        total_paid=fee_totals["total_paid"] or 0,
+        total_balance=fee_totals["total_balance"] or 0,
+        total_records=fee_totals["total_records"] or 0,
+        paid_count=paid_count,
+        partial_count=partial_count,
+        pending_count=pending_count
+    )
 
 @app.route("/add_fee", methods=["GET", "POST"])
 @login_required
@@ -3854,4 +3917,4 @@ setup_app()
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port, debug=not is_postgres())
+    app.run(host="0.0.0.0", port=port, debug=False)
