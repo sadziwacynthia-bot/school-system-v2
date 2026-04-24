@@ -39,6 +39,11 @@
                     <a href="{{ url_for('timetable') }}" class="nav-link">Timetable</a>
                     <a href="{{ url_for('add_timetable') }}" class="nav-link">Add Timetable Entry</a>
                     <a href="{{ url_for('timetable_settings') }}" class="nav-link">Timetable Settings</a>
+
+                    <div class="menu-section-title">Finance</div>
+
+                    <a href="{{ url_for('cashbook') }}" class="nav-link">Cash Book</a>
+<a href="{{ url_for('add_cashbook_entry') }}" class="nav-link">Add Cash Entry</a>
                 {% endif %}
 
                 {% if session.get('role') == 'super_admin' %}

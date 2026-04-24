@@ -325,7 +325,21 @@ def init_db():
         notes TEXT
     )
 """)
-        
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS cashbook (
+                id SERIAL PRIMARY KEY,
+                school_id INTEGER,
+                entry_date VARCHAR(50),
+                entry_type VARCHAR(20),
+                category VARCHAR(100),
+                description TEXT,
+                amount NUMERIC(12,2),
+                payment_method VARCHAR(50),
+                reference_number VARCHAR(100),
+                created_by VARCHAR(255)
+            )
+        """)
+
     else:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS schools (
@@ -526,6 +540,20 @@ def init_db():
         notes TEXT
     )
 """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS cashbook (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                school_id INTEGER,
+                entry_date TEXT,
+                entry_type TEXT,
+                category TEXT,
+                description TEXT,
+                amount REAL,
+                payment_method TEXT,
+                reference_number TEXT,
+                created_by TEXT
+            )
+        """)
         
     conn.commit()
     conn.close()
@@ -758,6 +786,45 @@ def run_school_control_migration():
         conn.commit()
     finally:
         conn.close()
+def run_cashbook_migration():
+    conn = get_db()
+    cursor = conn.cursor()
+
+    try:
+        if is_postgres():
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS cashbook (
+                    id SERIAL PRIMARY KEY,
+                    school_id INTEGER,
+                    entry_date VARCHAR(50),
+                    entry_type VARCHAR(20),
+                    category VARCHAR(100),
+                    description TEXT,
+                    amount NUMERIC(12,2),
+                    payment_method VARCHAR(50),
+                    reference_number VARCHAR(100),
+                    created_by VARCHAR(255)
+                )
+            """)
+        else:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS cashbook (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    school_id INTEGER,
+                    entry_date TEXT,
+                    entry_type TEXT,
+                    category TEXT,
+                    description TEXT,
+                    amount REAL,
+                    payment_method TEXT,
+                    reference_number TEXT,
+                    created_by TEXT
+                )
+            """)
+
+        conn.commit()
+    finally:
+        conn.close()      
 def get_school_settings(school_id):
     settings = fetch_one(
         "SELECT * FROM school_settings WHERE school_id = ?",
@@ -3577,6 +3644,157 @@ def subscription_expired():
         school = fetch_one("SELECT * FROM schools WHERE id = ?", (school_id,))
 
     return render_template("subscription_expired.html", school=school)
+@app.route("/cashbook")
+@login_required
+@roles_required("school_admin", "super_admin")
+def cashbook():
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    entry_type = request.args.get("entry_type", "").strip()
+    start_date = request.args.get("start_date", "").strip()
+    end_date = request.args.get("end_date", "").strip()
+
+    query = "SELECT * FROM cashbook WHERE 1=1"
+    params = []
+
+    if role != "super_admin":
+        query += " AND school_id = ?"
+        params.append(school_id)
+
+    if entry_type:
+        query += " AND entry_type = ?"
+        params.append(entry_type)
+
+    if start_date:
+        query += " AND entry_date >= ?"
+        params.append(start_date)
+
+    if end_date:
+        query += " AND entry_date <= ?"
+        params.append(end_date)
+
+    query += " ORDER BY entry_date ASC, id ASC"
+
+    entries = fetch_all(query, tuple(params))
+
+    running_balance = 0
+    processed_entries = []
+
+    for entry in entries:
+        amount = float(entry["amount"] or 0)
+        if entry["entry_type"] == "income":
+            running_balance += amount
+        else:
+            running_balance -= amount
+
+        processed_entries.append({
+            "id": entry["id"],
+            "entry_date": entry["entry_date"],
+            "entry_type": entry["entry_type"],
+            "category": entry["category"],
+            "description": entry["description"],
+            "amount": amount,
+            "payment_method": entry["payment_method"],
+            "reference_number": entry["reference_number"],
+            "created_by": entry["created_by"],
+            "running_balance": running_balance
+        })
+
+    summary_query = """
+        SELECT
+            COALESCE(SUM(CASE WHEN entry_type = 'income' THEN amount ELSE 0 END), 0) AS total_income,
+            COALESCE(SUM(CASE WHEN entry_type = 'expense' THEN amount ELSE 0 END), 0) AS total_expense
+        FROM cashbook
+        WHERE 1=1
+    """
+    summary_params = []
+
+    if role != "super_admin":
+        summary_query += " AND school_id = ?"
+        summary_params.append(school_id)
+
+    if start_date:
+        summary_query += " AND entry_date >= ?"
+        summary_params.append(start_date)
+
+    if end_date:
+        summary_query += " AND entry_date <= ?"
+        summary_params.append(end_date)
+
+    if entry_type:
+        summary_query += " AND entry_type = ?"
+        summary_params.append(entry_type)
+
+    summary = fetch_one(summary_query, tuple(summary_params))
+
+    total_income = float(summary["total_income"] or 0)
+    total_expense = float(summary["total_expense"] or 0)
+    net_balance = total_income - total_expense
+
+    return render_template(
+        "cashbook.html",
+        entries=processed_entries,
+        entry_type=entry_type,
+        start_date=start_date,
+        end_date=end_date,
+        total_income=total_income,
+        total_expense=total_expense,
+        net_balance=net_balance
+    )
+
+
+@app.route("/add_cashbook_entry", methods=["GET", "POST"])
+@login_required
+@roles_required("school_admin", "super_admin")
+def add_cashbook_entry():
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    schools = []
+    if role == "super_admin":
+        schools = fetch_all("SELECT * FROM schools ORDER BY school_name")
+
+    if request.method == "POST":
+        if role == "super_admin":
+            school_id = request.form.get("school_id")
+
+        entry_date = request.form.get("entry_date")
+        entry_type = request.form.get("entry_type")
+        category = request.form.get("category", "").strip()
+        description = request.form.get("description", "").strip()
+        amount = request.form.get("amount")
+        payment_method = request.form.get("payment_method", "").strip()
+        reference_number = request.form.get("reference_number", "").strip()
+        created_by = session.get("full_name", "System")
+
+        if not school_id or not entry_date or not entry_type or not category or not amount:
+            flash("School, date, type, category, and amount are required.", "danger")
+            return redirect(url_for("add_cashbook_entry"))
+
+        try:
+            amount = float(amount)
+            if amount <= 0:
+                raise ValueError
+        except Exception:
+            flash("Amount must be a valid number greater than zero.", "danger")
+            return redirect(url_for("add_cashbook_entry"))
+
+        execute_commit("""
+            INSERT INTO cashbook (
+                school_id, entry_date, entry_type, category, description,
+                amount, payment_method, reference_number, created_by
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            school_id, entry_date, entry_type, category, description,
+            amount, payment_method, reference_number, created_by
+        ))
+
+        flash("Cash book entry added successfully.", "success")
+        return redirect(url_for("cashbook"))
+
+    return render_template("add_cashbook_entry.html", schools=schools)
 
 @app.route("/send_fee_reminder/<int:student_id>")
 @login_required
@@ -3804,6 +4022,9 @@ def setup_app():
             
             run_school_control_migration()
             print("School control migration completed")
+
+            run_cashbook_migration()
+            print("Cashbook migration completed")
 
             update_school_subscription_states()
             print("School subscription states updated")
