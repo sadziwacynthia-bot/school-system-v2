@@ -1,33 +1,92 @@
 {% extends "base.html" %}
-
 {% block title %}Classes{% endblock %}
+{% block page_heading %}Classes{% endblock %}
 
 {% block content %}
 <div class="page-header">
     <div>
         <h2 class="page-title">Classes</h2>
-        <p class="page-subtitle">View classes, student totals, and quick actions</p>
+        <p class="page-subtitle">Manage school classes and view student totals</p>
     </div>
-    <a href="{{ url_for('print_all_students') }}" class="btn btn-primary" target="_blank">Print All Students</a>
+
+    <div class="action-group">
+        <a href="{{ url_for('add_class') }}" class="btn btn-primary">+ Add Class</a>
+        <a href="{{ url_for('print_all_students') }}" target="_blank" class="btn btn-secondary">Print All Students</a>
+    </div>
 </div>
 
+<div class="dashboard-stat-grid">
+    <div class="metric-card metric-card-blue">
+        <div class="metric-top">
+            <span class="metric-label">Total Classes</span>
+            <span class="metric-icon">🏫</span>
+        </div>
+        <div class="metric-value">{{ classes|length }}</div>
+        <div class="metric-note">Classes registered</div>
+    </div>
+
+    <div class="metric-card metric-card-emerald">
+        <div class="metric-top">
+            <span class="metric-label">Total Students</span>
+            <span class="metric-icon">🎓</span>
+        </div>
+        <div class="metric-value">
+            {{ classes|sum(attribute='total_students') }}
+        </div>
+        <div class="metric-note">Students across classes</div>
+    </div>
+</div>
+
+{% if classes %}
 <div class="classes-grid">
-    {% for item in class_summary %}
+    {% for class_item in classes %}
     <div class="class-card">
         <div class="class-card-top">
             <div>
-                <h3>{{ item.class_name }}</h3>
-                <p>{{ item.total_students }} student{{ '' if item.total_students == 1 else 's' }}</p>
+                <h3>{{ class_item.class_name }}</h3>
+
+                {% if session.get('role') == 'super_admin' and class_item.school_name %}
+                    <p>{{ class_item.school_name }}</p>
+                {% else %}
+                    <p>Registered class</p>
+                {% endif %}
             </div>
-            <span class="class-badge">{{ item.class_name }}</span>
+
+            <span class="class-badge">
+                {{ class_item.total_students or 0 }} students
+            </span>
+        </div>
+
+        <div class="class-info-row">
+            <div>
+                <span>Total Students</span>
+                <strong>{{ class_item.total_students or 0 }}</strong>
+            </div>
+            <div>
+                <span>Status</span>
+                <strong>Active</strong>
+            </div>
         </div>
 
         <div class="class-card-actions">
-            <a href="{{ url_for('class_students', class_name=item.class_name) }}" class="btn btn-secondary btn-sm">View Students</a>
-            <a href="{{ url_for('print_class_list', class_name=item.class_name) }}" class="btn btn-primary btn-sm" target="_blank">Print List</a>
-            <a href="{{ url_for('timetable', class_name=item.class_name) }}" class="btn btn-success btn-sm">View Timetable</a>
+            <a href="{{ url_for('class_students', class_name=class_item.class_name) }}" class="btn btn-primary btn-sm">
+                View Students
+            </a>
+
+            <a href="{{ url_for('print_class_list', class_name=class_item.class_name) }}" target="_blank" class="btn btn-secondary btn-sm">
+                Print List
+            </a>
         </div>
     </div>
     {% endfor %}
 </div>
+{% else %}
+<div class="table-card empty-state-card">
+    <h3>No classes found yet</h3>
+    <p class="page-subtitle">
+        Add your school’s classes so they appear in students, attendance, fees, results, and timetable pages.
+    </p>
+    <a href="{{ url_for('add_class') }}" class="btn btn-primary">+ Add First Class</a>
+</div>
+{% endif %}
 {% endblock %}

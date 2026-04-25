@@ -1680,3 +1680,35 @@ table tr:nth-child(even) {
         grid-template-columns: 1fr;
     }
 }
+.class-info-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+    margin: 18px 0;
+}
+
+.class-info-row div {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 14px;
+}
+
+.class-info-row span {
+    display: block;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+
+.class-info-row strong {
+    font-size: 20px;
+    color: #0f172a;
+}
+
+.empty-state-card {
+    text-align: center;
+    padding: 40px;
+}

@@ -6,8 +6,7 @@ import random
 import string
 import urllib.parse
 from functools import wraps
-from datetime import datetime
-from datetime import datetime, timedelta
+from datetime import datetime, date
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -290,56 +289,6 @@ def init_db():
                 lunch_duration INTEGER DEFAULT 40
             )
         """)
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS school_settings (
-                id SERIAL PRIMARY KEY,
-                school_id INTEGER UNIQUE,
-                display_name VARCHAR(255),
-                phone VARCHAR(100),
-                email VARCHAR(255),
-                address TEXT,
-                report_header TEXT,
-                logo_url TEXT
-            )
-        """)
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS school_settings (
-                id SERIAL PRIMARY KEY,
-                school_id INTEGER UNIQUE,
-                display_name VARCHAR(255),
-                phone VARCHAR(100),
-                email VARCHAR(255),
-                address TEXT,
-                report_header TEXT,
-                logo_url TEXT
-            )
-        """)
-        cursor.execute("""
-    CREATE TABLE IF NOT EXISTS school_payments (
-        id SERIAL PRIMARY KEY,
-        school_id INTEGER,
-        payment_date VARCHAR(50),
-        amount NUMERIC(10,2),
-        period_start VARCHAR(50),
-        period_end VARCHAR(50),
-        notes TEXT
-    )
-""")
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS cashbook (
-                id SERIAL PRIMARY KEY,
-                school_id INTEGER,
-                entry_date VARCHAR(50),
-                entry_type VARCHAR(20),
-                category VARCHAR(100),
-                description TEXT,
-                amount NUMERIC(12,2),
-                payment_method VARCHAR(50),
-                reference_number VARCHAR(100),
-                created_by VARCHAR(255)
-            )
-        """)
-
     else:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS schools (
@@ -529,32 +478,6 @@ def init_db():
                 lunch_duration INTEGER DEFAULT 40
             )
         """)
-        cursor.execute("""
-    CREATE TABLE IF NOT EXISTS school_payments (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        school_id INTEGER,
-        payment_date TEXT,
-        amount REAL,
-        period_start TEXT,
-        period_end TEXT,
-        notes TEXT
-    )
-""")
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS cashbook (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                school_id INTEGER,
-                entry_date TEXT,
-                entry_type TEXT,
-                category TEXT,
-                description TEXT,
-                amount REAL,
-                payment_method TEXT,
-                reference_number TEXT,
-                created_by TEXT
-            )
-        """)
-        
     conn.commit()
     conn.close()
 
@@ -679,10 +602,10 @@ def login_required(f):
         if role != "super_admin" and school_id:
             school = fetch_one("SELECT * FROM schools WHERE id = ?", (school_id,))
             if school:
-                is_active = school["is_active"] if "is_active" in school.keys() else 1
-                subscription_status = school["subscription_status"] if "subscription_status" in school.keys() else "active"
+                is_active = row_get(school, "is_active", 1)
+                subscription_status = row_get(school, "subscription_status", "active")
 
-                if not is_active or subscription_status in ["suspended", "overdue"]:
+                if int(is_active or 0) != 1 or subscription_status in ["suspended", "overdue"]:
                     session.clear()
                     return redirect(url_for("subscription_expired"))
 
@@ -720,6 +643,8 @@ def row_get(row, key, default=None):
             return default
         if isinstance(row, dict):
             return row.get(key, default)
+        if hasattr(row, "keys") and key not in row.keys():
+            return default
         return row[key]
     except Exception:
         return default
@@ -729,7 +654,7 @@ def parse_date_safe(date_str):
     if not date_str:
         return None
     try:
-        return datetime.strptime(date_str, "%Y-%m-%d").date()
+        return datetime.strptime(str(date_str), "%Y-%m-%d").date()
     except Exception:
         return None
 
@@ -738,12 +663,15 @@ def get_school_settings(school_id):
     if not school_id:
         return None
 
-    settings = fetch_one(
-        "SELECT * FROM school_settings WHERE school_id = ?",
-        (school_id,)
-    )
-    if settings:
-        return settings
+    try:
+        settings = fetch_one(
+            "SELECT * FROM school_settings WHERE school_id = ?",
+            (school_id,)
+        )
+        if settings:
+            return settings
+    except Exception:
+        pass
 
     school = fetch_one("SELECT * FROM schools WHERE id = ?", (school_id,))
     if not school:
@@ -760,132 +688,56 @@ def get_school_settings(school_id):
     }
 
 
-def run_school_control_migration():
-    conn = get_db()
-    cursor = conn.cursor()
-    try:
-        if is_postgres():
-            statements = [
-                "ALTER TABLE schools ADD COLUMN IF NOT EXISTS is_active INTEGER DEFAULT 1",
-                "ALTER TABLE schools ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(50) DEFAULT 'active'",
-                "ALTER TABLE schools ADD COLUMN IF NOT EXISTS subscription_end_date VARCHAR(50)"
-            ]
-            for stmt in statements:
-                cursor.execute(stmt)
-        else:
-            sqlite_statements = [
-                "ALTER TABLE schools ADD COLUMN is_active INTEGER DEFAULT 1",
-                "ALTER TABLE schools ADD COLUMN subscription_status TEXT DEFAULT 'active'",
-                "ALTER TABLE schools ADD COLUMN subscription_end_date TEXT"
-            ]
-            for stmt in sqlite_statements:
-                try:
-                    cursor.execute(stmt)
-                except Exception:
-                    pass
-        conn.commit()
-    finally:
-        conn.close()
-def run_cashbook_migration():
-    conn = get_db()
-    cursor = conn.cursor()
-
-    try:
-        if is_postgres():
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS cashbook (
-                    id SERIAL PRIMARY KEY,
-                    school_id INTEGER,
-                    entry_date VARCHAR(50),
-                    entry_type VARCHAR(20),
-                    category VARCHAR(100),
-                    description TEXT,
-                    amount NUMERIC(12,2),
-                    payment_method VARCHAR(50),
-                    reference_number VARCHAR(100),
-                    created_by VARCHAR(255)
-                )
-            """)
-        else:
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS cashbook (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    school_id INTEGER,
-                    entry_date TEXT,
-                    entry_type TEXT,
-                    category TEXT,
-                    description TEXT,
-                    amount REAL,
-                    payment_method TEXT,
-                    reference_number TEXT,
-                    created_by TEXT
-                )
-            """)
-
-        conn.commit()
-    finally:
-        conn.close()      
-def get_school_settings(school_id):
-    settings = fetch_one(
-        "SELECT * FROM school_settings WHERE school_id = ?",
-        (school_id,)
-    )
-
-    if settings:
-        return settings
-
-    school = fetch_one("SELECT * FROM schools WHERE id = ?", (school_id,))
-    if not school:
-        return None
-
-    return {
-        "school_id": school_id,
-        "display_name": school["school_name"],
-        "phone": "",
-        "email": "",
-        "address": "",
-        "report_header": "School Management System",
-        "logo_url": "",
-    }
-def school_access_allowed():
-    if "user_id" not in session:
-        return True
-
-    role = session.get("role")
-    if role == "super_admin":
-        return True
-
-    school_id = session.get("school_id")
-    if not school_id:
-        return False
-
-    school = fetch_one("SELECT * FROM schools WHERE id = ?", (school_id,))
-    if not school:
-        return False
-
-    if int(school["is_active"] or 0) != 1:
-        return False
-
-    end_date = parse_date_safe(school["subscription_end_date"])
-    if end_date and end_date < datetime.now().date():
-        return False
-
-    return True
-
-def parse_date_safe(date_str):
-    if not date_str:
-        return None
-    try:
-        return datetime.strptime(date_str, "%Y-%m-%d").date()
-    except Exception:
-        return None
-
-
 def school_is_overdue(school):
-    end_date = parse_date_safe(school["subscription_end_date"])
+    end_date = parse_date_safe(row_get(school, "subscription_end_date"))
     if not end_date:
         return False
     return end_date < datetime.now().date()
+
+
+def cashbook_insert_income(cursor, school_id, payment_date, amount_paid, receipt_number, student_name, term_name, created_by):
+    try:
+        amount = float(amount_paid or 0)
+    except Exception:
+        amount = 0
+
+    if amount <= 0:
+        return
+
+    entry_date = payment_date or datetime.now().strftime("%Y-%m-%d")
+
+    cursor.execute(
+        convert_query("""
+            INSERT INTO cashbook (
+                school_id, entry_date, entry_type, category, description,
+                amount, payment_method, reference_number, created_by
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """),
+        (
+            school_id,
+            entry_date,
+            "income",
+            "School Fees",
+            f"Fee payment from {student_name} for {term_name}",
+            amount,
+            "School Fee Payment",
+            receipt_number,
+            created_by,
+        )
+    )
+def get_school_classes(school_id):
+    rows = fetch_all(
+        "SELECT * FROM school_classes WHERE school_id = ? ORDER BY class_name",
+        (school_id,)
+    )
+
+    if rows:
+        return [row["class_name"] for row in rows]
+
+    return CLASS_OPTIONS
+
+
 # =========================================================
 # BASIC ROUTES
 # =========================================================
@@ -926,6 +778,7 @@ def logout():
     flash("Logged out successfully.", "success")
     return redirect(url_for("login"))
 
+
 @app.route("/dashboard")
 @login_required
 @roles_required("school_admin", "super_admin")
@@ -952,28 +805,6 @@ def dashboard():
         partial_count = fetch_one("SELECT COUNT(*) AS total FROM fees WHERE status = ?", ("Partially Paid",))["total"]
         pending_count = fetch_one("SELECT COUNT(*) AS total FROM fees WHERE status = ?", ("Pending",))["total"]
 
-        students_by_class = fetch_all("""
-            SELECT class_name, COUNT(*) AS total
-            FROM students
-            GROUP BY class_name
-            ORDER BY class_name
-        """)
-
-        recent_students = fetch_all("""
-            SELECT * FROM students
-            ORDER BY id DESC
-            LIMIT 5
-        """)
-
-        recent_payments = fetch_all("""
-            SELECT fp.*, s.first_name, s.last_name
-            FROM fee_payments fp
-            JOIN fees f ON fp.fee_id = f.id
-            JOIN students s ON f.student_id = s.id
-            ORDER BY fp.id DESC
-            LIMIT 5
-        """)
-
     else:
         total_schools = 0
         total_students = fetch_one("SELECT COUNT(*) AS total FROM students WHERE school_id = ?", (school_id,))["total"]
@@ -994,31 +825,6 @@ def dashboard():
         partial_count = fetch_one("SELECT COUNT(*) AS total FROM fees WHERE school_id = ? AND status = ?", (school_id, "Partially Paid"))["total"]
         pending_count = fetch_one("SELECT COUNT(*) AS total FROM fees WHERE school_id = ? AND status = ?", (school_id, "Pending"))["total"]
 
-        students_by_class = fetch_all("""
-            SELECT class_name, COUNT(*) AS total
-            FROM students
-            WHERE school_id = ?
-            GROUP BY class_name
-            ORDER BY class_name
-        """, (school_id,))
-
-        recent_students = fetch_all("""
-            SELECT * FROM students
-            WHERE school_id = ?
-            ORDER BY id DESC
-            LIMIT 5
-        """, (school_id,))
-
-        recent_payments = fetch_all("""
-            SELECT fp.*, s.first_name, s.last_name
-            FROM fee_payments fp
-            JOIN fees f ON fp.fee_id = f.id
-            JOIN students s ON f.student_id = s.id
-            WHERE fp.school_id = ?
-            ORDER BY fp.id DESC
-            LIMIT 5
-        """, (school_id,))
-
     return render_template(
         "dashboard.html",
         total_schools=total_schools,
@@ -1031,10 +837,7 @@ def dashboard():
         total_balance=fee_totals["total_balance"] or 0,
         paid_count=paid_count,
         partial_count=partial_count,
-        pending_count=pending_count,
-        students_by_class=students_by_class,
-        recent_students=recent_students,
-        recent_payments=recent_payments
+        pending_count=pending_count
     )
 
 # =========================================================
@@ -1046,6 +849,7 @@ def dashboard():
 def schools():
     school_rows = fetch_all("SELECT * FROM schools ORDER BY school_name")
     schools_data = []
+
     for school in school_rows:
         schools_data.append({
             "id": school["id"],
@@ -1053,10 +857,10 @@ def schools():
             "school_code": school["school_code"],
             "is_active": row_get(school, "is_active", 1),
             "subscription_status": row_get(school, "subscription_status", "active"),
-            "subscription_end_date": row_get(school, "subscription_end_date", None),
+            "subscription_end_date": row_get(school, "subscription_end_date"),
         })
-    return render_template("schools.html", schools=schools_data)
 
+    return render_template("schools.html", schools=schools_data)
 
 @app.route("/add_school", methods=["GET", "POST"])
 @login_required
@@ -1075,18 +879,24 @@ def add_school():
             flash("School code already exists.", "danger")
             return redirect(url_for("add_school"))
 
-        execute_commit(
-    """
-    INSERT INTO schools (school_name, school_code, is_active, subscription_status)
-    VALUES (?, ?, ?, ?)
-    """,
-    (school_name, school_code, 1, "active")
-)
+        try:
+            execute_commit(
+                """
+                INSERT INTO schools (school_name, school_code, is_active, subscription_status)
+                VALUES (?, ?, ?, ?)
+                """,
+                (school_name, school_code, 1, "active")
+            )
+        except Exception:
+            execute_commit(
+                "INSERT INTO schools (school_name, school_code) VALUES (?, ?)",
+                (school_name, school_code)
+            )
+
         flash("School created successfully.", "success")
         return redirect(url_for("schools"))
 
     return render_template("add_school.html")
-
 
 @app.route("/add_school_admin", methods=["GET", "POST"])
 @login_required
@@ -1127,46 +937,38 @@ def add_school_admin():
 # =========================================================
 @app.route("/students")
 @login_required
-@roles_required("school_admin", "super_admin", "teacher")
+@roles_required("school_admin", "super_admin")
 def students():
     school_id = session.get("school_id")
     role = session.get("role")
-
     search = request.args.get("search", "").strip()
-    class_filter = request.args.get("class_name", "").strip()
-    status_filter = request.args.get("status", "").strip()
 
-    query = "SELECT * FROM students WHERE 1=1"
     params = []
+    query = "SELECT * FROM students"
+    conditions = []
 
     if role != "super_admin":
-        query += " AND school_id = ?"
+        conditions.append("school_id = ?")
         params.append(school_id)
 
     if search:
-        query += " AND (first_name LIKE ? OR last_name LIKE ? OR student_number LIKE ?)"
-        params.extend([f"%{search}%", f"%{search}%", f"%{search}%"])
+        conditions.append("(first_name LIKE ? OR last_name LIKE ? OR student_number LIKE ? OR class_name LIKE ?)")
+        like = f"%{search}%"
+        params.extend([like, like, like, like])
 
-    if class_filter:
-        query += " AND class_name = ?"
-        params.append(class_filter)
-
-    if status_filter:
-        query += " AND current_status = ?"
-        params.append(status_filter)
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
 
     query += " ORDER BY class_name, first_name, last_name"
 
-    students = fetch_all(query, tuple(params))
+    students_list = fetch_all(query, tuple(params))
+    grouped_students = {}
+    for student in students_list:
+        class_name = student["class_name"] or "Unassigned Class"
+        grouped_students.setdefault(class_name, []).append(student)
 
-    return render_template(
-        "students.html",
-        students=students,
-        search=search,
-        class_filter=class_filter,
-        status_filter=status_filter,
-        class_options=CLASS_OPTIONS
-    )
+    return render_template("students.html", grouped_students=grouped_students, search=search)
+
 
 @app.route("/add_student")
 @login_required
@@ -1668,75 +1470,56 @@ def assign_teacher():
 
     if role == "super_admin":
         teachers_list = fetch_all("SELECT * FROM teachers ORDER BY full_name")
-        subjects_rows = fetch_all("SELECT * FROM subjects ORDER BY subject_name")
         assignments_list = fetch_all("""
             SELECT ta.*, t.full_name
             FROM teacher_assignments ta
             JOIN teachers t ON ta.teacher_id = t.id
-            ORDER BY ta.class_name, ta.subject, t.full_name
+            ORDER BY t.full_name, ta.class_name, ta.subject
         """)
     else:
-        teachers_list = fetch_all(
-            "SELECT * FROM teachers WHERE school_id = ? ORDER BY full_name",
-            (school_id,)
-        )
-        subjects_rows = fetch_all(
-            "SELECT * FROM subjects WHERE school_id = ? ORDER BY subject_name",
-            (school_id,)
-        )
+        teachers_list = fetch_all("SELECT * FROM teachers WHERE school_id = ? ORDER BY full_name", (school_id,))
         assignments_list = fetch_all("""
             SELECT ta.*, t.full_name
             FROM teacher_assignments ta
             JOIN teachers t ON ta.teacher_id = t.id
             WHERE ta.school_id = ?
-            ORDER BY ta.class_name, ta.subject, t.full_name
+            ORDER BY t.full_name, ta.class_name, ta.subject
         """, (school_id,))
 
-    subjects_list = [row["subject_name"] for row in subjects_rows]
-    schools = fetch_all("SELECT * FROM schools ORDER BY school_name") if role == "super_admin" else []
+    subjects_list = ["Math", "English", "Science", "History", "Geography", "Biology"]
 
     if request.method == "POST":
-        selected_school_id = request.form.get("school_id") if role == "super_admin" else school_id
         teacher_id = request.form.get("teacher_id")
         class_name = request.form.get("class_name")
         subject = request.form.get("subject")
 
-        if not selected_school_id or not teacher_id or not class_name or not subject:
-            flash("School, teacher, class, and subject are required.", "danger")
+        if not teacher_id or not class_name or not subject:
+            flash("Teacher, class, and subject are required.", "danger")
             return redirect(url_for("assign_teacher"))
 
-        teacher = fetch_one(
-            "SELECT * FROM teachers WHERE id = ? AND school_id = ?",
-            (teacher_id, selected_school_id)
-        )
-        if not teacher:
-            flash("Invalid teacher selected.", "danger")
-            return redirect(url_for("assign_teacher"))
+        if role != "super_admin":
+            teacher = fetch_one("SELECT * FROM teachers WHERE id = ? AND school_id = ?", (teacher_id, school_id))
+            if not teacher:
+                flash("Invalid teacher selected.", "danger")
+                return redirect(url_for("assign_teacher"))
 
-        existing = fetch_one("""
-            SELECT * FROM teacher_assignments
-            WHERE school_id = ? AND teacher_id = ? AND class_name = ? AND subject = ?
-        """, (selected_school_id, teacher_id, class_name, subject))
-
-        if existing:
-            flash("This subject is already assigned to that teacher for this class.", "warning")
-            return redirect(url_for("assign_teacher"))
-
-        execute_commit("""
+        execute_commit(
+            """
             INSERT INTO teacher_assignments (school_id, teacher_id, class_name, subject)
             VALUES (?, ?, ?, ?)
-        """, (selected_school_id, teacher_id, class_name, subject))
+            """,
+            (school_id, teacher_id, class_name, subject),
+        )
 
-        flash("Subject assigned successfully.", "success")
+        flash("Teacher assigned successfully.", "success")
         return redirect(url_for("assign_teacher"))
 
     return render_template(
         "assign_teacher.html",
         teachers=teachers_list,
+        class_options=CLASS_OPTIONS,
         subjects=subjects_list,
         assignments=assignments_list,
-        class_options=CLASS_OPTIONS,
-        schools=schools
     )
 
 
@@ -1774,94 +1557,32 @@ def teacher_dashboard():
 def fees():
     school_id = session.get("school_id")
     role = session.get("role")
-
     search = request.args.get("search", "").strip()
-    class_filter = request.args.get("class_name", "").strip()
-    term_filter = request.args.get("term_name", "").strip()
-    status_filter = request.args.get("status", "").strip()
 
     params = []
     query = """
         SELECT f.*, s.first_name, s.last_name, s.student_number, s.class_name
         FROM fees f
         JOIN students s ON f.student_id = s.id
-        WHERE 1=1
     """
+    conditions = []
 
     if role != "super_admin":
-        query += " AND f.school_id = ?"
+        conditions.append("f.school_id = ?")
         params.append(school_id)
 
     if search:
-        query += " AND (s.first_name LIKE ? OR s.last_name LIKE ? OR s.student_number LIKE ?)"
+        conditions.append("(s.first_name LIKE ? OR s.last_name LIKE ? OR s.student_number LIKE ?)")
         like = f"%{search}%"
         params.extend([like, like, like])
 
-    if class_filter:
-        query += " AND s.class_name = ?"
-        params.append(class_filter)
-
-    if term_filter:
-        query += " AND f.term_name = ?"
-        params.append(term_filter)
-
-    if status_filter:
-        query += " AND f.status = ?"
-        params.append(status_filter)
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
 
     query += " ORDER BY s.class_name, s.first_name, s.last_name, f.term_name"
     fee_records = fetch_all(query, tuple(params))
+    return render_template("fees.html", fee_records=fee_records, search=search)
 
-    summary_query = """
-        SELECT
-            COALESCE(SUM(amount), 0) AS total_billed,
-            COALESCE(SUM(paid_amount), 0) AS total_paid,
-            COALESCE(SUM(balance), 0) AS total_balance,
-            COUNT(*) AS total_records
-        FROM fees
-        WHERE 1=1
-    """
-    summary_params = []
-
-    if role != "super_admin":
-        summary_query += " AND school_id = ?"
-        summary_params.append(school_id)
-
-    fee_totals = fetch_one(summary_query, tuple(summary_params))
-
-    paid_count_query = "SELECT COUNT(*) AS total FROM fees WHERE status = ?"
-    partial_count_query = "SELECT COUNT(*) AS total FROM fees WHERE status = ?"
-    pending_count_query = "SELECT COUNT(*) AS total FROM fees WHERE status = ?"
-
-    if role != "super_admin":
-        paid_count_query += " AND school_id = ?"
-        partial_count_query += " AND school_id = ?"
-        pending_count_query += " AND school_id = ?"
-
-        paid_count = fetch_one(paid_count_query, ("Paid", school_id))["total"]
-        partial_count = fetch_one(partial_count_query, ("Partially Paid", school_id))["total"]
-        pending_count = fetch_one(pending_count_query, ("Pending", school_id))["total"]
-    else:
-        paid_count = fetch_one(paid_count_query, ("Paid",))["total"]
-        partial_count = fetch_one(partial_count_query, ("Partially Paid",))["total"]
-        pending_count = fetch_one(pending_count_query, ("Pending",))["total"]
-
-    return render_template(
-        "fees.html",
-        fee_records=fee_records,
-        search=search,
-        class_filter=class_filter,
-        term_filter=term_filter,
-        status_filter=status_filter,
-        class_options=CLASS_OPTIONS,
-        total_billed=fee_totals["total_billed"] or 0,
-        total_paid=fee_totals["total_paid"] or 0,
-        total_balance=fee_totals["total_balance"] or 0,
-        total_records=fee_totals["total_records"] or 0,
-        paid_count=paid_count,
-        partial_count=partial_count,
-        pending_count=pending_count
-    )
 
 @app.route("/add_fee", methods=["GET", "POST"])
 @login_required
@@ -1873,30 +1594,44 @@ def add_fee():
     selected_class = request.args.get("class_name", "").strip()
 
     if role == "super_admin":
-        if selected_class:
-            students = fetch_all(
-                "SELECT * FROM students WHERE class_name = ? ORDER BY first_name, last_name",
-                (selected_class,)
-            )
-        else:
-            students = []
+        students = fetch_all(
+            "SELECT * FROM students WHERE class_name = ? ORDER BY first_name, last_name",
+            (selected_class,)
+        ) if selected_class else []
     else:
-        if selected_class:
-            students = fetch_all(
-                "SELECT * FROM students WHERE school_id = ? AND class_name = ? ORDER BY first_name, last_name",
-                (school_id, selected_class)
-            )
-        else:
-            students = []
+        students = fetch_all(
+            "SELECT * FROM students WHERE school_id = ? AND class_name = ? ORDER BY first_name, last_name",
+            (school_id, selected_class)
+        ) if selected_class else []
 
     if request.method == "POST":
         student_id = request.form.get("student_id")
         term_name = request.form.get("term_name")
-        amount = float(request.form.get("amount") or 0)
-        paid_amount = float(request.form.get("paid_amount") or 0)
         due_date = request.form.get("due_date")
         payment_date = request.form.get("payment_date")
         receipt_number = request.form.get("receipt_number", "").strip()
+
+        try:
+            amount = float(request.form.get("amount") or 0)
+            paid_amount = float(request.form.get("paid_amount") or 0)
+        except ValueError:
+            flash("Amount and payment must be valid numbers.", "danger")
+            return redirect(url_for("add_fee", class_name=selected_class))
+
+        if not student_id or not term_name or amount <= 0:
+            flash("Student, term, and total amount are required.", "danger")
+            return redirect(url_for("add_fee", class_name=selected_class))
+
+        student = fetch_one("SELECT * FROM students WHERE id = ?", (student_id,))
+        if not student:
+            flash("Student not found.", "danger")
+            return redirect(url_for("add_fee", class_name=selected_class))
+
+        if role != "super_admin" and row_get(student, "school_id") != school_id:
+            flash("Invalid student selected.", "danger")
+            return redirect(url_for("add_fee", class_name=selected_class))
+
+        fee_school_id = row_get(student, "school_id", school_id)
 
         balance = amount - paid_amount
         if balance <= 0:
@@ -1918,14 +1653,17 @@ def add_fee():
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                         RETURNING id
                     """),
-                    (school_id, student_id, term_name, amount, paid_amount, balance, status, due_date),
+                    (fee_school_id, student_id, term_name, amount, paid_amount, balance, status, due_date),
                 )
                 fee_id = cursor.fetchone()["id"]
             else:
-                cursor.execute("""
-                    INSERT INTO fees (school_id, student_id, term_name, amount, paid_amount, balance, status, due_date)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """, (school_id, student_id, term_name, amount, paid_amount, balance, status, due_date))
+                cursor.execute(
+                    convert_query("""
+                        INSERT INTO fees (school_id, student_id, term_name, amount, paid_amount, balance, status, due_date)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """),
+                    (fee_school_id, student_id, term_name, amount, paid_amount, balance, status, due_date),
+                )
                 fee_id = cursor.lastrowid
 
             if paid_amount > 0:
@@ -1934,7 +1672,19 @@ def add_fee():
                         INSERT INTO fee_payments (school_id, fee_id, payment_date, amount_paid, receipt_number)
                         VALUES (?, ?, ?, ?, ?)
                     """),
-                    (school_id, fee_id, payment_date, paid_amount, receipt_number),
+                    (fee_school_id, fee_id, payment_date, paid_amount, receipt_number),
+                )
+
+                student_name = f"{row_get(student, 'first_name', '')} {row_get(student, 'last_name', '')}".strip() or "Student"
+                cashbook_insert_income(
+                    cursor,
+                    fee_school_id,
+                    payment_date,
+                    paid_amount,
+                    receipt_number,
+                    student_name,
+                    term_name,
+                    session.get("full_name", "System")
                 )
 
             conn.commit()
@@ -1953,7 +1703,6 @@ def add_fee():
         class_options=CLASS_OPTIONS,
         selected_class=selected_class
     )
-
 
 @app.route("/update_fee/<int:fee_id>", methods=["GET", "POST"])
 @login_required
@@ -2021,6 +1770,18 @@ def update_fee(fee_id):
                 (fee["school_id"], fee_id, payment_date, additional_payment, receipt_number),
             )
 
+            student_name = f"{fee['first_name']} {fee['last_name']}".strip()
+            cashbook_insert_income(
+                cursor,
+                fee["school_id"],
+                payment_date,
+                additional_payment,
+                receipt_number,
+                student_name,
+                fee["term_name"],
+                session.get("full_name", "System")
+            )
+
             conn.commit()
             flash("Fee payment updated successfully.", "success")
         except Exception as e:
@@ -2040,60 +1801,6 @@ def update_fee(fee_id):
         )
 
     return render_template("update_fee.html", fee=fee, payment_history=payment_history)
-@app.route("/print_fee_receipt/<int:payment_id>")
-@login_required
-@roles_required("school_admin", "super_admin")
-def print_fee_receipt(payment_id):
-    school_id = session.get("school_id")
-    role = session.get("role")
-
-    if role == "super_admin":
-        payment = fetch_one("""
-            SELECT
-                fp.*,
-                f.student_id,
-                f.term_name,
-                f.balance,
-                s.first_name,
-                s.last_name,
-                s.student_number,
-                s.class_name,
-                s.school_id
-            FROM fee_payments fp
-            JOIN fees f ON fp.fee_id = f.id
-            JOIN students s ON f.student_id = s.id
-            WHERE fp.id = ?
-        """, (payment_id,))
-    else:
-        payment = fetch_one("""
-            SELECT
-                fp.*,
-                f.student_id,
-                f.term_name,
-                f.balance,
-                s.first_name,
-                s.last_name,
-                s.student_number,
-                s.class_name,
-                s.school_id
-            FROM fee_payments fp
-            JOIN fees f ON fp.fee_id = f.id
-            JOIN students s ON f.student_id = s.id
-            WHERE fp.id = ? AND fp.school_id = ?
-        """, (payment_id, school_id))
-
-    if not payment:
-        flash("Receipt not found or access denied.", "danger")
-        return redirect(url_for("fees"))
-
-    settings = get_school_settings(payment["school_id"]) if payment["school_id"] else None
-
-    return render_template(
-        "print_fee_receipt.html",
-        payment=payment,
-        school_settings=settings
-    )
-
 
 # =========================================================
 # RESULTS
@@ -2187,54 +1894,22 @@ def results():
     role = session.get("role")
 
     if role == "super_admin":
-        result_groups = fetch_all("""
-            SELECT
-                r.student_id,
-                r.term,
-                s.student_number,
-                s.first_name,
-                s.last_name,
-                s.class_name,
-                COUNT(*) AS subject_count,
-                COALESCE(SUM(r.marks), 0) AS total_marks,
-                COALESCE(AVG(r.marks), 0) AS average_marks
+        result_records = fetch_all("""
+            SELECT r.*, s.first_name, s.last_name, s.student_number
             FROM results r
             JOIN students s ON r.student_id = s.id
-            GROUP BY
-                r.student_id,
-                r.term,
-                s.student_number,
-                s.first_name,
-                s.last_name,
-                s.class_name
-            ORDER BY s.class_name, s.first_name, s.last_name, r.term
+            ORDER BY s.first_name, s.last_name, r.subject
         """)
     else:
-        result_groups = fetch_all("""
-            SELECT
-                r.student_id,
-                r.term,
-                s.student_number,
-                s.first_name,
-                s.last_name,
-                s.class_name,
-                COUNT(*) AS subject_count,
-                COALESCE(SUM(r.marks), 0) AS total_marks,
-                COALESCE(AVG(r.marks), 0) AS average_marks
+        result_records = fetch_all("""
+            SELECT r.*, s.first_name, s.last_name, s.student_number
             FROM results r
             JOIN students s ON r.student_id = s.id
             WHERE r.school_id = ?
-            GROUP BY
-                r.student_id,
-                r.term,
-                s.student_number,
-                s.first_name,
-                s.last_name,
-                s.class_name
-            ORDER BY s.class_name, s.first_name, s.last_name, r.term
+            ORDER BY s.first_name, s.last_name, r.subject
         """, (school_id,))
 
-    return render_template("results.html", result_groups=result_groups)
+    return render_template("results.html", result_records=result_records)
 
 
 # =========================================================
@@ -2563,276 +2238,7 @@ def parent_setup():
         return redirect(url_for("login"))
 
     return render_template("parent_setup.html")
-from datetime import datetime, timedelta
 
-WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-
-
-def to_int(value, default=0):
-    try:
-        return int(value)
-    except Exception:
-        return default
-
-
-def build_period_slots(settings):
-    start_time = settings["start_time"] or "07:30"
-    period_length = to_int(settings["period_length"], 35)
-    periods_per_day = to_int(settings["periods_per_day"], 8)
-    break_after_period = to_int(settings["break_after_period"], 3)
-    break_duration = to_int(settings["break_duration"], 20)
-    lunch_after_period = to_int(settings["lunch_after_period"], 5)
-    lunch_duration = to_int(settings["lunch_duration"], 40)
-
-    current = datetime.strptime(start_time, "%H:%M")
-    slots = []
-
-    for period_no in range(1, periods_per_day + 1):
-        slot_start = current
-        slot_end = slot_start + timedelta(minutes=period_length)
-
-        slots.append({
-            "period_no": period_no,
-            "start_time": slot_start.strftime("%H:%M"),
-            "end_time": slot_end.strftime("%H:%M")
-        })
-
-        current = slot_end
-
-        if period_no == break_after_period:
-            current += timedelta(minutes=break_duration)
-
-        if period_no == lunch_after_period:
-            current += timedelta(minutes=lunch_duration)
-
-    return slots
-
-
-def is_morning_period(period_no):
-    return period_no <= 3
-
-
-def find_subject_rule(subject_rules, subject_name):
-    return subject_rules.get(subject_name)
-
-
-def get_subject_priority(subject_name, rule):
-    name = (subject_name or "").lower()
-    if "math" in name or "mathematics" in name:
-        return 1
-    if rule and rule.get("preferred_session") == "morning":
-        return 2
-    if rule and to_int(rule.get("is_practical"), 0) == 1:
-        return 3
-    return 4
-
-
-def can_place_block(class_schedule, teacher_schedule, teacher_id, day, start_index, block_size):
-    for i in range(start_index, start_index + block_size):
-        if (day, i) in class_schedule:
-            return False
-        if (teacher_id, day, i) in teacher_schedule:
-            return False
-    return True
-
-
-def place_block(entries, class_schedule, teacher_schedule, teacher_id, class_name, subject, day, slots, start_index, block_size):
-    start_slot = slots[start_index]
-    end_slot = slots[start_index + block_size - 1]
-
-    entries.append({
-        "class_name": class_name,
-        "subject": subject,
-        "teacher_id": teacher_id,
-        "day_of_week": day,
-        "start_time": start_slot["start_time"],
-        "end_time": end_slot["end_time"],
-        "room": ""
-    })
-
-    for i in range(start_index, start_index + block_size):
-        class_schedule[(day, i)] = subject
-        teacher_schedule[(teacher_id, day, i)] = class_name
-
-
-def try_place_block(entries, class_schedule, teacher_schedule, teacher_id, class_name, subject, slots, preferred_morning, block_size):
-    candidate_days = WEEKDAYS[:]
-
-    for day in candidate_days:
-        indexes = list(range(0, len(slots) - block_size + 1))
-
-        if preferred_morning:
-            indexes = [i for i in indexes if is_morning_period(slots[i]["period_no"])]
-
-        for idx in indexes:
-            if can_place_block(class_schedule, teacher_schedule, teacher_id, day, idx, block_size):
-                place_block(entries, class_schedule, teacher_schedule, teacher_id, class_name, subject, day, slots, idx, block_size)
-                return True
-
-    if preferred_morning:
-        return try_place_block(entries, class_schedule, teacher_schedule, teacher_id, class_name, subject, slots, False, block_size)
-
-    return False
-
-
-def auto_generate_timetable_for_school(school_id, selected_class=None):
-    settings = fetch_one(
-        "SELECT * FROM timetable_settings WHERE school_id = ?",
-        (school_id,)
-    )
-
-    if not settings:
-        return False, "Please set timetable settings first."
-
-    slots = build_period_slots(settings)
-
-    if selected_class:
-        assignments = fetch_all("""
-            SELECT ta.*, t.full_name
-            FROM teacher_assignments ta
-            JOIN teachers t ON ta.teacher_id = t.id
-            WHERE ta.school_id = ? AND ta.class_name = ?
-            ORDER BY ta.class_name, ta.subject
-        """, (school_id, selected_class))
-    else:
-        assignments = fetch_all("""
-            SELECT ta.*, t.full_name
-            FROM teacher_assignments ta
-            JOIN teachers t ON ta.teacher_id = t.id
-            WHERE ta.school_id = ?
-            ORDER BY ta.class_name, ta.subject
-        """, (school_id,))
-
-    if not assignments:
-        return False, "No subject assignments found. Assign subjects first."
-
-    subject_rows = fetch_all(
-        "SELECT * FROM subjects WHERE school_id = ?",
-        (school_id,)
-    )
-    subject_rules = {row["subject_name"]: row for row in subject_rows}
-
-    grouped = {}
-    for row in assignments:
-        grouped.setdefault(row["class_name"], []).append(row)
-
-    conn = get_db()
-    cursor = conn.cursor()
-
-    try:
-        if selected_class:
-            cursor.execute(
-                convert_query("DELETE FROM timetables WHERE school_id = ? AND class_name = ?"),
-                (school_id, selected_class)
-            )
-        else:
-            cursor.execute(
-                convert_query("DELETE FROM timetables WHERE school_id = ?"),
-                (school_id,)
-            )
-
-        teacher_schedule = {}
-        created_entries = []
-
-        for class_name, class_assignments in grouped.items():
-            class_schedule = {}
-
-            work_items = []
-            for item in class_assignments:
-                rule = find_subject_rule(subject_rules, item["subject"])
-                weekly_periods = to_int(rule["weekly_periods"], 1) if rule else 1
-                preferred_session = (rule["preferred_session"] if rule else "any") or "any"
-                is_practical = to_int(rule["is_practical"], 0) if rule else 0
-                requires_four_block = to_int(rule["requires_four_block"], 0) if rule else 0
-                requires_two_block = to_int(rule["requires_two_block"], 0) if rule else 0
-                requires_double_period = to_int(rule["requires_double_period"], 0) if rule else 0
-
-                work_items.append({
-                    "teacher_id": item["teacher_id"],
-                    "class_name": class_name,
-                    "subject": item["subject"],
-                    "weekly_periods": weekly_periods,
-                    "preferred_session": preferred_session,
-                    "is_practical": is_practical,
-                    "requires_four_block": requires_four_block,
-                    "requires_two_block": requires_two_block,
-                    "requires_double_period": requires_double_period,
-                    "priority": get_subject_priority(item["subject"], rule),
-                })
-
-            work_items.sort(key=lambda x: x["priority"])
-
-            for item in work_items:
-                remaining = item["weekly_periods"]
-                prefers_morning = item["preferred_session"] == "morning" or "math" in item["subject"].lower()
-
-                if item["requires_four_block"] == 1 and remaining >= 4:
-                    if try_place_block(
-                        created_entries, class_schedule, teacher_schedule,
-                        item["teacher_id"], item["class_name"], item["subject"],
-                        slots, prefers_morning, 4
-                    ):
-                        remaining -= 4
-
-                if item["requires_two_block"] == 1 and remaining >= 2:
-                    if try_place_block(
-                        created_entries, class_schedule, teacher_schedule,
-                        item["teacher_id"], item["class_name"], item["subject"],
-                        slots, prefers_morning, 2
-                    ):
-                        remaining -= 2
-
-                if item["requires_double_period"] == 1:
-                    while remaining >= 2:
-                        placed = try_place_block(
-                            created_entries, class_schedule, teacher_schedule,
-                            item["teacher_id"], item["class_name"], item["subject"],
-                            slots, prefers_morning, 2
-                        )
-                        if not placed:
-                            break
-                        remaining -= 2
-
-                while remaining > 0:
-                    placed = try_place_block(
-                        created_entries, class_schedule, teacher_schedule,
-                        item["teacher_id"], item["class_name"], item["subject"],
-                        slots, prefers_morning, 1
-                    )
-                    if not placed:
-                        break
-                    remaining -= 1
-
-        for entry in created_entries:
-            cursor.execute(
-                convert_query("""
-                    INSERT INTO timetables (
-                        school_id, class_name, subject, teacher_id,
-                        day_of_week, start_time, end_time, room
-                    )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """),
-                (
-                    school_id,
-                    entry["class_name"],
-                    entry["subject"],
-                    entry["teacher_id"],
-                    entry["day_of_week"],
-                    entry["start_time"],
-                    entry["end_time"],
-                    entry["room"],
-                )
-            )
-
-        conn.commit()
-        return True, "Timetable generated successfully."
-
-    except Exception as e:
-        conn.rollback()
-        return False, str(e)
-
-    finally:
-        conn.close()
 
 # =========================================================
 # TIMETABLE
@@ -2844,9 +2250,6 @@ def timetable():
     school_id = session.get("school_id")
     role = session.get("role")
     selected_class = request.args.get("class_name", "").strip()
-    schools = []
-
-    timetable_rows = []
 
     if role == "teacher":
         teacher = fetch_one("""
@@ -2855,6 +2258,7 @@ def timetable():
             LIMIT 1
         """, (session["user_id"], school_id))
 
+        timetable_rows = []
         if teacher:
             timetable_rows = fetch_all("""
                 SELECT t.*, tr.full_name
@@ -2873,10 +2277,9 @@ def timetable():
                     END,
                     t.start_time
             """, (school_id, teacher["id"]))
+        return render_template("teacher_timetable.html", timetable_rows=timetable_rows)
 
-    elif role == "super_admin":
-        schools = fetch_all("SELECT * FROM schools ORDER BY school_name")
-
+    if role == "super_admin":
         if selected_class:
             timetable_rows = fetch_all("""
                 SELECT t.*, tr.full_name
@@ -2895,7 +2298,8 @@ def timetable():
                     END,
                     t.start_time
             """, (selected_class,))
-
+        else:
+            timetable_rows = []
     else:
         if selected_class:
             timetable_rows = fetch_all("""
@@ -2915,32 +2319,15 @@ def timetable():
                     END,
                     t.start_time
             """, (school_id, selected_class))
-
-    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-
-    time_slots = []
-    grid = {}
-
-    for row in timetable_rows:
-        slot = f"{row['start_time']} - {row['end_time']}"
-        if slot not in time_slots:
-            time_slots.append(slot)
-
-        grid[(slot, row["day_of_week"])] = row
-
-    time_slots.sort()
+        else:
+            timetable_rows = []
 
     return render_template(
         "timetable.html",
         class_options=CLASS_OPTIONS,
         selected_class=selected_class,
         timetable_rows=timetable_rows,
-        schools=schools,
-        days=days,
-        time_slots=time_slots,
-        grid=grid
     )
-
 @app.route("/timetable_settings", methods=["GET", "POST"])
 @login_required
 @roles_required("school_admin", "super_admin")
@@ -3019,35 +2406,6 @@ def timetable_settings():
         schools=schools
     )
 
-@app.route("/classes")
-@login_required
-@roles_required("school_admin", "super_admin", "teacher")
-def classes():
-    school_id = session.get("school_id")
-    role = session.get("role")
-
-    class_summary = []
-
-    for class_name in CLASS_OPTIONS:
-        if role == "super_admin":
-            total_students = fetch_one(
-                "SELECT COUNT(*) AS total FROM students WHERE class_name = ?",
-                (class_name,)
-            )["total"]
-        else:
-            total_students = fetch_one(
-                "SELECT COUNT(*) AS total FROM students WHERE school_id = ? AND class_name = ?",
-                (school_id, class_name)
-            )["total"]
-
-        class_summary.append({
-            "class_name": class_name,
-            "total_students": total_students
-        })
-
-    return render_template("classes.html", class_summary=class_summary)
-
-
 @app.route("/class/<class_name>")
 @login_required
 @roles_required("school_admin", "super_admin", "teacher")
@@ -3071,9 +2429,6 @@ def class_students(class_name):
         students=students,
         class_name=class_name
     )
-
-
-
 @app.route("/subjects")
 @login_required
 @roles_required("school_admin", "super_admin", "teacher")
@@ -3163,6 +2518,7 @@ def add_timetable():
 
     subjects = [row["subject_name"] for row in subjects_rows]
 
+    subjects = [row["subject"] for row in subjects_rows]
 
     if request.method == "POST":
         class_name = request.form.get("class_name")
@@ -3241,92 +2597,6 @@ def add_timetable():
 
     return render_template("add_timetable.html", class_options=CLASS_OPTIONS, teachers=teachers_list, subjects=subjects)
 
-@app.route("/print_filtered_students")
-@login_required
-@roles_required("school_admin", "super_admin")
-def print_filtered_students():
-    school_id = session.get("school_id")
-    role = session.get("role")
-
-    search = request.args.get("search", "")
-    class_filter = request.args.get("class_name", "")
-    status_filter = request.args.get("status", "")
-
-    query = "SELECT * FROM students WHERE 1=1"
-    params = []
-
-    if role != "super_admin":
-        query += " AND school_id = ?"
-        params.append(school_id)
-
-    if search:
-        query += " AND (first_name LIKE ? OR last_name LIKE ? OR student_number LIKE ?)"
-        params.extend([f"%{search}%", f"%{search}%", f"%{search}%"])
-
-    if class_filter:
-        query += " AND class_name = ?"
-        params.append(class_filter)
-
-    if status_filter:
-        query += " AND current_status = ?"
-        params.append(status_filter)
-
-    query += " ORDER BY class_name, first_name"
-
-    students = fetch_all(query, tuple(params))
-
-    return render_template("print_all_students.html", students=students)
-
-@app.route("/print_class_list/<class_name>")
-@login_required
-@roles_required("school_admin", "super_admin", "teacher")
-def print_class_list(class_name):
-    school_id = session.get("school_id")
-    role = session.get("role")
-
-    if role == "super_admin":
-        students = fetch_all(
-            """
-            SELECT * FROM students
-            WHERE class_name = ?
-            ORDER BY first_name, last_name
-            """,
-            (class_name,)
-        )
-    else:
-        students = fetch_all(
-            """
-            SELECT * FROM students
-            WHERE school_id = ? AND class_name = ?
-            ORDER BY first_name, last_name
-            """,
-            (school_id, class_name)
-        )
-
-    return render_template(
-        "print_class_list.html",
-        students=students,
-        class_name=class_name
-    )
-
-@app.route("/print_all_students")
-@login_required
-@roles_required("school_admin", "super_admin")
-def print_all_students():
-    school_id = session.get("school_id")
-    role = session.get("role")
-
-    if role == "super_admin":
-        students = fetch_all("SELECT * FROM students ORDER BY class_name, first_name, last_name")
-    else:
-        students = fetch_all(
-            "SELECT * FROM students WHERE school_id = ? ORDER BY class_name, first_name, last_name",
-            (school_id,)
-        )
-
-    return render_template("print_all_students.html", students=students)
-
-
 
 @app.route("/print_result/<int:student_id>/<term>")
 @login_required
@@ -3347,7 +2617,6 @@ def print_result(student_id, term):
             FROM fees
             WHERE student_id = ?
         """, (student_id,))
-        school_settings = get_school_settings(student["school_id"]) if student else None
     else:
         student = fetch_one("""
             SELECT * FROM students
@@ -3367,7 +2636,6 @@ def print_result(student_id, term):
             FROM fees
             WHERE student_id = ? AND school_id = ?
         """, (student_id, school_id))
-        school_settings = get_school_settings(school_id)
 
     if not student:
         flash("Student not found.", "danger")
@@ -3384,266 +2652,10 @@ def print_result(student_id, term):
         term=term,
         total_marks=total_marks,
         average=average,
-        total_balance=float(fee_summary["total_balance"] or 0),
-        school_settings=school_settings
+        total_balance=float(fee_summary["total_balance"] or 0)
     )
 
-@app.route("/school_settings", methods=["GET", "POST"])
-@login_required
-@roles_required("school_admin", "super_admin")
-def school_settings():
-    role = session.get("role")
-    school_id = session.get("school_id")
 
-    schools = []
-    if role == "super_admin":
-        schools = fetch_all("SELECT * FROM schools ORDER BY school_name")
-
-    if request.method == "POST":
-        if role == "super_admin":
-            school_id = request.form.get("school_id")
-
-        display_name = request.form.get("display_name", "").strip()
-        phone = request.form.get("phone", "").strip()
-        email = request.form.get("email", "").strip()
-        address = request.form.get("address", "").strip()
-        report_header = request.form.get("report_header", "").strip()
-        logo_url = request.form.get("logo_url", "").strip()
-
-        if not school_id:
-            flash("School is required.", "danger")
-            return redirect(url_for("school_settings"))
-
-        existing = fetch_one(
-            "SELECT * FROM school_settings WHERE school_id = ?",
-            (school_id,)
-        )
-
-        if existing:
-            execute_commit("""
-                UPDATE school_settings
-                SET display_name = ?, phone = ?, email = ?, address = ?, report_header = ?, logo_url = ?
-                WHERE school_id = ?
-            """, (
-                display_name, phone, email, address, report_header, logo_url, school_id
-            ))
-        else:
-            execute_commit("""
-                INSERT INTO school_settings (
-                    school_id, display_name, phone, email, address, report_header, logo_url
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (
-                school_id, display_name, phone, email, address, report_header, logo_url
-            ))
-
-        flash("School settings saved successfully.", "success")
-        return redirect(url_for("school_settings"))
-
-    selected_school_id = request.args.get("school_id") if role == "super_admin" else school_id
-    settings = get_school_settings(selected_school_id) if selected_school_id else None
-
-    return render_template(
-        "school_settings.html",
-        settings=settings,
-        schools=schools,
-        selected_school_id=selected_school_id
-    )
-
-@app.route("/suspend_school/<int:school_id>", methods=["POST"])
-@login_required
-@roles_required("super_admin")
-def suspend_school(school_id):
-    execute_commit(
-        "UPDATE schools SET is_active = ?, subscription_status = ? WHERE id = ?",
-        (0, "suspended", school_id)
-    )
-    flash("School suspended successfully.", "success")
-    return redirect(url_for("schools"))
-
-
-@app.route("/activate_school/<int:school_id>", methods=["POST"])
-@login_required
-@roles_required("super_admin")
-def activate_school(school_id):
-    execute_commit(
-        "UPDATE schools SET is_active = ?, subscription_status = ? WHERE id = ?",
-        (1, "active", school_id)
-    )
-    flash("School activated successfully.", "success")
-    return redirect(url_for("schools"))
-@app.route("/school/<int:school_id>")
-@login_required
-@roles_required("super_admin")
-def school_profile(school_id):
-    school = fetch_one("SELECT * FROM schools WHERE id = ?", (school_id,))
-
-    if not school:
-        flash("School not found.", "danger")
-        return redirect(url_for("schools"))
-
-    total_students = fetch_one("SELECT COUNT(*) AS total FROM students WHERE school_id = ?", (school_id,))["total"]
-    total_teachers = fetch_one("SELECT COUNT(*) AS total FROM teachers WHERE school_id = ?", (school_id,))["total"]
-    total_users = fetch_one("SELECT COUNT(*) AS total FROM users WHERE school_id = ?", (school_id,))["total"]
-    total_fee_records = fetch_one("SELECT COUNT(*) AS total FROM fees WHERE school_id = ?", (school_id,))["total"]
-
-    fee_totals = fetch_one("""
-        SELECT
-            COALESCE(SUM(amount), 0) AS total_billed,
-            COALESCE(SUM(paid_amount), 0) AS total_paid,
-            COALESCE(SUM(balance), 0) AS total_balance
-        FROM fees
-        WHERE school_id = ?
-    """, (school_id,))
-
-    overdue = school_is_overdue(school)
-
-    return render_template(
-        "school_profile.html",
-        school=school,
-        total_students=total_students,
-        total_teachers=total_teachers,
-        total_users=total_users,
-        total_fee_records=total_fee_records,
-        total_billed=fee_totals["total_billed"] or 0,
-        total_paid=fee_totals["total_paid"] or 0,
-        total_balance=fee_totals["total_balance"] or 0,
-        overdue=overdue
-    )
-
-@app.route("/update_school_subscription/<int:school_id>", methods=["GET", "POST"])
-@login_required
-@roles_required("super_admin")
-def update_school_subscription(school_id):
-    school = fetch_one("SELECT * FROM schools WHERE id = ?", (school_id,))
-
-    if not school:
-        flash("School not found.", "danger")
-        return redirect(url_for("schools"))
-
-    if request.method == "POST":
-        subscription_end_date = request.form.get("subscription_end_date")
-        subscription_status = request.form.get("subscription_status", "active").strip()
-
-        is_active = 1 if subscription_status in ["active", "trial"] else 0
-
-        execute_commit(
-            """
-            UPDATE schools
-            SET subscription_end_date = ?, subscription_status = ?, is_active = ?
-            WHERE id = ?
-            """,
-            (subscription_end_date, subscription_status, is_active, school_id)
-        )
-
-        flash("School subscription updated successfully.", "success")
-        return redirect(url_for("school_profile", school_id=school_id))
-
-    return render_template("update_school_subscription.html", school=school)
-
-@app.route("/billing_dashboard")
-@login_required
-@roles_required("super_admin")
-def billing_dashboard():
-    schools = fetch_all("""
-        SELECT *
-        FROM schools
-        ORDER BY school_name
-    """)
-
-    summary = {
-        "total_schools": len(schools),
-        "active_schools": 0,
-        "suspended_schools": 0,
-        "overdue_schools": 0,
-        "trial_schools": 0
-    }
-
-    processed = []
-    today = datetime.now().date()
-
-    for school in schools:
-        end_date = parse_date_safe(row_get(school, "subscription_end_date"))
-        overdue = bool(end_date and end_date < today)
-
-        status = row_get(school, "subscription_status", "active") or "active"
-        if overdue:
-            status = "overdue"
-
-        if status == "active":
-            summary["active_schools"] += 1
-        elif status == "suspended":
-            summary["suspended_schools"] += 1
-        elif status == "overdue":
-            summary["overdue_schools"] += 1
-        elif status == "trial":
-            summary["trial_schools"] += 1
-
-        processed.append({
-            "id": school["id"],
-            "school_name": school["school_name"],
-            "school_code": school["school_code"],
-            "subscription_status": status,
-            "subscription_end_date": row_get(school, "subscription_end_date"),
-            "is_active": row_get(school, "is_active", 1),
-        })
-
-    return render_template("billing_dashboard.html", schools=processed, summary=summary)
-
-@app.route("/school_payments/<int:school_id>")
-@login_required
-@roles_required("super_admin")
-def school_payments(school_id):
-    school = fetch_one("SELECT * FROM schools WHERE id = ?", (school_id,))
-    if not school:
-        flash("School not found.", "danger")
-        return redirect(url_for("schools"))
-
-    payments = fetch_all("""
-        SELECT * FROM school_payments
-        WHERE school_id = ?
-        ORDER BY payment_date DESC, id DESC
-    """, (school_id,))
-
-    return render_template("school_payments.html", school=school, payments=payments)
-
-
-@app.route("/add_school_payment/<int:school_id>", methods=["GET", "POST"])
-@login_required
-@roles_required("super_admin")
-def add_school_payment(school_id):
-    school = fetch_one("SELECT * FROM schools WHERE id = ?", (school_id,))
-    if not school:
-        flash("School not found.", "danger")
-        return redirect(url_for("schools"))
-
-    if request.method == "POST":
-        payment_date = request.form.get("payment_date")
-        amount = request.form.get("amount")
-        period_start = request.form.get("period_start")
-        period_end = request.form.get("period_end")
-        notes = request.form.get("notes")
-
-        execute_commit("""
-            INSERT INTO school_payments (school_id, payment_date, amount, period_start, period_end, notes)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (school_id, payment_date, amount, period_start, period_end, notes))
-
-        flash("School payment recorded successfully.", "success")
-        return redirect(url_for("school_payments", school_id=school_id))
-
-    return render_template("add_school_payment.html", school=school)
-
-@app.route("/subscription_expired")
-def subscription_expired():
-    school = None
-
-    school_id = session.get("school_id")
-
-    if school_id:
-        school = fetch_one("SELECT * FROM schools WHERE id = ?", (school_id,))
-
-    return render_template("subscription_expired.html", school=school)
 @app.route("/cashbook")
 @login_required
 @roles_required("school_admin", "super_admin")
@@ -3675,7 +2687,6 @@ def cashbook():
         params.append(end_date)
 
     query += " ORDER BY entry_date ASC, id ASC"
-
     entries = fetch_all(query, tuple(params))
 
     running_balance = 0
@@ -3728,8 +2739,8 @@ def cashbook():
 
     summary = fetch_one(summary_query, tuple(summary_params))
 
-    total_income = float(summary["total_income"] or 0)
-    total_expense = float(summary["total_expense"] or 0)
+    total_income = float(summary["total_income"] or 0) if summary else 0
+    total_expense = float(summary["total_expense"] or 0) if summary else 0
     net_balance = total_income - total_expense
 
     return render_template(
@@ -3796,6 +2807,306 @@ def add_cashbook_entry():
 
     return render_template("add_cashbook_entry.html", schools=schools)
 
+@app.route("/classes")
+@login_required
+@roles_required("school_admin", "super_admin", "teacher")
+def classes():
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    if role == "super_admin":
+        class_rows = fetch_all("""
+            SELECT 
+                sc.id,
+                sc.school_id,
+                sc.class_name,
+                s.school_name,
+                COUNT(st.id) AS total_students
+            FROM school_classes sc
+            LEFT JOIN schools s ON sc.school_id = s.id
+            LEFT JOIN students st 
+                ON st.school_id = sc.school_id 
+                AND st.class_name = sc.class_name
+            GROUP BY sc.id, sc.school_id, sc.class_name, s.school_name
+            ORDER BY s.school_name, sc.class_name
+        """)
+    else:
+        class_rows = fetch_all("""
+            SELECT 
+                sc.id,
+                sc.school_id,
+                sc.class_name,
+                COUNT(st.id) AS total_students
+            FROM school_classes sc
+            LEFT JOIN students st 
+                ON st.school_id = sc.school_id 
+                AND st.class_name = sc.class_name
+            WHERE sc.school_id = ?
+            GROUP BY sc.id, sc.school_id, sc.class_name
+            ORDER BY sc.class_name
+        """, (school_id,))
+
+    return render_template("classes.html", classes=class_rows)
+
+@app.route("/add_class", methods=["GET", "POST"])
+@login_required
+@roles_required("school_admin", "super_admin")
+def add_class():
+    role = session.get("role")
+    school_id = session.get("school_id")
+
+    schools = fetch_all("SELECT * FROM schools ORDER BY school_name") if role == "super_admin" else []
+
+    if request.method == "POST":
+        if role == "super_admin":
+            school_id = request.form.get("school_id")
+
+        class_name = request.form.get("class_name", "").strip()
+
+        if not school_id or not class_name:
+            flash("School and class name are required.", "danger")
+            return redirect(url_for("add_class"))
+
+        try:
+            execute_commit(
+                "INSERT INTO school_classes (school_id, class_name) VALUES (?, ?)",
+                (school_id, class_name)
+            )
+            flash("Class added successfully.", "success")
+        except Exception:
+            flash("That class already exists for this school.", "warning")
+
+        return redirect(url_for("classes"))
+
+    return render_template("add_class.html", schools=schools)
+
+@app.route("/print_class_list/<class_name>")
+@login_required
+@roles_required("school_admin", "super_admin", "teacher")
+def print_class_list(class_name):
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    if role == "super_admin":
+        students = fetch_all("""
+            SELECT * FROM students
+            WHERE class_name = ?
+            ORDER BY first_name, last_name
+        """, (class_name,))
+    else:
+        students = fetch_all("""
+            SELECT * FROM students
+            WHERE school_id = ? AND class_name = ?
+            ORDER BY first_name, last_name
+        """, (school_id, class_name))
+
+    return render_template(
+        "print_class_list.html",
+        students=students,
+        class_name=class_name
+    )
+
+@app.route("/school_settings", methods=["GET", "POST"])
+@login_required
+@roles_required("school_admin", "super_admin")
+def school_settings():
+    role = session.get("role")
+    school_id = session.get("school_id")
+
+    schools = fetch_all("SELECT * FROM schools ORDER BY school_name") if role == "super_admin" else []
+
+    if request.method == "POST":
+        if role == "super_admin":
+            school_id = request.form.get("school_id")
+
+        display_name = request.form.get("display_name", "").strip()
+        phone = request.form.get("phone", "").strip()
+        email = request.form.get("email", "").strip()
+        address = request.form.get("address", "").strip()
+        report_header = request.form.get("report_header", "").strip()
+        logo_url = request.form.get("logo_url", "").strip()
+
+        if not school_id:
+            flash("School is required.", "danger")
+            return redirect(url_for("school_settings"))
+
+        existing = fetch_one("SELECT * FROM school_settings WHERE school_id = ?", (school_id,))
+
+        if existing:
+            execute_commit("""
+                UPDATE school_settings
+                SET display_name = ?, phone = ?, email = ?, address = ?, report_header = ?, logo_url = ?
+                WHERE school_id = ?
+            """, (display_name, phone, email, address, report_header, logo_url, school_id))
+        else:
+            execute_commit("""
+                INSERT INTO school_settings (
+                    school_id, display_name, phone, email, address, report_header, logo_url
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (school_id, display_name, phone, email, address, report_header, logo_url))
+
+        flash("School settings saved successfully.", "success")
+        return redirect(url_for("school_settings"))
+
+    selected_school_id = request.args.get("school_id") if role == "super_admin" else school_id
+    settings = get_school_settings(selected_school_id) if selected_school_id else None
+
+    return render_template(
+        "school_settings.html",
+        settings=settings,
+        schools=schools,
+        selected_school_id=selected_school_id
+    )
+@app.route("/billing_dashboard")
+@login_required
+@roles_required("super_admin")
+def billing_dashboard():
+    schools = fetch_all("SELECT * FROM schools ORDER BY school_name")
+
+    summary = {
+        "total_schools": len(schools),
+        "active_schools": 0,
+        "suspended_schools": 0,
+        "overdue_schools": 0,
+        "trial_schools": 0
+    }
+
+    processed = []
+    today = datetime.now().date()
+
+    for school in schools:
+        end_date = parse_date_safe(row_get(school, "subscription_end_date"))
+        overdue = bool(end_date and end_date < today)
+
+        status = row_get(school, "subscription_status", "active") or "active"
+        if overdue:
+            status = "overdue"
+
+        if status == "active":
+            summary["active_schools"] += 1
+        elif status == "suspended":
+            summary["suspended_schools"] += 1
+        elif status == "overdue":
+            summary["overdue_schools"] += 1
+        elif status == "trial":
+            summary["trial_schools"] += 1
+
+        processed.append({
+            "id": school["id"],
+            "school_name": school["school_name"],
+            "school_code": school["school_code"],
+            "subscription_status": status,
+            "subscription_end_date": row_get(school, "subscription_end_date"),
+            "is_active": row_get(school, "is_active", 1),
+        })
+
+    return render_template(
+        "billing_dashboard.html",
+        schools=processed,
+        summary=summary
+    )
+@app.route("/school/<int:school_id>")
+@login_required
+@roles_required("super_admin")
+def school_profile(school_id):
+    school = fetch_one("SELECT * FROM schools WHERE id = ?", (school_id,))
+
+    if not school:
+        flash("School not found.", "danger")
+        return redirect(url_for("schools"))
+
+    total_students = fetch_one(
+        "SELECT COUNT(*) AS total FROM students WHERE school_id = ?",
+        (school_id,)
+    )["total"]
+
+    total_teachers = fetch_one(
+        "SELECT COUNT(*) AS total FROM teachers WHERE school_id = ?",
+        (school_id,)
+    )["total"]
+
+    total_users = fetch_one(
+        "SELECT COUNT(*) AS total FROM users WHERE school_id = ?",
+        (school_id,)
+    )["total"]
+
+    total_fee_records = fetch_one(
+        "SELECT COUNT(*) AS total FROM fees WHERE school_id = ?",
+        (school_id,)
+    )["total"]
+
+    fee_totals = fetch_one("""
+        SELECT
+            COALESCE(SUM(amount), 0) AS total_billed,
+            COALESCE(SUM(paid_amount), 0) AS total_paid,
+            COALESCE(SUM(balance), 0) AS total_balance
+        FROM fees
+        WHERE school_id = ?
+    """, (school_id,))
+
+    return render_template(
+        "school_profile.html",
+        school=school,
+        total_students=total_students,
+        total_teachers=total_teachers,
+        total_users=total_users,
+        total_fee_records=total_fee_records,
+        total_billed=fee_totals["total_billed"] or 0,
+        total_paid=fee_totals["total_paid"] or 0,
+        total_balance=fee_totals["total_balance"] or 0
+    )
+@app.route("/update_school_subscription/<int:school_id>", methods=["GET", "POST"])
+@login_required
+@roles_required("super_admin")
+def update_school_subscription(school_id):
+    school = fetch_one("SELECT * FROM schools WHERE id = ?", (school_id,))
+
+    if not school:
+        flash("School not found.", "danger")
+        return redirect(url_for("schools"))
+
+    if request.method == "POST":
+        subscription_end_date = request.form.get("subscription_end_date")
+        subscription_status = request.form.get("subscription_status", "active").strip()
+
+        is_active = 1 if subscription_status in ["active", "trial"] else 0
+
+        execute_commit(
+            """
+            UPDATE schools
+            SET subscription_end_date = ?, subscription_status = ?, is_active = ?
+            WHERE id = ?
+            """,
+            (subscription_end_date, subscription_status, is_active, school_id)
+        )
+
+        flash("School subscription updated successfully.", "success")
+        return redirect(url_for("school_profile", school_id=school_id))
+
+    return render_template("update_school_subscription.html", school=school)
+
+@app.route("/print_all_students")
+@login_required
+@roles_required("school_admin", "super_admin")
+def print_all_students():
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    if role == "super_admin":
+        students = fetch_all("""
+            SELECT * FROM students
+            ORDER BY class_name, first_name, last_name
+        """)
+    else:
+        students = fetch_all("""
+            SELECT * FROM students
+            WHERE school_id = ?
+            ORDER BY class_name, first_name, last_name
+        """, (school_id,))
+
+    return render_template("print_all_students.html", students=students)
+
 @app.route("/send_fee_reminder/<int:student_id>")
 @login_required
 @roles_required("school_admin", "super_admin")
@@ -3847,41 +3158,6 @@ Thank you.
     encoded_message = urllib.parse.quote(message)
     whatsapp_link = f"https://wa.me/{phone}?text={encoded_message}"
     return redirect(whatsapp_link)
-def run_school_settings_migration():
-    conn = get_db()
-    cursor = conn.cursor()
-
-    try:
-        if is_postgres():
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS school_settings (
-                    id SERIAL PRIMARY KEY,
-                    school_id INTEGER UNIQUE,
-                    display_name VARCHAR(255),
-                    phone VARCHAR(100),
-                    email VARCHAR(255),
-                    address TEXT,
-                    report_header TEXT,
-                    logo_url TEXT
-                )
-            """)
-        else:
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS school_settings (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    school_id INTEGER UNIQUE,
-                    display_name TEXT,
-                    phone TEXT,
-                    email TEXT,
-                    address TEXT,
-                    report_header TEXT,
-                    logo_url TEXT
-                )
-            """)
-
-        conn.commit()
-    finally:
-        conn.close()
 
 def run_subjects_migration():
     conn = get_db()
@@ -3896,19 +3172,6 @@ def run_subjects_migration():
                     subject_name VARCHAR(100) NOT NULL
                 )
             """)
-
-            statements = [
-                "ALTER TABLE subjects ADD COLUMN IF NOT EXISTS weekly_periods INTEGER DEFAULT 1",
-                "ALTER TABLE subjects ADD COLUMN IF NOT EXISTS preferred_session VARCHAR(20) DEFAULT 'any'",
-                "ALTER TABLE subjects ADD COLUMN IF NOT EXISTS is_practical INTEGER DEFAULT 0",
-                "ALTER TABLE subjects ADD COLUMN IF NOT EXISTS requires_double_period INTEGER DEFAULT 0",
-                "ALTER TABLE subjects ADD COLUMN IF NOT EXISTS requires_four_block INTEGER DEFAULT 0",
-                "ALTER TABLE subjects ADD COLUMN IF NOT EXISTS requires_two_block INTEGER DEFAULT 0"
-            ]
-
-            for stmt in statements:
-                cursor.execute(stmt)
-
         else:
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS subjects (
@@ -3917,21 +3180,6 @@ def run_subjects_migration():
                     subject_name TEXT NOT NULL
                 )
             """)
-
-            sqlite_statements = [
-                "ALTER TABLE subjects ADD COLUMN weekly_periods INTEGER DEFAULT 1",
-                "ALTER TABLE subjects ADD COLUMN preferred_session TEXT DEFAULT 'any'",
-                "ALTER TABLE subjects ADD COLUMN is_practical INTEGER DEFAULT 0",
-                "ALTER TABLE subjects ADD COLUMN requires_double_period INTEGER DEFAULT 0",
-                "ALTER TABLE subjects ADD COLUMN requires_four_block INTEGER DEFAULT 0",
-                "ALTER TABLE subjects ADD COLUMN requires_two_block INTEGER DEFAULT 0"
-            ]
-
-            for stmt in sqlite_statements:
-                try:
-                    cursor.execute(stmt)
-                except Exception:
-                    pass
 
         conn.commit()
     finally:
@@ -4001,6 +3249,131 @@ def run_timetable_foundation_migrations():
         conn.commit()
     finally:
         conn.close()
+def run_school_settings_migration():
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        if is_postgres():
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS school_settings (
+                    id SERIAL PRIMARY KEY,
+                    school_id INTEGER UNIQUE,
+                    display_name VARCHAR(255),
+                    phone VARCHAR(100),
+                    email VARCHAR(255),
+                    address TEXT,
+                    report_header TEXT,
+                    logo_url TEXT
+                )
+            """)
+        else:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS school_settings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    school_id INTEGER UNIQUE,
+                    display_name TEXT,
+                    phone TEXT,
+                    email TEXT,
+                    address TEXT,
+                    report_header TEXT,
+                    logo_url TEXT
+                )
+            """)
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def run_school_control_migration():
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        if is_postgres():
+            statements = [
+                "ALTER TABLE schools ADD COLUMN IF NOT EXISTS is_active INTEGER DEFAULT 1",
+                "ALTER TABLE schools ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(50) DEFAULT 'active'",
+                "ALTER TABLE schools ADD COLUMN IF NOT EXISTS subscription_end_date VARCHAR(50)"
+            ]
+            for stmt in statements:
+                cursor.execute(stmt)
+        else:
+            statements = [
+                "ALTER TABLE schools ADD COLUMN is_active INTEGER DEFAULT 1",
+                "ALTER TABLE schools ADD COLUMN subscription_status TEXT DEFAULT 'active'",
+                "ALTER TABLE schools ADD COLUMN subscription_end_date TEXT"
+            ]
+            for stmt in statements:
+                try:
+                    cursor.execute(stmt)
+                except Exception:
+                    pass
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def run_cashbook_migration():
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        if is_postgres():
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS cashbook (
+                    id SERIAL PRIMARY KEY,
+                    school_id INTEGER,
+                    entry_date VARCHAR(50),
+                    entry_type VARCHAR(20),
+                    category VARCHAR(100),
+                    description TEXT,
+                    amount NUMERIC(12,2),
+                    payment_method VARCHAR(50),
+                    reference_number VARCHAR(100),
+                    created_by VARCHAR(255)
+                )
+            """)
+        else:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS cashbook (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    school_id INTEGER,
+                    entry_date TEXT,
+                    entry_type TEXT,
+                    category TEXT,
+                    description TEXT,
+                    amount REAL,
+                    payment_method TEXT,
+                    reference_number TEXT,
+                    created_by TEXT
+                )
+            """)
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def update_school_subscription_states():
+    try:
+        school_list = fetch_all("SELECT * FROM schools")
+    except Exception:
+        return
+
+    today = datetime.now().date()
+    for school in school_list:
+        end_date = parse_date_safe(row_get(school, "subscription_end_date"))
+        if not end_date:
+            continue
+
+        if end_date < today:
+            execute_commit(
+                "UPDATE schools SET is_active = ?, subscription_status = ? WHERE id = ?",
+                (0, "overdue", school["id"])
+            )
+        elif row_get(school, "subscription_status") == "overdue":
+            execute_commit(
+                "UPDATE schools SET is_active = ?, subscription_status = ? WHERE id = ?",
+                (1, "active", school["id"])
+            )
+
 def setup_app():
     try:
         print("Starting setup...")
@@ -4019,15 +3392,15 @@ def setup_app():
 
             run_school_settings_migration()
             print("School settings migration completed")
-            
+
             run_school_control_migration()
             print("School control migration completed")
 
             run_cashbook_migration()
             print("Cashbook migration completed")
-
-            update_school_subscription_states()
-            print("School subscription states updated")
+            
+            run_classes_migration()
+            print("Classes migration completed")
 
             create_default_school()
             print("Default school ready")
@@ -4041,61 +3414,12 @@ def setup_app():
             create_super_admin()
             print("Super admin ready")
 
+            update_school_subscription_states()
+            print("School subscription states updated")
+
         print("Setup complete")
     except Exception as e:
         print("SETUP ERROR:", e)
-     
-        
-def run_school_control_migration():
-    conn = get_db()
-    cursor = conn.cursor()
-
-    try:
-        if is_postgres():
-            statements = [
-                "ALTER TABLE schools ADD COLUMN IF NOT EXISTS is_active INTEGER DEFAULT 1",
-                "ALTER TABLE schools ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(50) DEFAULT 'active'",
-                "ALTER TABLE schools ADD COLUMN IF NOT EXISTS subscription_end_date VARCHAR(50)"
-            ]
-            for stmt in statements:
-                cursor.execute(stmt)
-        else:
-            sqlite_statements = [
-                "ALTER TABLE schools ADD COLUMN is_active INTEGER DEFAULT 1",
-                "ALTER TABLE schools ADD COLUMN subscription_status TEXT DEFAULT 'active'",
-                "ALTER TABLE schools ADD COLUMN subscription_end_date TEXT"
-            ]
-            for stmt in sqlite_statements:
-                try:
-                    cursor.execute(stmt)
-                except Exception:
-                    pass
-
-        conn.commit()
-    finally:
-        conn.close()
-def update_school_subscription_states():
-    school_list = fetch_all("SELECT * FROM schools")
-
-    today = datetime.now().date()
-
-    for school in school_list:
-        end_date = parse_date_safe(school["subscription_end_date"])
-        if not end_date:
-            continue
-
-        if end_date < today:
-            execute_commit(
-                "UPDATE schools SET is_active = ?, subscription_status = ? WHERE id = ?",
-                (0, "overdue", school["id"])
-            )
-        elif school["subscription_status"] in ["overdue", "suspended"]:
-            # leave manually suspended schools alone; only reactivate overdue schools
-            if school["subscription_status"] == "overdue":
-                execute_commit(
-                    "UPDATE schools SET is_active = ?, subscription_status = ? WHERE id = ?",
-                    (1, "active", school["id"])
-                )
 
 def run_timetable_foundation_migrations():
     conn = get_db()
@@ -4107,6 +3431,61 @@ def run_timetable_foundation_migrations():
         conn.commit()
     finally:
         conn.close()
+def run_classes_migration():
+    conn = get_db()
+    cursor = conn.cursor()
+
+    try:
+        if is_postgres():
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS school_classes (
+                    id SERIAL PRIMARY KEY,
+                    school_id INTEGER,
+                    class_name VARCHAR(100),
+                    UNIQUE(school_id, class_name)
+                )
+            """)
+        else:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS school_classes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    school_id INTEGER,
+                    class_name TEXT,
+                    UNIQUE(school_id, class_name)
+                )
+            """)
+
+        cursor.execute(convert_query("""
+            SELECT DISTINCT school_id, class_name
+            FROM students
+            WHERE class_name IS NOT NULL AND class_name != ''
+        """))
+
+        existing_classes = cursor.fetchall()
+
+        for row in existing_classes:
+            try:
+                cursor.execute(
+                    convert_query("""
+                        INSERT INTO school_classes (school_id, class_name)
+                        VALUES (?, ?)
+                    """),
+                    (row["school_id"], row["class_name"])
+                )
+            except Exception:
+                pass
+
+        conn.commit()
+    finally:
+        conn.close()
+
+@app.route("/subscription_expired")
+def subscription_expired():
+    school = None
+    school_id = session.get("school_id")
+    if school_id:
+        school = fetch_one("SELECT * FROM schools WHERE id = ?", (school_id,))
+    return render_template("subscription_expired.html", school=school)
 
 @app.route("/fix_old_data_school")
 @login_required
@@ -4138,4 +3517,27 @@ setup_app()
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port, debug=False)
+    app.run(host="0.0.0.0", port=port, debug=not is_postgres())@app.route("/suspend_school/<int:school_id>", methods=["POST"])
+@login_required
+@roles_required("super_admin")
+def suspend_school(school_id):
+    execute_commit(
+        "UPDATE schools SET is_active = ?, subscription_status = ? WHERE id = ?",
+        (0, "suspended", school_id)
+    )
+    flash("School suspended successfully.", "success")
+    return redirect(url_for("schools"))
+
+
+@app.route("/activate_school/<int:school_id>", methods=["POST"])
+@login_required
+@roles_required("super_admin")
+def activate_school(school_id):
+    execute_commit(
+        "UPDATE schools SET is_active = ?, subscription_status = ? WHERE id = ?",
+        (1, "active", school_id)
+    )
+    flash("School activated successfully.", "success")
+    return redirect(url_for("schools"))
+
+
