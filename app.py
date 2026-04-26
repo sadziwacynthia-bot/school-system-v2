@@ -1537,6 +1537,10 @@ def teacher_dashboard():
     """, (user_id, school_id))
 
     assignments_list = []
+    timetable_rows = []
+    assigned_classes = []
+    assigned_subjects = []
+
     if teacher:
         assignments_list = fetch_all("""
             SELECT *
@@ -1545,8 +1549,24 @@ def teacher_dashboard():
             ORDER BY class_name, subject
         """, (teacher["id"], school_id))
 
-    return render_template("teacher_dashboard.html", teacher=teacher, assignments=assignments_list)
+        timetable_rows = fetch_all("""
+            SELECT *
+            FROM timetables
+            WHERE teacher_id = ? AND school_id = ?
+            ORDER BY day_of_week, start_time
+        """, (teacher["id"], school_id))
 
+        assigned_classes = sorted(list(set([a["class_name"] for a in assignments_list])))
+        assigned_subjects = sorted(list(set([a["subject"] for a in assignments_list])))
+
+    return render_template(
+        "teacher_dashboard.html",
+        teacher=teacher,
+        assignments=assignments_list,
+        timetable_rows=timetable_rows,
+        assigned_classes=assigned_classes,
+        assigned_subjects=assigned_subjects
+    )
 
 # =========================================================
 # FEES
