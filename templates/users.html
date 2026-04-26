@@ -6,7 +6,7 @@
 <div class="page-header">
     <div>
         <h2 class="page-title">User Management</h2>
-        <p class="page-subtitle">View users and reset passwords</p>
+        <p class="page-subtitle">Manage school users and reset passwords</p>
     </div>
 </div>
 
@@ -18,7 +18,7 @@
                     {% if session.get('role') == 'super_admin' %}
                     <th>School</th>
                     {% endif %}
-                    <th>Full Name</th>
+                    <th>Name</th>
                     <th>Username</th>
                     <th>Role</th>
                     <th>Action</th>
@@ -29,20 +29,32 @@
                 {% for user in users %}
                 <tr>
                     {% if session.get('role') == 'super_admin' %}
-                    <td>{{ user.school_name or '-' }}</td>
+                    <td>{{ user.school_name or 'Platform' }}</td>
                     {% endif %}
+
                     <td>{{ user.full_name }}</td>
                     <td>{{ user.username }}</td>
+
                     <td>
-                        <span class="status-badge status-pending">
-                            {{ user.role|replace('_', ' ')|title }}
-                        </span>
+                        {% if user.role == 'teacher' %}
+                            <span class="status-badge status-active">Teacher</span>
+                        {% elif user.role == 'parent' %}
+                            <span class="status-badge status-pending">Parent</span>
+                        {% elif user.role == 'school_admin' %}
+                            <span class="status-badge status-active">School Admin</span>
+                        {% elif user.role == 'super_admin' %}
+                            <span class="status-badge status-inactive">Super Admin</span>
+                        {% else %}
+                            <span class="status-badge status-pending">{{ user.role }}</span>
+                        {% endif %}
                     </td>
+
                     <td>
-                        <a href="{{ url_for('reset_user_password', user_id=user.id) }}"
-                           class="btn btn-primary btn-sm">
+                        {% if user.role != 'super_admin' or session.get('role') == 'super_admin' %}
+                        <a href="{{ url_for('reset_user_password', user_id=user.id) }}" class="btn btn-primary btn-sm">
                             Reset Password
                         </a>
+                        {% endif %}
                     </td>
                 </tr>
                 {% else %}

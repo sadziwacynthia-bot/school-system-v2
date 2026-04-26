@@ -3094,11 +3094,11 @@ def users():
             SELECT *
             FROM users
             WHERE school_id = ?
+              AND role IN ('teacher', 'parent')
             ORDER BY role, full_name
         """, (school_id,))
 
     return render_template("users.html", users=user_list)
-
 
 @app.route("/reset_user_password/<int:user_id>", methods=["GET", "POST"])
 @login_required
