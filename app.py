@@ -3075,6 +3075,68 @@ def school_profile(school_id):
         total_paid=fee_totals["total_paid"] or 0,
         total_balance=fee_totals["total_balance"] or 0
     )
+@app.route("/users")
+@login_required
+@roles_required("school_admin", "super_admin")
+def users():
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    if role == "super_admin":
+        user_list = fetch_all("""
+            SELECT u.*, s.school_name
+            FROM users u
+            LEFT JOIN schools s ON u.school_id = s.id
+            ORDER BY s.school_name, u.role, u.full_name
+        """)
+    else:
+        user_list = fetch_all("""
+            SELECT *
+            FROM users
+            WHERE school_id = ?
+            ORDER BY role, full_name
+        """, (school_id,))
+
+    return render_template("users.html", users=user_list)
+
+
+@app.route("/reset_user_password/<int:user_id>", methods=["GET", "POST"])
+@login_required
+@roles_required("school_admin", "super_admin")
+def reset_user_password(user_id):
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    if role == "super_admin":
+        user = fetch_one("SELECT * FROM users WHERE id = ?", (user_id,))
+    else:
+        user = fetch_one(
+            "SELECT * FROM users WHERE id = ? AND school_id = ?",
+            (user_id, school_id)
+        )
+
+    if not user:
+        flash("User not found or access denied.", "danger")
+        return redirect(url_for("users"))
+
+    if request.method == "POST":
+        new_password = request.form.get("new_password", "").strip()
+        confirm_password = request.form.get("confirm_password", "").strip()
+
+        if not new_password or new_password != confirm_password:
+            flash("Passwords do not match.", "danger")
+            return redirect(url_for("reset_user_password", user_id=user_id))
+
+        execute_commit(
+            "UPDATE users SET password = ? WHERE id = ?",
+            (generate_password_hash(new_password), user_id)
+        )
+
+        flash("Password reset successfully.", "success")
+        return redirect(url_for("users"))
+
+    return render_template("reset_user_password.html", user=user)
+
 @app.route("/update_school_subscription/<int:school_id>", methods=["GET", "POST"])
 @login_required
 @roles_required("super_admin")

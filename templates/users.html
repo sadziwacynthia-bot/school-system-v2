@@ -1,127 +1,57 @@
 {% extends "base.html" %}
 {% block title %}Users{% endblock %}
+{% block page_heading %}Users{% endblock %}
 
 {% block content %}
-<div class="page-header-row">
+<div class="page-header">
     <div>
-        <h1 class="page-title">Users</h1>
-        <p class="page-subtitle">All system users.</p>
+        <h2 class="page-title">User Management</h2>
+        <p class="page-subtitle">View users and reset passwords</p>
     </div>
-    <a href="{{ url_for('add_user') }}" class="btn-primary">Add User</a>
 </div>
 
-<div class="card-box">
-    <div class="table-wrapper">
+<div class="table-card">
+    <div class="table-responsive">
         <table>
             <thead>
                 <tr>
+                    {% if session.get('role') == 'super_admin' %}
+                    <th>School</th>
+                    {% endif %}
                     <th>Full Name</th>
                     <th>Username</th>
                     <th>Role</th>
+                    <th>Action</th>
                 </tr>
             </thead>
+
             <tbody>
                 {% for user in users %}
                 <tr>
+                    {% if session.get('role') == 'super_admin' %}
+                    <td>{{ user.school_name or '-' }}</td>
+                    {% endif %}
                     <td>{{ user.full_name }}</td>
                     <td>{{ user.username }}</td>
                     <td>
-                        <span class="role-badge">{{ user.role }}</span>
+                        <span class="status-badge status-pending">
+                            {{ user.role|replace('_', ' ')|title }}
+                        </span>
+                    </td>
+                    <td>
+                        <a href="{{ url_for('reset_user_password', user_id=user.id) }}"
+                           class="btn btn-primary btn-sm">
+                            Reset Password
+                        </a>
                     </td>
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="3" class="empty-row">No users found.</td>
+                    <td colspan="5">No users found.</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 </div>
-
-<style>
-.page-header-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    gap: 12px;
-    flex-wrap: wrap;
-}
-
-.page-title {
-    margin: 0;
-    color: #2563eb;
-    font-size: 30px;
-}
-
-.page-subtitle {
-    margin-top: 8px;
-    color: #6b7280;
-    font-size: 15px;
-}
-
-.card-box {
-    background: #ffffff;
-    border-radius: 16px;
-    padding: 24px;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
-}
-
-.table-wrapper {
-    overflow-x: auto;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 600px;
-}
-
-th, td {
-    padding: 12px;
-    text-align: left;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-th {
-    background: #2563eb;
-    color: white;
-    font-weight: 600;
-}
-
-tr:hover {
-    background: #f8fafc;
-}
-
-.empty-row {
-    text-align: center;
-    color: #6b7280;
-    padding: 20px;
-}
-
-.role-badge {
-    display: inline-block;
-    padding: 6px 10px;
-    border-radius: 999px;
-    background: #dbeafe;
-    color: #1e40af;
-    font-size: 13px;
-    font-weight: 600;
-}
-
-.btn-primary {
-    display: inline-block;
-    background: #2563eb;
-    color: white;
-    text-decoration: none;
-    padding: 12px 18px;
-    border-radius: 10px;
-    font-weight: 600;
-}
-
-.btn-primary:hover {
-    background: #1e40af;
-}
-</style>
 {% endblock %}

@@ -8,11 +8,13 @@
         <h2 class="page-title">Cash Book</h2>
         <p class="page-subtitle">Track income, expenses, and running balance</p>
     </div>
+
     <div class="action-group">
         <a href="{{ url_for('add_cashbook_entry') }}" class="btn btn-primary">+ Add Entry</a>
     </div>
 </div>
 
+<!-- Summary Cards -->
 <div class="dashboard-stat-grid">
     <div class="metric-card metric-card-emerald">
         <div class="metric-top">
@@ -20,16 +22,16 @@
             <span class="metric-icon">💰</span>
         </div>
         <div class="metric-value">${{ "%.2f"|format(total_income or 0) }}</div>
-        <div class="metric-note">Recorded income</div>
+        <div class="metric-note">All income recorded</div>
     </div>
 
     <div class="metric-card metric-card-rose">
         <div class="metric-top">
-            <span class="metric-label">Total Expense</span>
+            <span class="metric-label">Total Expenses</span>
             <span class="metric-icon">🧾</span>
         </div>
         <div class="metric-value">${{ "%.2f"|format(total_expense or 0) }}</div>
-        <div class="metric-note">Recorded expenses</div>
+        <div class="metric-note">All expenses recorded</div>
     </div>
 
     <div class="metric-card metric-card-blue">
@@ -38,41 +40,14 @@
             <span class="metric-icon">📘</span>
         </div>
         <div class="metric-value">${{ "%.2f"|format(net_balance or 0) }}</div>
-        <div class="metric-note">Income minus expenses</div>
+        <div class="metric-note">Income - Expenses</div>
     </div>
 </div>
 
+<!-- Cashbook Table -->
 <div class="dashboard-panel premium-surface">
     <div class="panel-header-row">
-        <div>
-            <p class="panel-kicker">Filters</p>
-            <h3>Filter Cash Book</h3>
-        </div>
-    </div>
-
-    <form method="GET" class="fees-filter-grid">
-        <select name="entry_type">
-            <option value="">All Types</option>
-            <option value="income" {% if entry_type == 'income' %}selected{% endif %}>Income</option>
-            <option value="expense" {% if entry_type == 'expense' %}selected{% endif %}>Expense</option>
-        </select>
-
-        <input type="date" name="start_date" value="{{ start_date or '' }}">
-        <input type="date" name="end_date" value="{{ end_date or '' }}">
-
-        <div class="action-group">
-            <button type="submit" class="btn btn-primary">Apply Filters</button>
-            <a href="{{ url_for('cashbook') }}" class="btn btn-secondary">Reset</a>
-        </div>
-    </form>
-</div>
-
-<div class="dashboard-panel premium-surface">
-    <div class="panel-header-row">
-        <div>
-            <p class="panel-kicker">Transactions</p>
-            <h3>Cash Book Entries</h3>
-        </div>
+        <h3>Cashbook Entries</h3>
     </div>
 
     <div class="payments-table-wrap">
@@ -90,10 +65,12 @@
                     <th>Running Balance</th>
                 </tr>
             </thead>
+
             <tbody>
                 {% for entry in entries %}
                 <tr>
                     <td>{{ entry.entry_date or '-' }}</td>
+
                     <td>
                         {% if entry.entry_type == 'income' %}
                             <span class="status-badge status-active">Income</span>
@@ -101,17 +78,38 @@
                             <span class="status-badge status-inactive">Expense</span>
                         {% endif %}
                     </td>
+
                     <td>{{ entry.category or '-' }}</td>
                     <td>{{ entry.description or '-' }}</td>
-                    <td>${{ "%.2f"|format(entry.amount or 0) }}</td>
+
+                    <td>
+                        {% if entry.entry_type == 'income' %}
+                            <span style="color:green;">
+                                +${{ "%.2f"|format(entry.amount or 0) }}
+                            </span>
+                        {% else %}
+                            <span style="color:red;">
+                                -${{ "%.2f"|format(entry.amount or 0) }}
+                            </span>
+                        {% endif %}
+                    </td>
+
                     <td>{{ entry.payment_method or '-' }}</td>
                     <td>{{ entry.reference_number or '-' }}</td>
                     <td>{{ entry.created_by or '-' }}</td>
-                    <td><strong>${{ "%.2f"|format(entry.running_balance or 0) }}</strong></td>
+
+                    <td>
+                        <strong>
+                            ${{ "%.2f"|format(entry.running_balance or 0) }}
+                        </strong>
+                    </td>
                 </tr>
+
                 {% else %}
                 <tr>
-                    <td colspan="9">No cash book entries found.</td>
+                    <td colspan="9" style="text-align:center;">
+                        No cashbook entries yet
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
