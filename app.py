@@ -3081,24 +3081,81 @@ def school_profile(school_id):
 def users():
     school_id = session.get("school_id")
     role = session.get("role")
+    search = request.args.get("search", "").strip()
+    class_filter = request.args.get("class_name", "").strip()
+    role_filter = request.args.get("role", "").strip()
 
-    if role == "super_admin":
-        user_list = fetch_all("""
-            SELECT u.*, s.school_name
-            FROM users u
-            LEFT JOIN schools s ON u.school_id = s.id
-            ORDER BY s.school_name, u.role, u.full_name
-        """)
-    else:
-        user_list = fetch_all("""
-            SELECT *
-            FROM users
-            WHERE school_id = ?
-              AND role IN ('teacher', 'parent')
-            ORDER BY role, full_name
-        """, (school_id,))
+    query = """
+        SELECT 
+            u.*,
+            s.school_name,
+            st.first_name AS student_first_name,
+            st.last_name AS student_last_name,
+            st.class_name AS student_class
+        FROM users u
+        LEFT JOIN schools s ON u.school_id = s.id
+        LEFT JOIN guardians g ON u.id = g.parent_user_id
+        LEFT JOIN students st ON g.student_id = st.id
+        WHERE 1=1
+    """
+    params = []
 
-    return render_template("users.html", users=user_list)
+    if role != "super_admin":
+        query += " AND u.school_id = ? AND u.role IN ('teacher', 'parent')"
+        params.append(school_id)
+
+    if search:
+        query += """
+            AND (
+                u.full_name LIKE ? OR 
+                u.username LIKE ? OR 
+                st.first_name LIKE ? OR 
+                st.last_name LIKE ? OR
+                st.student_number LIKE ?
+            )
+        """
+        like = f"%{search}%"
+        params.extend([like, like, like, like, like])
+
+    if class_filter:
+        query += " AND st.class_name = ?"
+        params.append(class_filter)
+
+    if role_filter:
+        query += " AND u.role = ?"
+        params.append(role_filter)
+
+    query += " ORDER BY u.role, st.class_name, u.full_name"
+
+    user_list = fetch_all(query, tuple(params))
+
+    teacher_users = []
+    parent_users = []
+    admin_users = []
+    other_users = []
+
+    for user in user_list:
+        if user["role"] == "teacher":
+            teacher_users.append(user)
+        elif user["role"] == "parent":
+            parent_users.append(user)
+        elif user["role"] in ["school_admin", "super_admin"]:
+            admin_users.append(user)
+        else:
+            other_users.append(user)
+
+    return render_template(
+        "users.html",
+        users=user_list,
+        teacher_users=teacher_users,
+        parent_users=parent_users,
+        admin_users=admin_users,
+        other_users=other_users,
+        search=search,
+        class_filter=class_filter,
+        role_filter=role_filter,
+        class_options=CLASS_OPTIONS
+    )
 
 @app.route("/reset_user_password/<int:user_id>", methods=["GET", "POST"])
 @login_required
