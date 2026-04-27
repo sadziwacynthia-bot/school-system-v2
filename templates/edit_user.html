@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-container">
+  <h1>Edit User</h1>
+
+  <form method="POST" class="form-card">
+    <label>Full Name</label>
+    <input type="text" name="full_name" value="{{ user.full_name }}" required>
+
+    <label>Username</label>
+    <input type="text" name="username" value="{{ user.username }}" required>
+
+    <label>Role</label>
+    <select name="role" required>
+      <option value="director" {% if user.role == "director" %}selected{% endif %}>Director</option>
+      <option value="admin" {% if user.role == "admin" %}selected{% endif %}>Admin</option>
+      <option value="teacher" {% if user.role == "teacher" %}selected{% endif %}>Teacher</option>
+      <option value="parent" {% if user.role == "parent" %}selected{% endif %}>Parent</option>
+    </select>
+
+    <label>New Password</label>
+    <input type="password" name="password" placeholder="Leave blank to keep current password">
+
+    <button type="submit" class="btn">Update User</button>
+    <a href="{{ url_for('users') }}" class="btn-secondary">Cancel</a>
+  </form>
+</div>
+{% endblock %}

@@ -753,7 +753,10 @@ def login():
         password = request.form.get("password", "").strip()
 
         user = fetch_one("SELECT * FROM users WHERE username = ?", (username,))
-
+        if user and int(row_get(user, "is_active", 1) or 1) != 1:
+            flash("This account has been deactivated. Please contact the school administrator.", "danger")
+            return redirect(url_for("login"))
+        
         if user and check_password_hash(user["password"], password):
             session["user_id"] = user["id"]
             session["school_id"] = user["school_id"]
@@ -3156,6 +3159,45 @@ def users():
         role_filter=role_filter,
         class_options=CLASS_OPTIONS
     )
+@app.route("/edit_user/<int:user_id>", methods=["GET", "POST"])
+@login_required
+@roles_required("director", "admin")
+def edit_user(user_id):
+    conn = get_db()
+    user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+
+    if user is None:
+        conn.close()
+        flash("User not found.", "error")
+        return redirect(url_for("users"))
+
+    if request.method == "POST":
+        full_name = request.form["full_name"]
+        username = request.form["username"]
+        role = request.form["role"]
+        password = request.form.get("password")
+
+        if password:
+            hashed_password = generate_password_hash(password)
+            conn.execute("""
+                UPDATE users
+                SET full_name = ?, username = ?, role = ?, password = ?
+                WHERE id = ?
+            """, (full_name, username, role, hashed_password, user_id))
+        else:
+            conn.execute("""
+                UPDATE users
+                SET full_name = ?, username = ?, role = ?
+                WHERE id = ?
+            """, (full_name, username, role, user_id))
+
+        conn.commit()
+        conn.close()
+        flash("User updated successfully.", "success")
+        return redirect(url_for("users"))
+
+    conn.close()
+    return render_template("edit_user.html", user=user)
 
 @app.route("/reset_user_password/<int:user_id>", methods=["GET", "POST"])
 @login_required
@@ -3223,6 +3265,107 @@ def update_school_subscription(school_id):
         return redirect(url_for("school_profile", school_id=school_id))
 
     return render_template("update_school_subscription.html", school=school)
+@app.route("/edit_user/<int:user_id>", methods=["GET", "POST"])
+@login_required
+@roles_required("school_admin", "super_admin")
+def edit_user(user_id):
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    if role == "super_admin":
+        user = fetch_one("SELECT * FROM users WHERE id = ?", (user_id,))
+    else:
+        user = fetch_one(
+            "SELECT * FROM users WHERE id = ? AND school_id = ? AND role IN ('teacher', 'parent')",
+            (user_id, school_id)
+        )
+
+    if not user:
+        flash("User not found or access denied.", "danger")
+        return redirect(url_for("users"))
+
+    if request.method == "POST":
+        full_name = request.form.get("full_name", "").strip()
+        username = request.form.get("username", "").strip()
+
+        if not full_name or not username:
+            flash("Full name and username are required.", "danger")
+            return redirect(url_for("edit_user", user_id=user_id))
+
+        existing = fetch_one(
+            "SELECT * FROM users WHERE username = ? AND id != ?",
+            (username, user_id)
+        )
+
+        if existing:
+            flash("Username already exists.", "danger")
+            return redirect(url_for("edit_user", user_id=user_id))
+
+        execute_commit(
+            """
+            UPDATE users
+            SET full_name = ?, username = ?
+            WHERE id = ?
+            """,
+            (full_name, username, user_id)
+        )
+
+        flash("User updated successfully.", "success")
+        return redirect(url_for("users"))
+
+    return render_template("edit_user.html", user=user)
+
+
+@app.route("/deactivate_user/<int:user_id>", methods=["POST"])
+@login_required
+@roles_required("school_admin", "super_admin")
+def deactivate_user(user_id):
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    if role == "school_admin":
+        user = fetch_one(
+            "SELECT * FROM users WHERE id = ? AND school_id = ? AND role IN ('teacher', 'parent')",
+            (user_id, school_id)
+        )
+    else:
+        user = fetch_one("SELECT * FROM users WHERE id = ?", (user_id,))
+
+    if not user:
+        flash("User not found or access denied.", "danger")
+        return redirect(url_for("users"))
+
+    if user["role"] == "super_admin":
+        flash("You cannot deactivate a super admin account.", "danger")
+        return redirect(url_for("users"))
+
+    execute_commit("UPDATE users SET is_active = ? WHERE id = ?", (0, user_id))
+    flash("User deactivated successfully.", "success")
+    return redirect(url_for("users"))
+
+
+@app.route("/activate_user/<int:user_id>", methods=["POST"])
+@login_required
+@roles_required("school_admin", "super_admin")
+def activate_user(user_id):
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    if role == "school_admin":
+        user = fetch_one(
+            "SELECT * FROM users WHERE id = ? AND school_id = ? AND role IN ('teacher', 'parent')",
+            (user_id, school_id)
+        )
+    else:
+        user = fetch_one("SELECT * FROM users WHERE id = ?", (user_id,))
+
+    if not user:
+        flash("User not found or access denied.", "danger")
+        return redirect(url_for("users"))
+
+    execute_commit("UPDATE users SET is_active = ? WHERE id = ?", (1, user_id))
+    flash("User activated successfully.", "success")
+    return redirect(url_for("users"))
 
 @app.route("/print_all_students")
 @login_required
@@ -3244,6 +3387,22 @@ def print_all_students():
         """, (school_id,))
 
     return render_template("print_all_students.html", students=students)
+def run_users_migration():
+    conn = get_db()
+    cursor = conn.cursor()
+
+    try:
+        if is_postgres():
+            cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active INTEGER DEFAULT 1")
+        else:
+            try:
+                cursor.execute("ALTER TABLE users ADD COLUMN is_active INTEGER DEFAULT 1")
+            except Exception:
+                pass
+
+        conn.commit()
+    finally:
+        conn.close()
 
 @app.route("/send_fee_reminder/<int:student_id>")
 @login_required
@@ -3387,6 +3546,8 @@ def run_timetable_foundation_migrations():
         conn.commit()
     finally:
         conn.close()
+
+        
 def run_school_settings_migration():
     conn = get_db()
     cursor = conn.cursor()
@@ -3540,6 +3701,9 @@ def setup_app():
             run_classes_migration()
             print("Classes migration completed")
 
+            run_users_migration()
+            print("Users migration completed")
+            
             create_default_school()
             print("Default school ready")
 
