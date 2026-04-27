@@ -3,25 +3,23 @@
 {% block page_heading %}Users{% endblock %}
 
 {% block content %}
+
 <div class="page-header">
     <div>
         <h2 class="page-title">User Management</h2>
-        <p class="page-subtitle">Search users, view parents by class, and reset passwords</p>
+        <p class="page-subtitle">Search, edit, and manage users easily</p>
     </div>
 </div>
 
-<div class="table-card">
-    <form method="GET" class="fees-filter-grid">
-        <input type="text" name="search" placeholder="Search name, username, student..." value="{{ search or '' }}">
+<!-- SEARCH + FILTER -->
+<div class="form-card">
+    <form method="GET" class="form-grid">
+        <input type="text" name="search" placeholder="Search users..." value="{{ search or '' }}">
 
         <select name="role">
             <option value="">All Roles</option>
             <option value="teacher" {% if role_filter == 'teacher' %}selected{% endif %}>Teachers</option>
             <option value="parent" {% if role_filter == 'parent' %}selected{% endif %}>Parents</option>
-            {% if session.get('role') == 'super_admin' %}
-            <option value="school_admin" {% if role_filter == 'school_admin' %}selected{% endif %}>School Admins</option>
-            <option value="super_admin" {% if role_filter == 'super_admin' %}selected{% endif %}>Super Admins</option>
-            {% endif %}
         </select>
 
         <select name="class_name">
@@ -38,99 +36,51 @@
     </form>
 </div>
 
+<!-- SUMMARY -->
 <div class="dashboard-stat-grid">
     <div class="metric-card metric-card-blue">
-        <div class="metric-top">
-            <span class="metric-label">Teachers</span>
-            <span class="metric-icon">👩‍🏫</span>
-        </div>
+        <div class="metric-label">Teachers</div>
         <div class="metric-value">{{ teacher_users|length }}</div>
     </div>
 
     <div class="metric-card metric-card-emerald">
-        <div class="metric-top">
-            <span class="metric-label">Parents</span>
-            <span class="metric-icon">👨‍👩‍👧</span>
-        </div>
+        <div class="metric-label">Parents</div>
         <div class="metric-value">{{ parent_users|length }}</div>
     </div>
-
-    {% if session.get('role') == 'super_admin' %}
-    <div class="metric-card metric-card-indigo">
-        <div class="metric-top">
-            <span class="metric-label">Admins</span>
-            <span class="metric-icon">🛡️</span>
-        </div>
-        <div class="metric-value">{{ admin_users|length }}</div>
-    </div>
-    {% endif %}
 </div>
 
-{% if teacher_users %}
+<!-- USERS TABLE -->
 <div class="dashboard-panel premium-surface">
     <div class="panel-header-row">
-        <div>
-            <p class="panel-kicker">Staff</p>
-            <h3>Teachers</h3>
-        </div>
+        <h3>All Users</h3>
     </div>
 
     <div class="table-responsive">
         <table>
             <thead>
                 <tr>
-                    {% if session.get('role') == 'super_admin' %}<th>School</th>{% endif %}
                     <th>Name</th>
                     <th>Username</th>
                     <th>Role</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for user in teacher_users %}
-                <tr>
-                    {% if session.get('role') == 'super_admin' %}<td>{{ user.school_name or '-' }}</td>{% endif %}
-                    <td>{{ user.full_name }}</td>
-                    <td>{{ user.username }}</td>
-                    <td><span class="status-badge status-active">Teacher</span></td>
-                    <td>
-                        <a href="{{ url_for('reset_user_password', user_id=user.id) }}" class="btn btn-primary btn-sm">Reset Password</a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-{% endif %}
-
-{% if parent_users %}
-<div class="dashboard-panel premium-surface">
-    <div class="panel-header-row">
-        <div>
-            <p class="panel-kicker">Parents</p>
-            <h3>Parent Accounts</h3>
-        </div>
-    </div>
-
-    <div class="table-responsive">
-        <table>
-            <thead>
-                <tr>
-                    {% if session.get('role') == 'super_admin' %}<th>School</th>{% endif %}
-                    <th>Parent Name</th>
-                    <th>Username</th>
                     <th>Student</th>
                     <th>Class</th>
-                    <th>Action</th>
+                    <th>Status</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
+
             <tbody>
-                {% for user in parent_users %}
+                {% for user in users %}
                 <tr>
-                    {% if session.get('role') == 'super_admin' %}<td>{{ user.school_name or '-' }}</td>{% endif %}
                     <td>{{ user.full_name }}</td>
                     <td>{{ user.username }}</td>
+
+                    <td>
+                        <span class="status-badge status-active">
+                            {{ user.role|replace('_',' ')|title }}
+                        </span>
+                    </td>
+
                     <td>
                         {% if user.student_first_name %}
                             {{ user.student_first_name }} {{ user.student_last_name }}
@@ -138,59 +88,48 @@
                             -
                         {% endif %}
                     </td>
+
                     <td>{{ user.student_class or '-' }}</td>
+
                     <td>
-                        <a href="{{ url_for('reset_user_password', user_id=user.id) }}" class="btn btn-primary btn-sm">Reset Password</a>
+                        {% if user.is_active|default(1) %}
+                            <span class="status-badge status-active">Active</span>
+                        {% else %}
+                            <span class="status-badge status-inactive">Inactive</span>
+                        {% endif %}
                     </td>
+
+                    <td>
+                        <div class="action-group">
+                            <a href="{{ url_for('edit_user', user_id=user.id) }}" class="btn btn-secondary btn-sm">
+                                Edit
+                            </a>
+
+                            <a href="{{ url_for('reset_user_password', user_id=user.id) }}" class="btn btn-primary btn-sm">
+                                Reset
+                            </a>
+
+                            {% if user.is_active|default(1) %}
+                            <form action="{{ url_for('deactivate_user', user_id=user.id) }}" method="POST">
+                                <button class="btn btn-warning btn-sm">Deactivate</button>
+                            </form>
+                            {% else %}
+                            <form action="{{ url_for('activate_user', user_id=user.id) }}" method="POST">
+                                <button class="btn btn-success btn-sm">Activate</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+
+                {% else %}
+                <tr>
+                    <td colspan="7" style="text-align:center;">No users found</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 </div>
-{% endif %}
 
-{% if session.get('role') == 'super_admin' and admin_users %}
-<div class="dashboard-panel premium-surface">
-    <div class="panel-header-row">
-        <div>
-            <p class="panel-kicker">Administration</p>
-            <h3>Admin Accounts</h3>
-        </div>
-    </div>
-
-    <div class="table-responsive">
-        <table>
-            <thead>
-                <tr>
-                    <th>School</th>
-                    <th>Name</th>
-                    <th>Username</th>
-                    <th>Role</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for user in admin_users %}
-                <tr>
-                    <td>{{ user.school_name or 'Platform' }}</td>
-                    <td>{{ user.full_name }}</td>
-                    <td>{{ user.username }}</td>
-                    <td><span class="status-badge status-pending">{{ user.role|replace('_', ' ')|title }}</span></td>
-                    <td>
-                        <a href="{{ url_for('reset_user_password', user_id=user.id) }}" class="btn btn-primary btn-sm">Reset Password</a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-{% endif %}
-
-{% if not users %}
-<div class="table-card">
-    <p>No users found.</p>
-</div>
-{% endif %}
 {% endblock %}
