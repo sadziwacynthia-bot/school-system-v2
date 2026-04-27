@@ -3166,7 +3166,7 @@ def edit_user(user_id):
     conn = get_db()
     user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
 
-    if user is None:
+    if not user:
         conn.close()
         flash("User not found.", "error")
         return redirect(url_for("users"))
@@ -3265,56 +3265,6 @@ def update_school_subscription(school_id):
         return redirect(url_for("school_profile", school_id=school_id))
 
     return render_template("update_school_subscription.html", school=school)
-@app.route("/edit_user/<int:user_id>", methods=["GET", "POST"])
-@login_required
-@roles_required("school_admin", "super_admin")
-def edit_user(user_id):
-    school_id = session.get("school_id")
-    role = session.get("role")
-
-    if role == "super_admin":
-        user = fetch_one("SELECT * FROM users WHERE id = ?", (user_id,))
-    else:
-        user = fetch_one(
-            "SELECT * FROM users WHERE id = ? AND school_id = ? AND role IN ('teacher', 'parent')",
-            (user_id, school_id)
-        )
-
-    if not user:
-        flash("User not found or access denied.", "danger")
-        return redirect(url_for("users"))
-
-    if request.method == "POST":
-        full_name = request.form.get("full_name", "").strip()
-        username = request.form.get("username", "").strip()
-
-        if not full_name or not username:
-            flash("Full name and username are required.", "danger")
-            return redirect(url_for("edit_user", user_id=user_id))
-
-        existing = fetch_one(
-            "SELECT * FROM users WHERE username = ? AND id != ?",
-            (username, user_id)
-        )
-
-        if existing:
-            flash("Username already exists.", "danger")
-            return redirect(url_for("edit_user", user_id=user_id))
-
-        execute_commit(
-            """
-            UPDATE users
-            SET full_name = ?, username = ?
-            WHERE id = ?
-            """,
-            (full_name, username, user_id)
-        )
-
-        flash("User updated successfully.", "success")
-        return redirect(url_for("users"))
-
-    return render_template("edit_user.html", user=user)
-
 
 @app.route("/deactivate_user/<int:user_id>", methods=["POST"])
 @login_required

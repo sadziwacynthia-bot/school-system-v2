@@ -101,10 +101,7 @@
 
                     <td>
                         <div class="action-group">
-                            <a href="{{ url_for('edit_user', user_id=user.id) }}" class="btn btn-secondary btn-sm">
-                                Edit
-                            </a>
-
+                            <a href="{{ url_for('edit_user', user_id=user.id) }}" class="btn-edit">Edit</a>
                             <a href="{{ url_for('reset_user_password', user_id=user.id) }}" class="btn btn-primary btn-sm">
                                 Reset
                             </a>
