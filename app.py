@@ -940,37 +940,38 @@ def add_school_admin():
 # =========================================================
 @app.route("/students")
 @login_required
-@roles_required("school_admin", "super_admin")
+@roles_required("director", "admin", "teacher")
 def students():
-    school_id = session.get("school_id")
-    role = session.get("role")
-    search = request.args.get("search", "").strip()
+    search = request.args.get("search", "")
 
-    params = []
-    query = "SELECT * FROM students"
-    conditions = []
-
-    if role != "super_admin":
-        conditions.append("school_id = ?")
-        params.append(school_id)
+    conn = get_db()
 
     if search:
-        conditions.append("(first_name LIKE ? OR last_name LIKE ? OR student_number LIKE ? OR class_name LIKE ?)")
-        like = f"%{search}%"
-        params.extend([like, like, like, like])
+        students = conn.execute("""
+            SELECT *,
+                   COALESCE(status, 'Active') AS status
+            FROM students
+            WHERE first_name LIKE ?
+               OR last_name LIKE ?
+               OR student_number LIKE ?
+               OR class_name LIKE ?
+            ORDER BY class_name, last_name
+        """, (
+            f"%{search}%",
+            f"%{search}%",
+            f"%{search}%",
+            f"%{search}%"
+        )).fetchall()
+    else:
+        students = conn.execute("""
+            SELECT *,
+                   COALESCE(status, 'Active') AS status
+            FROM students
+            ORDER BY class_name, last_name
+        """).fetchall()
 
-    if conditions:
-        query += " WHERE " + " AND ".join(conditions)
-
-    query += " ORDER BY class_name, first_name, last_name"
-
-    students_list = fetch_all(query, tuple(params))
-    grouped_students = {}
-    for student in students_list:
-        class_name = student["class_name"] or "Unassigned Class"
-        grouped_students.setdefault(class_name, []).append(student)
-
-    return render_template("students.html", grouped_students=grouped_students, search=search)
+    conn.close()
+    return render_template("students.html", students=students, search=search)
 
 
 @app.route("/add_student")
@@ -1163,6 +1164,30 @@ def save_student():
     finally:
         conn.close()
 
+@app.route("/deactivate_student/<int:student_id>", methods=["POST"])
+@login_required
+@roles_required("director", "admin")
+def deactivate_student(student_id):
+    conn = get_db()
+    conn.execute("UPDATE students SET status = 'Inactive' WHERE id = ?", (student_id,))
+    conn.commit()
+    conn.close()
+
+    flash("Student deactivated successfully.", "success")
+    return redirect(url_for("students"))
+
+
+@app.route("/reactivate_student/<int:student_id>", methods=["POST"])
+@login_required
+@roles_required("director", "admin")
+def reactivate_student(student_id):
+    conn = get_db()
+    conn.execute("UPDATE students SET status = 'Active' WHERE id = ?", (student_id,))
+    conn.commit()
+    conn.close()
+
+    flash("Student reactivated successfully.", "success")
+    return redirect(url_for("students"))
 
 @app.route("/student_profile/<int:id>")
 @login_required

@@ -1712,3 +1712,24 @@ table tr:nth-child(even) {
     text-align: center;
     padding: 40px;
 }
+.search-card {
+  background: white;
+  padding: 18px;
+  border-radius: 14px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+  margin-bottom: 20px;
+  display: flex;
+  gap: 10px;
+}
+
+.search-card input {
+  flex: 1;
+  padding: 11px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+}
+
+.btn-small.view {
+  background: #fef3c7;
+  color: #92400e;
+}
