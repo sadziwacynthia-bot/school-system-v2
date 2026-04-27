@@ -1164,19 +1164,6 @@ def save_student():
     finally:
         conn.close()
 
-@app.route("/deactivate_student/<int:student_id>", methods=["POST"])
-@login_required
-@roles_required("director", "admin")
-def deactivate_student(student_id):
-    conn = get_db()
-    conn.execute("UPDATE students SET status = 'Inactive' WHERE id = ?", (student_id,))
-    conn.commit()
-    conn.close()
-
-    flash("Student deactivated successfully.", "success")
-    return redirect(url_for("students"))
-
-
 @app.route("/reactivate_student/<int:student_id>", methods=["POST"])
 @login_required
 @roles_required("director", "admin")
@@ -1365,26 +1352,17 @@ def delete_student(id):
     return redirect(url_for("students"))
 
 
-@app.route("/student/deactivate/<int:id>", methods=["POST"])
+@app.route("/deactivate_student/<int:student_id>", methods=["POST"])
 @login_required
-@roles_required("school_admin", "super_admin")
-def deactivate_student(id):
-    school_id = session.get("school_id")
-    role = session.get("role")
+@roles_required("director", "admin")
+def deactivate_student(student_id):
+    conn = get_db()
+    conn.execute("UPDATE students SET status = 'Inactive' WHERE id = ?", (student_id,))
+    conn.commit()
+    conn.close()
 
-    if role == "super_admin":
-        student = fetch_one("SELECT * FROM students WHERE id = ?", (id,))
-    else:
-        student = fetch_one("SELECT * FROM students WHERE id = ? AND school_id = ?", (id, school_id))
-
-    if not student:
-        flash("Student not found or access denied.", "danger")
-        return redirect(url_for("students"))
-
-    execute_commit("UPDATE students SET current_status = ? WHERE id = ?", ("Inactive", id))
     flash("Student deactivated successfully.", "success")
     return redirect(url_for("students"))
-
 
 @app.route("/student/activate/<int:id>", methods=["POST"])
 @login_required
