@@ -1,190 +1,70 @@
 {% extends "base.html" %}
 
-{% block title %}Student Profile{% endblock %}
-
 {% block content %}
-<div class="page-header">
+<div class="page-container">
+
+  <div class="page-header">
     <div>
-        <h2 class="page-title">Student Profile</h2>
-        <p class="page-subtitle">View full student information and academic details</p>
-    </div>
-    <div class="action-group">
-        <a href="{{ url_for('edit_student', id=student.id) }}" class="btn btn-primary">Edit Student</a>
-        <a href="{{ url_for('students') }}" class="btn btn-secondary">Back to Students</a>
-    </div>
-</div>
-
-<div class="profile-top-card">
-    <div class="profile-avatar">
-        {{ student.first_name[0] if student.first_name else 'S' }}{{ student.last_name[0] if student.last_name else '' }}
-    </div>
-    <div class="profile-top-details">
-        <h3>{{ student.first_name }} {{ student.last_name }}</h3>
-        <p>Student Number: <strong>{{ student.student_number or '-' }}</strong></p>
-        <p>Class: <strong>{{ student.class_name or '-' }}</strong></p>
-        <p>
-            Status:
-            {% set status = student.current_status or 'Active' %}
-            {% if status == 'Active' %}
-                <span class="status-badge status-active">Active</span>
-            {% elif status == 'Inactive' %}
-                <span class="status-badge status-inactive">Inactive</span>
-            {% else %}
-                <span class="status-badge status-pending">{{ status }}</span>
-            {% endif %}
-        </p>
-    </div>
-</div>
-
-<div class="profile-grid">
-    <div class="profile-card">
-        <h3>Basic Information</h3>
-        <div class="profile-item"><span>First Name</span><strong>{{ student.first_name or '-' }}</strong></div>
-        <div class="profile-item"><span>Last Name</span><strong>{{ student.last_name or '-' }}</strong></div>
-        <div class="profile-item"><span>Birthday</span><strong>{{ student.birthday or '-' }}</strong></div>
-        <div class="profile-item"><span>Gender</span><strong>{{ student.gender or '-' }}</strong></div>
-        <div class="profile-item"><span>Enrollment Date</span><strong>{{ student.enrollment_date or '-' }}</strong></div>
-        <div class="profile-item"><span>Leaving Year</span><strong>{{ student.leaving_year or '-' }}</strong></div>
-        <div class="profile-item"><span>Boarding Status</span><strong>{{ student.boarding_status or '-' }}</strong></div>
+      <h1>{{ student.first_name }} {{ student.last_name }}</h1>
+      <p>Student Profile</p>
     </div>
 
-    <div class="profile-card">
-        <h3>Contact & Medical</h3>
-        <div class="profile-item"><span>Student Phone</span><strong>{{ student.student_phone or '-' }}</strong></div>
-        <div class="profile-item"><span>Emergency Contact</span><strong>{{ student.emergency_contact or '-' }}</strong></div>
-        <div class="profile-item"><span>Home Address</span><strong>{{ student.home_address or '-' }}</strong></div>
-        <div class="profile-item"><span>Mailing Address</span><strong>{{ student.mailing_address or '-' }}</strong></div>
-        <div class="profile-item"><span>Medical Info</span><strong>{{ student.medical_info or '-' }}</strong></div>
+    <div class="actions">
+      <a href="{{ url_for('edit_student', id=student.id) }}" class="btn-primary">Edit</a>
+      <a href="{{ url_for('students') }}" class="btn-secondary">Back</a>
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <!-- PERSONAL INFO -->
+    <div class="card">
+      <h3>Personal Information</h3>
+      <p><strong>Student No:</strong> {{ student.student_number }}</p>
+      <p><strong>Gender:</strong> {{ student.gender }}</p>
+      <p><strong>Birthday:</strong> {{ student.birthday }}</p>
+      <p><strong>Class:</strong> {{ student.class_name }}</p>
+      <p><strong>Status:</strong> 
+        {% if student.status == "Active" %}
+          <span class="status active">Active</span>
+        {% else %}
+          <span class="status inactive">Inactive</span>
+        {% endif %}
+      </p>
     </div>
 
-    <div class="profile-card">
-        <h3>Guardian 1</h3>
-        <div class="profile-item"><span>Name</span><strong>{{ student.guardian1_name or '-' }}</strong></div>
-        <div class="profile-item"><span>Relationship</span><strong>{{ student.guardian1_relationship or '-' }}</strong></div>
-        <div class="profile-item"><span>Phone</span><strong>{{ student.guardian1_phone or '-' }}</strong></div>
-        <div class="profile-item"><span>WhatsApp</span><strong>{{ student.guardian1_whatsapp or '-' }}</strong></div>
-        <div class="profile-item"><span>Email</span><strong>{{ student.guardian1_email or '-' }}</strong></div>
+    <!-- CONTACT INFO -->
+    <div class="card">
+      <h3>Contact Information</h3>
+      <p><strong>Phone:</strong> {{ student.student_phone }}</p>
+      <p><strong>Address:</strong> {{ student.home_address }}</p>
     </div>
 
-    <div class="profile-card">
-        <h3>Guardian 2</h3>
-        <div class="profile-item"><span>Name</span><strong>{{ student.guardian2_name or '-' }}</strong></div>
-        <div class="profile-item"><span>Relationship</span><strong>{{ student.guardian2_relationship or '-' }}</strong></div>
-        <div class="profile-item"><span>Phone</span><strong>{{ student.guardian2_phone or '-' }}</strong></div>
-        <div class="profile-item"><span>WhatsApp</span><strong>{{ student.guardian2_whatsapp or '-' }}</strong></div>
-        <div class="profile-item"><span>Email</span><strong>{{ student.guardian2_email or '-' }}</strong></div>
-    </div>
-</div>
-
-<div class="profile-sections-grid">
-    <div class="table-card">
-        <div class="section-title-row">
-            <h3>Fee Records</h3>
-        </div>
-        <div class="table-responsive">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Term</th>
-                        <th>Amount</th>
-                        <th>Paid</th>
-                        <th>Balance</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for fee in fees %}
-                    <tr>
-                        <td>{{ fee.term_name or '-' }}</td>
-                        <td>${{ "%.2f"|format(fee.amount or 0) }}</td>
-                        <td>${{ "%.2f"|format(fee.paid_amount or 0) }}</td>
-                        <td>${{ "%.2f"|format(fee.balance or 0) }}</td>
-                        <td>
-                            {% if fee.status == 'Paid' %}
-                                <span class="status-badge status-paid">Paid</span>
-                            {% elif fee.status == 'Partially Paid' %}
-                                <span class="status-badge status-pending">Partially Paid</span>
-                            {% else %}
-                                <span class="status-badge status-inactive">{{ fee.status or 'Pending' }}</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="5">No fee records found.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+    <!-- GUARDIAN 1 -->
+    <div class="card">
+      <h3>Guardian 1</h3>
+      <p><strong>Name:</strong> {{ student.guardian1_name }}</p>
+      <p><strong>Relationship:</strong> {{ student.guardian1_relationship }}</p>
+      <p><strong>Phone:</strong> {{ student.guardian1_phone }}</p>
+      <p><strong>Email:</strong> {{ student.guardian1_email }}</p>
     </div>
 
-    <div class="table-card">
-        <div class="section-title-row">
-            <h3>Results</h3>
-        </div>
-        <div class="table-responsive">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Term</th>
-                        <th>Subject</th>
-                        <th>Marks</th>
-                        <th>Grade</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for result in results %}
-                    <tr>
-                        <td>{{ result.term or '-' }}</td>
-                        <td>{{ result.subject or '-' }}</td>
-                        <td>{{ result.marks or '-' }}</td>
-                        <td>{{ result.grade or '-' }}</td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="4">No results found.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+    <!-- GUARDIAN 2 -->
+    <div class="card">
+      <h3>Guardian 2</h3>
+      <p><strong>Name:</strong> {{ student.guardian2_name }}</p>
+      <p><strong>Relationship:</strong> {{ student.guardian2_relationship }}</p>
+      <p><strong>Phone:</strong> {{ student.guardian2_phone }}</p>
+      <p><strong>Email:</strong> {{ student.guardian2_email }}</p>
     </div>
 
-    <div class="table-card">
-        <div class="section-title-row">
-            <h3>Attendance</h3>
-        </div>
-        <div class="table-responsive">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for record in attendance_records %}
-                    <tr>
-                        <td>{{ record.date or '-' }}</td>
-                        <td>
-                            {% if record.status == 'Present' %}
-                                <span class="status-badge status-active">Present</span>
-                            {% elif record.status == 'Absent' %}
-                                <span class="status-badge status-inactive">Absent</span>
-                            {% else %}
-                                <span class="status-badge status-pending">{{ record.status or '-' }}</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="2">No attendance records found.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+    <!-- MEDICAL -->
+    <div class="card">
+      <h3>Medical Info</h3>
+      <p>{{ student.medical_info }}</p>
     </div>
+
+  </div>
+
 </div>
 {% endblock %}

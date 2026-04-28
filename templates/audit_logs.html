@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-container">
+
+  <div class="page-header">
+    <div>
+      <h1>Audit Trail</h1>
+      <p>Track important actions made by admins, teachers, and staff.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <table class="clean-table">
+      <thead>
+        <tr>
+          <th>Date/Time</th>
+          <th>User</th>
+          <th>Role</th>
+          <th>Action</th>
+          <th>Table</th>
+          <th>Record ID</th>
+          <th>Details</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td>{{ log.created_at }}</td>
+          <td>{{ log.username or "Unknown" }}</td>
+          <td>{{ log.role or "-" }}</td>
+          <td>{{ log.action }}</td>
+          <td>{{ log.table_name or "-" }}</td>
+          <td>{{ log.record_id or "-" }}</td>
+          <td>{{ log.details or "-" }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="empty">No audit logs yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+{% endblock %}

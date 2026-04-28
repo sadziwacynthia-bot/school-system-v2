@@ -6,111 +6,126 @@
     <title>{% block title %}EduTrack{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+
 <body>
-    <div class="main-layout">
+<div class="main-layout">
 
-        {% if session.get('user_id') %}
-        <aside class="sidebar">
-            <div class="sidebar-brand">
-                <h2>EduTrack</h2>
-                <p>Smart School System</p>
-            </div>
+    {% if session.get('user_id') %}
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <h2>EduTrack</h2>
+            <p>Smart School System</p>
+        </div>
 
-            <nav class="sidebar-menu">
+        <nav class="sidebar-menu">
 
-                {% if session.get('role') in ['school_admin', 'super_admin'] %}
-                    <div class="menu-section-title">School Management</div>
+            {% set role = session.get('role') %}
 
-                    <a href="{{ url_for('dashboard') }}" class="nav-link">Dashboard</a>
-                    <a href="{{ url_for('students') }}" class="nav-link">Students</a>
-                    <a href="{{ url_for('classes') }}" class="nav-link">Classes</a>
-                    <a href="{{ url_for('teachers') }}" class="nav-link">Teachers</a>
-                    <a href="{{ url_for('fees') }}" class="nav-link">Fees</a>
-                    <a href="{{ url_for('results') }}" class="nav-link">Results</a>
-                    <a href="{{ url_for('attendance') }}" class="nav-link">Attendance</a>
-                    <a href="{{ url_for('assignments') }}" class="nav-link">Assignments</a>
-                    <a href="{{ url_for('school_settings') }}" class="nav-link">School Settings</a>
-                    <a href="{{ url_for('users') }}" class="nav-link">Users</a>
+            {% if role in ['super_admin', 'school_admin', 'director', 'admin'] %}
+                <div class="menu-section-title">School Management</div>
 
-                    <div class="menu-section-title">Subjects & Timetable</div>
+                <a href="{{ url_for('dashboard') }}" class="nav-link">Dashboard</a>
+                <a href="{{ url_for('students') }}" class="nav-link">Students</a>
+                <a href="{{ url_for('classes') }}" class="nav-link">Classes</a>
+                <a href="{{ url_for('teachers') }}" class="nav-link">Teachers</a>
+                <a href="{{ url_for('fees') }}" class="nav-link">Fees</a>
+                <a href="{{ url_for('results') }}" class="nav-link">Results</a>
+                <a href="{{ url_for('attendance') }}" class="nav-link">Attendance</a>
+                <a href="{{ url_for('assignments') }}" class="nav-link">Assignments</a>
+                <a href="{{ url_for('users') }}" class="nav-link">Users</a>
 
-                    <a href="{{ url_for('subjects') }}" class="nav-link">Subjects</a>
-                    <a href="{{ url_for('add_subject') }}" class="nav-link">Add Subject</a>
-                    <a href="{{ url_for('assign_teacher') }}" class="nav-link">Assign Subject</a>
-                    <a href="{{ url_for('timetable') }}" class="nav-link">Timetable</a>
-                    <a href="{{ url_for('add_timetable') }}" class="nav-link">Add Timetable Entry</a>
-                    <a href="{{ url_for('timetable_settings') }}" class="nav-link">Timetable Settings</a>
+                <div class="menu-section-title">Subjects & Timetable</div>
 
-                    <div class="menu-section-title">Finance</div>
+                <a href="{{ url_for('subjects') }}" class="nav-link">Subjects</a>
+                <a href="{{ url_for('add_subject') }}" class="nav-link">Add Subject</a>
+                <a href="{{ url_for('assign_teacher') }}" class="nav-link">Assign Subject</a>
+                <a href="{{ url_for('timetable') }}" class="nav-link">Timetable</a>
+                <a href="{{ url_for('add_timetable') }}" class="nav-link">Add Timetable Entry</a>
+                <a href="{{ url_for('timetable_settings') }}" class="nav-link">Timetable Settings</a>
 
-                    <a href="{{ url_for('cashbook') }}" class="nav-link">Cash Book</a>
-<a href="{{ url_for('add_cashbook_entry') }}" class="nav-link">Add Cash Entry</a>
-                {% endif %}
+                <div class="menu-section-title">Finance</div>
 
-                {% if session.get('role') == 'super_admin' %}
-                    <div class="menu-section-title">Platform Control</div>
+                <a href="{{ url_for('cashbook') }}" class="nav-link">Cash Book</a>
+                <a href="{{ url_for('add_cashbook_entry') }}" class="nav-link">Add Cash Entry</a>
 
-                    <a href="{{ url_for('schools') }}" class="nav-link">Schools</a>
-                    <a href="{{ url_for('add_school') }}" class="nav-link">Add School</a>
-                    <a href="{{ url_for('add_school_admin') }}" class="nav-link">Add School Admin</a>
-                    <a href="{{ url_for('billing_dashboard') }}" class="nav-link">Billing Dashboard</a>
-                {% endif %}
+                <div class="menu-section-title">Reports & Control</div>
 
-                {% if session.get('role') == 'teacher' %}
-                    <div class="menu-section-title">Teacher Portal</div>
-
-                    <a href="{{ url_for('teacher_dashboard') }}" class="nav-link">Dashboard</a>
-                    <a href="{{ url_for('attendance') }}" class="nav-link">Attendance</a>
-                    <a href="{{ url_for('results') }}" class="nav-link">Results</a>
-                    <a href="{{ url_for('assignments') }}" class="nav-link">Assignments</a>
-                    <a href="{{ url_for('timetable') }}" class="nav-link">Timetable</a>
-                {% endif %}
-
-                {% if session.get('role') == 'parent' %}
-                    <div class="menu-section-title">Parent Portal</div>
-
-                    <a href="{{ url_for('parent_dashboard') }}" class="nav-link">Dashboard</a>
-                    <a href="{{ url_for('parent_fees') }}" class="nav-link">Fees</a>
-                    <a href="{{ url_for('parent_results') }}" class="nav-link">Results</a>
-                    <a href="{{ url_for('parent_attendance') }}" class="nav-link">Attendance</a>
-                    <a href="{{ url_for('parent_assignments') }}" class="nav-link">Assignments</a>
-                {% endif %}
-
-            </nav>
-        </aside>
-        {% endif %}
-
-        <div class="content-area">
-            {% if session.get('user_id') %}
-            <header class="topbar">
-                <div>
-                    <h1 class="topbar-title">EduTrack</h1>
-                    <p class="topbar-subtitle">Smart School Management System</p>
-                </div>
-
-                <div class="topbar-actions">
-                    <span class="role-badge">
-                        {{ session.get('role', 'user')|replace('_', ' ')|title }}
-                    </span>
-                    <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
-                </div>
-            </header>
+                <a href="{{ url_for('audit_logs') }}" class="nav-link">Audit Trail</a>
             {% endif %}
 
-            <main class="page-content">
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                        {% for category, message in messages %}
-                            <div class="alert alert-{{ category }}">
-                                {{ message }}
-                            </div>
-                        {% endfor %}
-                    {% endif %}
-                {% endwith %}
 
-                {% block content %}{% endblock %}
-            </main>
-        </div>
+            {% if role == 'super_admin' %}
+                <div class="menu-section-title">Platform Control</div>
+
+                <a href="{{ url_for('schools') }}" class="nav-link">Schools</a>
+                <a href="{{ url_for('add_school') }}" class="nav-link">Add School</a>
+                <a href="{{ url_for('add_school_admin') }}" class="nav-link">Add School Admin</a>
+                <a href="{{ url_for('billing_dashboard') }}" class="nav-link">Billing Dashboard</a>
+            {% endif %}
+
+
+            {% if role == 'teacher' %}
+                <div class="menu-section-title">Teacher Portal</div>
+
+                <a href="{{ url_for('teacher_dashboard') }}" class="nav-link">Dashboard</a>
+                <a href="{{ url_for('students') }}" class="nav-link">Students</a>
+                <a href="{{ url_for('attendance') }}" class="nav-link">Attendance</a>
+                <a href="{{ url_for('results') }}" class="nav-link">Results</a>
+                <a href="{{ url_for('assignments') }}" class="nav-link">Assignments</a>
+                <a href="{{ url_for('timetable') }}" class="nav-link">Timetable</a>
+            {% endif %}
+
+
+            {% if role == 'parent' %}
+                <div class="menu-section-title">Parent Portal</div>
+
+                <a href="{{ url_for('parent_dashboard') }}" class="nav-link">Dashboard</a>
+                <a href="{{ url_for('parent_fees') }}" class="nav-link">Fees</a>
+                <a href="{{ url_for('parent_results') }}" class="nav-link">Results</a>
+                <a href="{{ url_for('parent_attendance') }}" class="nav-link">Attendance</a>
+                <a href="{{ url_for('parent_assignments') }}" class="nav-link">Assignments</a>
+            {% endif %}
+
+        </nav>
+    </aside>
+    {% endif %}
+
+
+    <div class="content-area">
+
+        {% if session.get('user_id') %}
+        <header class="topbar">
+            <div>
+                <h1 class="topbar-title">EduTrack</h1>
+                <p class="topbar-subtitle">Smart School Management System</p>
+            </div>
+
+            <div class="topbar-actions">
+                <span class="role-badge">
+                    {{ session.get('role', 'user')|replace('_', ' ')|title }}
+                </span>
+                <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
+            </div>
+        </header>
+        {% endif %}
+
+
+        <main class="page-content">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </main>
+
     </div>
+
+</div>
 </body>
 </html>

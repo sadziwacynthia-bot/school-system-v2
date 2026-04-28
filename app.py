@@ -1,4 +1,3 @@
-
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 import os
 import sqlite3
@@ -934,44 +933,68 @@ def add_school_admin():
 
     return render_template("add_school_admin.html", schools=school_list)
 
+@app.route("/audit_logs")
+@login_required
+@roles_required("super_admin", "school_admin")
+def audit_logs():
+    logs = fetch_all("""
+        SELECT *
+        FROM audit_logs
+        ORDER BY created_at DESC
+        LIMIT 200
+    """)
+
+    return render_template("audit_logs.html", logs=logs)
+
+
+@app.route("/fix_audit_table")
+@login_required
+@roles_required("super_admin", "school_admin")
+def fix_audit_table():
+    run_audit_migration()
+    return "Audit table created successfully."
 
 # =========================================================
 # STUDENTS
 # =========================================================
+
 @app.route("/students")
 @login_required
-@roles_required("director", "admin", "teacher")
+@roles_required("super_admin", "school_admin", "teacher")
 def students():
-    search = request.args.get("search", "")
+    search = request.args.get("search", "").strip()
+    school_id = session.get("school_id")
+    role = session.get("role")
 
-    conn = get_db()
+    params = []
+    query = """
+        SELECT *,
+               COALESCE(current_status, 'Active') AS status
+        FROM students
+        WHERE 1=1
+    """
+
+    if role != "super_admin":
+        query += " AND school_id = ?"
+        params.append(school_id)
 
     if search:
-        students = conn.execute("""
-            SELECT *,
-                   COALESCE(status, 'Active') AS status
-            FROM students
-            WHERE first_name LIKE ?
-               OR last_name LIKE ?
-               OR student_number LIKE ?
-               OR class_name LIKE ?
-            ORDER BY class_name, last_name
-        """, (
-            f"%{search}%",
-            f"%{search}%",
-            f"%{search}%",
-            f"%{search}%"
-        )).fetchall()
-    else:
-        students = conn.execute("""
-            SELECT *,
-                   COALESCE(status, 'Active') AS status
-            FROM students
-            ORDER BY class_name, last_name
-        """).fetchall()
+        query += """
+            AND (
+                first_name LIKE ?
+                OR last_name LIKE ?
+                OR student_number LIKE ?
+                OR class_name LIKE ?
+            )
+        """
+        like = f"%{search}%"
+        params.extend([like, like, like, like])
 
-    conn.close()
+    query += " ORDER BY class_name, last_name, first_name"
+
+    students = fetch_all(query, tuple(params))
     return render_template("students.html", students=students, search=search)
+
 
 
 @app.route("/add_student")
@@ -1164,50 +1187,24 @@ def save_student():
     finally:
         conn.close()
 
-@app.route("/reactivate_student/<int:student_id>", methods=["POST"])
-@login_required
-@roles_required("director", "admin")
-def reactivate_student(student_id):
-    conn = get_db()
-    conn.execute("UPDATE students SET status = 'Active' WHERE id = ?", (student_id,))
-    conn.commit()
-    conn.close()
 
-    flash("Student reactivated successfully.", "success")
-    return redirect(url_for("students"))
 
 @app.route("/student_profile/<int:id>")
 @login_required
-@roles_required("school_admin", "super_admin")
 def student_profile(id):
-    school_id = session.get("school_id")
-    role = session.get("role")
+    student = fetch_one("""
+        SELECT *,
+               COALESCE(current_status, 'Active') AS status
+        FROM students
+        WHERE id = ?
+    """, (id,))
 
-    if role == "super_admin":
-        student = fetch_one("SELECT * FROM students WHERE id = ?", (id,))
-        guardians = fetch_all("SELECT * FROM guardians WHERE student_id = ?", (id,))
-        fees = fetch_all("SELECT * FROM fees WHERE student_id = ? ORDER BY term_name", (id,))
-        results = fetch_all("SELECT * FROM results WHERE student_id = ? ORDER BY term, subject", (id,))
-        attendance_records = fetch_all("SELECT * FROM attendance WHERE student_id = ? ORDER BY date DESC", (id,))
-    else:
-        student = fetch_one("SELECT * FROM students WHERE id = ? AND school_id = ?", (id, school_id))
-        if not student:
-            flash("Student not found or access denied.", "danger")
-            return redirect(url_for("students"))
+    if not student:
+        flash("Student not found.", "danger")
+        return redirect(url_for("students"))
 
-        guardians = fetch_all("SELECT * FROM guardians WHERE student_id = ? AND school_id = ?", (id, school_id))
-        fees = fetch_all("SELECT * FROM fees WHERE student_id = ? AND school_id = ? ORDER BY term_name", (id, school_id))
-        results = fetch_all("SELECT * FROM results WHERE student_id = ? AND school_id = ? ORDER BY term, subject", (id, school_id))
-        attendance_records = fetch_all("SELECT * FROM attendance WHERE student_id = ? AND school_id = ? ORDER BY date DESC", (id, school_id))
+    return render_template("student_profile.html", student=student)
 
-    return render_template(
-        "student_profile.html",
-        student=student,
-        guardians=guardians,
-        fees=fees,
-        results=results,
-        attendance_records=attendance_records,
-    )
 
 
 @app.route("/edit_student/<int:id>")
@@ -1352,17 +1349,6 @@ def delete_student(id):
     return redirect(url_for("students"))
 
 
-@app.route("/deactivate_student/<int:student_id>", methods=["POST"])
-@login_required
-@roles_required("director", "admin")
-def deactivate_student(student_id):
-    conn = get_db()
-    conn.execute("UPDATE students SET status = 'Inactive' WHERE id = ?", (student_id,))
-    conn.commit()
-    conn.close()
-
-    flash("Student deactivated successfully.", "success")
-    return redirect(url_for("students"))
 
 @app.route("/student/activate/<int:id>", methods=["POST"])
 @login_required
@@ -3164,7 +3150,7 @@ def users():
     )
 @app.route("/edit_user/<int:user_id>", methods=["GET", "POST"])
 @login_required
-@roles_required("director", "admin")
+@roles_required("school_admin", "super_admin")
 def edit_user(user_id):
     conn = get_db()
     user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
@@ -3320,6 +3306,47 @@ def activate_user(user_id):
     flash("User activated successfully.", "success")
     return redirect(url_for("users"))
 
+
+@app.route("/deactivate_student/<int:student_id>", methods=["POST"])
+@login_required
+@roles_required("super_admin", "school_admin")
+def deactivate_student(student_id):
+    execute_commit(
+        "UPDATE students SET current_status = ? WHERE id = ?",
+        ("Inactive", student_id)
+    )
+
+    log_audit(
+        action="Deactivated student",
+        table_name="students",
+        record_id=student_id,
+        details="Student status changed to Inactive"
+    )
+
+    flash("Student deactivated successfully.", "success")
+    return redirect(url_for("students"))
+
+
+@app.route("/reactivate_student/<int:student_id>", methods=["POST"])
+@login_required
+@roles_required("super_admin", "school_admin")
+def reactivate_student(student_id):
+    execute_commit(
+        "UPDATE students SET current_status = ? WHERE id = ?",
+        ("Active", student_id)
+    )
+
+    log_audit(
+        action="Reactivated student",
+        table_name="students",
+        record_id=student_id,
+        details="Student status changed to Active"
+    )
+
+    flash("Student reactivated successfully.", "success")
+    return redirect(url_for("students"))
+
+
 @app.route("/print_all_students")
 @login_required
 @roles_required("school_admin", "super_admin")
@@ -3356,6 +3383,7 @@ def run_users_migration():
         conn.commit()
     finally:
         conn.close()
+
 
 @app.route("/send_fee_reminder/<int:student_id>")
 @login_required
@@ -3434,6 +3462,27 @@ def run_subjects_migration():
         conn.commit()
     finally:
         conn.close()
+
+def log_audit(action, table_name=None, record_id=None, details=None):
+    try:
+        execute_commit("""
+            INSERT INTO audit_logs (
+                user_id, username, role, action, table_name, record_id, details
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (
+            session.get("user_id"),
+            session.get("username") or session.get("full_name"),
+            session.get("role"),
+            action,
+            table_name,
+            record_id,
+            details
+        ))
+    except Exception as e:
+        print("Audit log error:", e)
+
+
 def run_timetable_foundation_migrations():
     conn = get_db()
     cursor = conn.cursor()
@@ -3626,6 +3675,44 @@ def update_school_subscription_states():
                 (1, "active", school["id"])
             )
 
+def run_audit_migration():
+    conn = get_db()
+    cursor = conn.cursor()
+
+    try:
+        if is_postgres():
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS audit_logs (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER,
+                    username VARCHAR(255),
+                    role VARCHAR(50),
+                    action VARCHAR(255) NOT NULL,
+                    table_name VARCHAR(100),
+                    record_id INTEGER,
+                    details TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+        else:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS audit_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    username TEXT,
+                    role TEXT,
+                    action TEXT NOT NULL,
+                    table_name TEXT,
+                    record_id INTEGER,
+                    details TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
+        conn.commit()
+    finally:
+        conn.close()           
+
 def setup_app():
     try:
         print("Starting setup...")
@@ -3656,6 +3743,9 @@ def setup_app():
 
             run_users_migration()
             print("Users migration completed")
+
+            run_audit_migration()
+            print("Audit migration completed")
             
             create_default_school()
             print("Default school ready")
@@ -3676,16 +3766,46 @@ def setup_app():
     except Exception as e:
         print("SETUP ERROR:", e)
 
-def run_timetable_foundation_migrations():
+
+def run_audit_migration():
     conn = get_db()
     cursor = conn.cursor()
 
     try:
-        # your migration code here
+        if is_postgres():
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS audit_logs (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER,
+                    username VARCHAR(255),
+                    role VARCHAR(50),
+                    action VARCHAR(255) NOT NULL,
+                    table_name VARCHAR(100),
+                    record_id INTEGER,
+                    details TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+        else:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS audit_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    username TEXT,
+                    role TEXT,
+                    action TEXT NOT NULL,
+                    table_name TEXT,
+                    record_id INTEGER,
+                    details TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
 
         conn.commit()
     finally:
         conn.close()
+
+
 def run_classes_migration():
     conn = get_db()
     cursor = conn.cursor()
@@ -3768,11 +3888,8 @@ def fix_old_data_school():
 
     flash("Old data has been assigned to the default school.", "success")
     return redirect(url_for("dashboard"))
-setup_app()
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port, debug=not is_postgres())@app.route("/suspend_school/<int:school_id>", methods=["POST"])
+@app.route("/suspend_school/<int:school_id>", methods=["POST"])
 @login_required
 @roles_required("super_admin")
 def suspend_school(school_id):
@@ -3795,4 +3912,8 @@ def activate_school(school_id):
     flash("School activated successfully.", "success")
     return redirect(url_for("schools"))
 
+setup_app()
 
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port, debug=not is_postgres())
