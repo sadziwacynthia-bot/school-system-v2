@@ -1169,6 +1169,13 @@ def save_student():
 
         conn.commit()
 
+        log_audit(
+    "Added student",
+    "students",
+    student_id,
+    f"Added {first_name} {last_name} - {student_number}"
+)
+
         if parent_username and parent_user_id:
             flash(
                 f"Student added successfully. Student Number: {student_number}. Parent username: {parent_username}. Temporary password: {temporary_password}",
@@ -1300,6 +1307,12 @@ def update_student(id):
             id,
         ),
     )
+    log_audit(
+    "Updated student",
+    "students",
+    id,
+    f"Updated student ID {id}"
+)
 
     flash("Student updated successfully.", "success")
     return redirect(url_for("student_profile", id=id))
@@ -1700,6 +1713,12 @@ def add_fee():
                 )
 
             conn.commit()
+            log_audit(
+    "Added fee record",
+    "fees",
+    fee_id,
+    f"Student ID {student_id}, term {term_name}, amount {amount}, paid {paid_amount}"
+)
             flash("Fee record added successfully.", "success")
             return redirect(url_for("fees"))
         except Exception as e:
@@ -1795,6 +1814,12 @@ def update_fee(fee_id):
             )
 
             conn.commit()
+            log_audit(
+    "Recorded fee payment",
+    "fees",
+    fee_id,
+    f"Added payment {additional_payment}, receipt {receipt_number}"
+)
             flash("Fee payment updated successfully.", "success")
         except Exception as e:
             conn.rollback()
@@ -2812,6 +2837,12 @@ def add_cashbook_entry():
             school_id, entry_date, entry_type, category, description,
             amount, payment_method, reference_number, created_by
         ))
+        log_audit(
+    "Added cashbook entry",
+    "cashbook",
+    None,
+    f"{entry_type} - {category} - Amount {amount}"
+)
 
         flash("Cash book entry added successfully.", "success")
         return redirect(url_for("cashbook"))

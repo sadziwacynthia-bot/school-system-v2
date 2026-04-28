@@ -1,79 +1,84 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="page-container">
+<div class="students-page">
 
-  <div class="page-header">
+  <div class="students-header">
     <div>
       <h1>Students</h1>
-      <p>Manage registered students, classes, status, and profiles.</p>
+      <p>Manage all registered students in your school</p>
     </div>
 
-    <a href="{{ url_for('add_student') }}" class="btn-primary">+ Add Student</a>
+    <a href="{{ url_for('add_student') }}" class="add-student-btn">
+      + Add Student
+    </a>
   </div>
 
-  <form method="GET" action="{{ url_for('students') }}" class="search-card">
+  <form method="GET" action="{{ url_for('students') }}" class="student-search-box">
     <input 
       type="text" 
       name="search" 
-      placeholder="Search by name, student number, or class..." 
+      placeholder="Search by name, student number, or class..."
       value="{{ search or '' }}"
     >
-    <button type="submit" class="btn-primary">Search</button>
-    <a href="{{ url_for('students') }}" class="btn-secondary">Clear</a>
+
+    <button type="submit">Search</button>
+    <a href="{{ url_for('students') }}">Clear</a>
   </form>
 
-  <div class="card">
-    <table class="clean-table">
-      <thead>
-        <tr>
-          <th>Student No.</th>
-          <th>Name</th>
-          <th>Class</th>
-          <th>Gender</th>
-          <th>Status</th>
-          <th class="actions-col">Actions</th>
-        </tr>
-      </thead>
+  <div class="student-table-card">
+    <div class="table-scroll">
+      <table class="student-table">
+        <thead>
+          <tr>
+            <th>Student No.</th>
+            <th>Name</th>
+            <th>Class</th>
+            <th>Gender</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
 
-      <tbody>
-        {% for student in students %}
-        <tr>
-          <td>{{ student.student_number }}</td>
-          <td>
-            <strong>{{ student.first_name }} {{ student.last_name }}</strong>
-          </td>
-          <td>{{ student.class_name }}</td>
-          <td>{{ student.gender }}</td>
-          <td>
-            {% if student.status == "Active" %}
-              <span class="status active">Active</span>
-            {% else %}
-              <span class="status inactive">Inactive</span>
-            {% endif %}
-          </td>
-          <td class="actions">
-            <a href="{{ url_for('student_profile', id=student.id) }}" class="btn-small view">View</a>
-            <a href="{{ url_for('edit_student', id=student.id) }}" class="btn-small edit">Edit</a>
+        <tbody>
+          {% for student in students %}
+          <tr>
+            <td>{{ student.student_number }}</td>
+            <td class="student-name">{{ student.first_name }} {{ student.last_name }}</td>
+            <td>{{ student.class_name }}</td>
+            <td>{{ student.gender }}</td>
+            <td>
+              {% if student.status == "Active" %}
+                <span class="student-status active">Active</span>
+              {% else %}
+                <span class="student-status inactive">Inactive</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="student-actions">
+                <a href="{{ url_for('student_profile', id=student.id) }}" class="action-btn view">View</a>
+                <a href="{{ url_for('edit_student', id=student.id) }}" class="action-btn edit">Edit</a>
 
-            {% if student.status == "Active" %}
-              <form action="{{ url_for('deactivate_student', student_id=student.id) }}" method="POST" class="inline-form">
-                <button type="submit" class="btn-small danger">Deactivate</button>
-              </form>
-            {% else %}
-              <form action="{{ url_for('reactivate_student', student_id=student.id) }}" method="POST" class="inline-form">
-                <button type="submit" class="btn-small success">Reactivate</button>
-              </form>
-            {% endif %}
-          </td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="6" class="empty">No students found.</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+                {% if student.status == "Active" %}
+                <form action="{{ url_for('deactivate_student', student_id=student.id) }}" method="POST">
+                  <button type="submit" class="action-btn deactivate">Deactivate</button>
+                </form>
+                {% else %}
+                <form action="{{ url_for('reactivate_student', student_id=student.id) }}" method="POST">
+                  <button type="submit" class="action-btn reactivate">Reactivate</button>
+                </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="6" class="empty-row">No students found.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 
 </div>
