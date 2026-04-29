@@ -1166,6 +1166,16 @@ def save_student():
                     guardian2_relationship, guardian2_phone, guardian2_whatsapp, guardian2_email
                 ),
             )
+            try:
+    cursor.execute(
+        convert_query("""
+            INSERT INTO school_classes (school_id, class_name)
+            VALUES (?, ?)
+        """),
+        (school_id, class_name)
+    )
+except Exception:
+    pass
 
         conn.commit()
 
@@ -4092,7 +4102,6 @@ def run_audit_migration():
     finally:
         conn.close()
 
-
 def run_classes_migration():
     conn = get_db()
     cursor = conn.cursor()
@@ -4107,6 +4116,17 @@ def run_classes_migration():
                     UNIQUE(school_id, class_name)
                 )
             """)
+
+            cursor.execute("""
+                INSERT INTO school_classes (school_id, class_name)
+                SELECT DISTINCT school_id, class_name
+                FROM students
+                WHERE school_id IS NOT NULL
+                  AND class_name IS NOT NULL
+                  AND class_name != ''
+                ON CONFLICT (school_id, class_name) DO NOTHING
+            """)
+
         else:
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS school_classes (
@@ -4117,27 +4137,17 @@ def run_classes_migration():
                 )
             """)
 
-        cursor.execute(convert_query("""
-            SELECT DISTINCT school_id, class_name
-            FROM students
-            WHERE class_name IS NOT NULL AND class_name != ''
-        """))
-
-        existing_classes = cursor.fetchall()
-
-        for row in existing_classes:
-            try:
-                cursor.execute(
-                    convert_query("""
-                        INSERT INTO school_classes (school_id, class_name)
-                        VALUES (?, ?)
-                    """),
-                    (row["school_id"], row["class_name"])
-                )
-            except Exception:
-                pass
+            cursor.execute("""
+                INSERT OR IGNORE INTO school_classes (school_id, class_name)
+                SELECT DISTINCT school_id, class_name
+                FROM students
+                WHERE school_id IS NOT NULL
+                  AND class_name IS NOT NULL
+                  AND class_name != ''
+            """)
 
         conn.commit()
+
     finally:
         conn.close()
 

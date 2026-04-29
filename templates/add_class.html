@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+    .class-page {
+        padding: 25px;
+        background: #f4f6f9;
+        min-height: 100vh;
+    }
+
+    .class-card {
+        max-width: 650px;
+        background: white;
+        padding: 25px;
+        border-radius: 14px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+
+    .class-card h1 {
+        margin: 0 0 8px;
+        color: #1f2937;
+    }
+
+    .class-card p {
+        color: #6b7280;
+        margin-bottom: 22px;
+    }
+
+    .form-group {
+        margin-bottom: 16px;
+    }
+
+    label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 600;
+        color: #374151;
+    }
+
+    input,
+    select {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 14px;
+    }
+
+    .actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+    }
+
+    .btn-save,
+    .btn-cancel {
+        padding: 11px 16px;
+        border-radius: 8px;
+        border: none;
+        text-decoration: none;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .btn-save {
+        background: #16a34a;
+        color: white;
+    }
+
+    .btn-cancel {
+        background: #374151;
+        color: white;
+    }
+</style>
+
+<div class="class-page">
+    <div class="class-card">
+        <h1>Add Class</h1>
+        <p>Create a class so students can appear correctly in the class dashboard.</p>
+
+        <form method="POST">
+
+            {% if session.get('role') == 'super_admin' %}
+            <div class="form-group">
+                <label>School</label>
+                <select name="school_id" required>
+                    <option value="">Select School</option>
+                    {% for school in schools %}
+                        <option value="{{ school.id }}">{{ school.school_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+
+            <div class="form-group">
+                <label>Class Name</label>
+                <input type="text" name="class_name" placeholder="Example: Form 1 Blue" required>
+            </div>
+
+            <div class="actions">
+                <button type="submit" class="btn-save">Save Class</button>
+                <a href="{{ url_for('classes') }}" class="btn-cancel">Cancel</a>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+{% endblock %}
