@@ -3,93 +3,220 @@
 {% block content %}
 
 <style>
-.classes-page {
-    padding: 25px;
-    background: #f4f6f9;
-    min-height: 100vh;
-}
+    .classes-page {
+        padding: 28px;
+        background: #f4f6f9;
+        min-height: 100vh;
+    }
 
-.classes-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 22px;
-}
+    .classes-top {
+        background: linear-gradient(135deg, #1e3a8a, #2563eb);
+        color: white;
+        padding: 26px;
+        border-radius: 18px;
+        margin-bottom: 24px;
+        box-shadow: 0 8px 18px rgba(0,0,0,0.12);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 15px;
+    }
 
-.classes-header h1 {
-    margin: 0;
-    color: #1f2937;
-    font-size: 32px;
-}
+    .classes-top h1 {
+        margin: 0;
+        font-size: 32px;
+    }
 
-.classes-header p {
-    margin: 6px 0 0;
-    color: #6b7280;
-}
+    .classes-top p {
+        margin: 8px 0 0;
+        opacity: 0.9;
+    }
 
-.btn {
-    padding: 10px 14px;
-    border-radius: 8px;
-    text-decoration: none;
-    border: none;
-    font-weight: 600;
-    cursor: pointer;
-    font-size: 14px;
-}
+    .top-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
 
-.btn-primary { background: #2563eb; color: white; }
-.btn-success { background: #16a34a; color: white; }
-.btn-dark { background: #374151; color: white; }
-.btn-danger { background: #dc2626; color: white; }
+    .btn {
+        padding: 10px 14px;
+        border-radius: 10px;
+        text-decoration: none;
+        border: none;
+        font-weight: 700;
+        cursor: pointer;
+        font-size: 14px;
+        display: inline-block;
+    }
 
-.classes-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 18px;
-}
+    .btn-light {
+        background: white;
+        color: #1e3a8a;
+    }
 
-.class-card {
-    background: white;
-    padding: 20px;
-    border-radius: 14px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-}
+    .btn-view {
+        background: #16a34a;
+        color: white;
+    }
 
-.class-card h2 {
-    margin: 0 0 8px;
-    color: #1f2937;
-    font-size: 22px;
-}
+    .btn-print {
+        background: #374151;
+        color: white;
+    }
 
-.class-card p {
-    margin: 0 0 16px;
-    color: #6b7280;
-}
+    .btn-delete {
+        background: #dc2626;
+        color: white;
+    }
 
-.class-actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-}
+    .classes-summary {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        margin-bottom: 24px;
+    }
 
-.no-data {
-    background: white;
-    padding: 25px;
-    border-radius: 12px;
-    color: #6b7280;
-    text-align: center;
-}
+    .summary-card {
+        background: white;
+        padding: 18px;
+        border-radius: 16px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+
+    .summary-card h3 {
+        margin: 0;
+        color: #6b7280;
+        font-size: 14px;
+    }
+
+    .summary-card p {
+        margin: 8px 0 0;
+        color: #111827;
+        font-size: 26px;
+        font-weight: 800;
+    }
+
+    .classes-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+        gap: 18px;
+    }
+
+    .class-card {
+        background: white;
+        border-radius: 18px;
+        padding: 20px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        border: 1px solid #e5e7eb;
+        transition: 0.2s ease;
+    }
+
+    .class-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.09);
+    }
+
+    .class-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        background: #dbeafe;
+        color: #1e40af;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        margin-bottom: 14px;
+    }
+
+    .class-card h2 {
+        margin: 0;
+        color: #111827;
+        font-size: 22px;
+    }
+
+    .class-meta {
+        margin: 10px 0 18px;
+        color: #6b7280;
+        font-size: 15px;
+    }
+
+    .student-pill {
+        display: inline-block;
+        background: #f3f4f6;
+        padding: 6px 10px;
+        border-radius: 20px;
+        color: #374151;
+        font-weight: 600;
+    }
+
+    .class-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .delete-form {
+        margin: 0;
+    }
+
+    .no-data {
+        background: white;
+        padding: 30px;
+        border-radius: 16px;
+        text-align: center;
+        color: #6b7280;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+
+    @media (max-width: 900px) {
+        .classes-top,
+        .classes-summary {
+            grid-template-columns: 1fr;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .classes-summary {
+            display: grid;
+        }
+    }
 </style>
+
+{% set ns = namespace(total_students=0) %}
+{% for class in classes %}
+    {% set ns.total_students = ns.total_students + (class.total_students or 0) %}
+{% endfor %}
 
 <div class="classes-page">
 
-    <div class="classes-header">
+    <div class="classes-top">
         <div>
             <h1>Classes</h1>
-            <p>Manage all school classes</p>
+            <p>View classes, student lists, and printable class records.</p>
         </div>
 
-        <a href="{{ url_for('add_class') }}" class="btn btn-primary">+ Add Class</a>
+        <div class="top-actions">
+            <a href="{{ url_for('add_class') }}" class="btn btn-light">+ Add Class</a>
+        </div>
+    </div>
+
+    <div class="classes-summary">
+        <div class="summary-card">
+            <h3>Total Classes</h3>
+            <p>{{ classes|length }}</p>
+        </div>
+
+        <div class="summary-card">
+            <h3>Total Students in Classes</h3>
+            <p>{{ ns.total_students }}</p>
+        </div>
+
+        <div class="summary-card">
+            <h3>Management</h3>
+            <p>Active</p>
+        </div>
     </div>
 
     {% if classes %}
@@ -97,37 +224,46 @@
 
         {% for class in classes %}
         <div class="class-card">
+
+            <div class="class-icon">🏫</div>
+
             <h2>{{ class.class_name }}</h2>
 
-            <p>
-                Students: {{ class.total_students or 0 }}
-            </p>
+            <div class="class-meta">
+                <span class="student-pill">
+                    {{ class.total_students or 0 }} Students
+                </span>
+            </div>
 
             <div class="class-actions">
-                <a href="{{ url_for('class_students', class_name=class.class_name) }}" class="btn btn-success">
+                <a href="{{ url_for('class_students', class_name=class.class_name) }}" class="btn btn-view">
                     View Students
                 </a>
 
-                <a href="{{ url_for('print_class_list', class_name=class.class_name) }}" class="btn btn-dark">
+                <a href="{{ url_for('print_class_list', class_name=class.class_name) }}" class="btn btn-print">
                     Print
                 </a>
 
                 {% if session.get('role') == 'super_admin' %}
                 <form method="POST"
                       action="{{ url_for('delete_class', class_id=class.id) }}"
+                      class="delete-form"
                       onsubmit="return confirm('Delete this class? Students will NOT be deleted.');">
-                    <button type="submit" class="btn btn-danger">
+                    <button type="submit" class="btn btn-delete">
                         Delete
                     </button>
                 </form>
                 {% endif %}
             </div>
+
         </div>
         {% endfor %}
 
     </div>
     {% else %}
-        <div class="no-data">No classes found.</div>
+        <div class="no-data">
+            No classes found yet. Click <strong>+ Add Class</strong> to create one.
+        </div>
     {% endif %}
 
 </div>
