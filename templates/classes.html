@@ -3,92 +3,82 @@
 {% block content %}
 
 <style>
-    .classes-page {
-        padding: 25px;
-        background: #f4f6f9;
-        min-height: 100vh;
-    }
+.classes-page {
+    padding: 25px;
+    background: #f4f6f9;
+    min-height: 100vh;
+}
 
-    .classes-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-    }
+.classes-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 22px;
+}
 
-    .classes-header h1 {
-        margin: 0;
-        color: #1f2937;
-    }
+.classes-header h1 {
+    margin: 0;
+    color: #1f2937;
+    font-size: 32px;
+}
 
-    .classes-header p {
-        color: #6b7280;
-        margin-top: 4px;
-    }
+.classes-header p {
+    margin: 6px 0 0;
+    color: #6b7280;
+}
 
-    .btn {
-        padding: 10px 14px;
-        border-radius: 8px;
-        border: none;
-        text-decoration: none;
-        font-weight: 600;
-        cursor: pointer;
-    }
+.btn {
+    padding: 10px 14px;
+    border-radius: 8px;
+    text-decoration: none;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 14px;
+}
 
-    .btn-primary { background: #2563eb; color: white; }
-    .btn-danger { background: #dc2626; color: white; }
+.btn-primary { background: #2563eb; color: white; }
+.btn-success { background: #16a34a; color: white; }
+.btn-dark { background: #374151; color: white; }
+.btn-danger { background: #dc2626; color: white; }
 
-    .classes-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-        gap: 15px;
-    }
+.classes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 18px;
+}
 
-    .class-card {
-        background: white;
-        padding: 18px;
-        border-radius: 14px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-    }
+.class-card {
+    background: white;
+    padding: 20px;
+    border-radius: 14px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
 
-    .class-name {
-        font-size: 18px;
-        font-weight: bold;
-        color: #1f2937;
-        margin-bottom: 8px;
-    }
+.class-card h2 {
+    margin: 0 0 8px;
+    color: #1f2937;
+    font-size: 22px;
+}
 
-    .class-info {
-        color: #6b7280;
-        font-size: 14px;
-        margin-bottom: 15px;
-    }
+.class-card p {
+    margin: 0 0 16px;
+    color: #6b7280;
+}
 
-    .class-actions {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
+.class-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
 
-    .view-btn {
-        text-decoration: none;
-        color: white;
-        background: #16a34a;
-        padding: 8px 12px;
-        border-radius: 6px;
-        font-size: 13px;
-    }
-
-    .no-data {
-        background: white;
-        padding: 20px;
-        border-radius: 12px;
-        text-align: center;
-        color: #6b7280;
-    }
+.no-data {
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    color: #6b7280;
+    text-align: center;
+}
 </style>
 
 <div class="classes-page">
@@ -99,29 +89,27 @@
             <p>Manage all school classes</p>
         </div>
 
-        <a href="{{ url_for('add_class') }}" class="btn btn-primary">
-            + Add Class
-        </a>
+        <a href="{{ url_for('add_class') }}" class="btn btn-primary">+ Add Class</a>
     </div>
 
     {% if classes %}
     <div class="classes-grid">
+
         {% for class in classes %}
         <div class="class-card">
+            <h2>{{ class.class_name }}</h2>
 
-            <div>
-                <div class="class-name">{{ class.class_name }}</div>
-
-                <div class="class-info">
-                    Students: {{ class.student_count if class.student_count else 0 }}
-                </div>
-            </div>
+            <p>
+                Students: {{ class.total_students or 0 }}
+            </p>
 
             <div class="class-actions">
-
-                <a href="{{ url_for('class_students', class_name=class.class_name) }}"
-                   class="view-btn">
+                <a href="{{ url_for('class_students', class_name=class.class_name) }}" class="btn btn-success">
                     View Students
+                </a>
+
+                <a href="{{ url_for('print_class_list', class_name=class.class_name) }}" class="btn btn-dark">
+                    Print
                 </a>
 
                 {% if session.get('role') == 'super_admin' %}
@@ -133,16 +121,13 @@
                     </button>
                 </form>
                 {% endif %}
-
             </div>
-
         </div>
         {% endfor %}
+
     </div>
     {% else %}
-        <div class="no-data">
-            No classes found.
-        </div>
+        <div class="no-data">No classes found.</div>
     {% endif %}
 
 </div>

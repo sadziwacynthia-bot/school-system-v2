@@ -3043,8 +3043,8 @@ def classes():
             FROM school_classes sc
             LEFT JOIN schools s ON sc.school_id = s.id
             LEFT JOIN students st 
-                ON st.school_id = sc.school_id 
-                AND st.class_name = sc.class_name
+                ON st.school_id = sc.school_id
+                AND LOWER(TRIM(st.class_name)) = LOWER(TRIM(sc.class_name))
             GROUP BY sc.id, sc.school_id, sc.class_name, s.school_name
             ORDER BY s.school_name, sc.class_name
         """)
@@ -3057,15 +3057,15 @@ def classes():
                 COUNT(st.id) AS total_students
             FROM school_classes sc
             LEFT JOIN students st 
-                ON st.school_id = sc.school_id 
-                AND st.class_name = sc.class_name
+                ON st.school_id = sc.school_id
+                AND LOWER(TRIM(st.class_name)) = LOWER(TRIM(sc.class_name))
             WHERE sc.school_id = ?
             GROUP BY sc.id, sc.school_id, sc.class_name
             ORDER BY sc.class_name
         """, (school_id,))
 
     return render_template("classes.html", classes=class_rows)
-
+    
 @app.route("/add_class", methods=["GET", "POST"])
 @login_required
 @roles_required("school_admin", "super_admin")
