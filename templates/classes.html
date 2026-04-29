@@ -1,92 +1,150 @@
 {% extends "base.html" %}
-{% block title %}Classes{% endblock %}
-{% block page_heading %}Classes{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div>
-        <h2 class="page-title">Classes</h2>
-        <p class="page-subtitle">Manage school classes and view student totals</p>
-    </div>
 
-    <div class="action-group">
-        <a href="{{ url_for('add_class') }}" class="btn btn-primary">+ Add Class</a>
-        <a href="{{ url_for('print_all_students') }}" target="_blank" class="btn btn-secondary">Print All Students</a>
-    </div>
-</div>
+<style>
+    .classes-page {
+        padding: 25px;
+        background: #f4f6f9;
+        min-height: 100vh;
+    }
 
-<div class="dashboard-stat-grid">
-    <div class="metric-card metric-card-blue">
-        <div class="metric-top">
-            <span class="metric-label">Total Classes</span>
-            <span class="metric-icon">🏫</span>
+    .classes-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .classes-header h1 {
+        margin: 0;
+        color: #1f2937;
+    }
+
+    .classes-header p {
+        color: #6b7280;
+        margin-top: 4px;
+    }
+
+    .btn {
+        padding: 10px 14px;
+        border-radius: 8px;
+        border: none;
+        text-decoration: none;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .btn-primary { background: #2563eb; color: white; }
+    .btn-danger { background: #dc2626; color: white; }
+
+    .classes-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 15px;
+    }
+
+    .class-card {
+        background: white;
+        padding: 18px;
+        border-radius: 14px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .class-name {
+        font-size: 18px;
+        font-weight: bold;
+        color: #1f2937;
+        margin-bottom: 8px;
+    }
+
+    .class-info {
+        color: #6b7280;
+        font-size: 14px;
+        margin-bottom: 15px;
+    }
+
+    .class-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .view-btn {
+        text-decoration: none;
+        color: white;
+        background: #16a34a;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 13px;
+    }
+
+    .no-data {
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        text-align: center;
+        color: #6b7280;
+    }
+</style>
+
+<div class="classes-page">
+
+    <div class="classes-header">
+        <div>
+            <h1>Classes</h1>
+            <p>Manage all school classes</p>
         </div>
-        <div class="metric-value">{{ classes|length }}</div>
-        <div class="metric-note">Classes registered</div>
+
+        <a href="{{ url_for('add_class') }}" class="btn btn-primary">
+            + Add Class
+        </a>
     </div>
 
-    <div class="metric-card metric-card-emerald">
-        <div class="metric-top">
-            <span class="metric-label">Total Students</span>
-            <span class="metric-icon">🎓</span>
-        </div>
-        <div class="metric-value">
-            {{ classes|sum(attribute='total_students') }}
-        </div>
-        <div class="metric-note">Students across classes</div>
-    </div>
-</div>
+    {% if classes %}
+    <div class="classes-grid">
+        {% for class in classes %}
+        <div class="class-card">
 
-{% if classes %}
-<div class="classes-grid">
-    {% for class_item in classes %}
-    <div class="class-card">
-        <div class="class-card-top">
             <div>
-                <h3>{{ class_item.class_name }}</h3>
+                <div class="class-name">{{ class.class_name }}</div>
 
-                {% if session.get('role') == 'super_admin' and class_item.school_name %}
-                    <p>{{ class_item.school_name }}</p>
-                {% else %}
-                    <p>Registered class</p>
+                <div class="class-info">
+                    Students: {{ class.student_count if class.student_count else 0 }}
+                </div>
+            </div>
+
+            <div class="class-actions">
+
+                <a href="{{ url_for('class_students', class_name=class.class_name) }}"
+                   class="view-btn">
+                    View Students
+                </a>
+
+                {% if session.get('role') == 'super_admin' %}
+                <form method="POST"
+                      action="{{ url_for('delete_class', class_id=class.id) }}"
+                      onsubmit="return confirm('Delete this class? Students will NOT be deleted.');">
+                    <button type="submit" class="btn btn-danger">
+                        Delete
+                    </button>
+                </form>
                 {% endif %}
+
             </div>
 
-            <span class="class-badge">
-                {{ class_item.total_students or 0 }} students
-            </span>
         </div>
-
-        <div class="class-info-row">
-            <div>
-                <span>Total Students</span>
-                <strong>{{ class_item.total_students or 0 }}</strong>
-            </div>
-            <div>
-                <span>Status</span>
-                <strong>Active</strong>
-            </div>
-        </div>
-
-        <div class="class-card-actions">
-            <a href="{{ url_for('class_students', class_name=class_item.class_name) }}" class="btn btn-primary btn-sm">
-                View Students
-            </a>
-
-            <a href="{{ url_for('print_class_list', class_name=class_item.class_name) }}" target="_blank" class="btn btn-secondary btn-sm">
-                Print List
-            </a>
-        </div>
+        {% endfor %}
     </div>
-    {% endfor %}
+    {% else %}
+        <div class="no-data">
+            No classes found.
+        </div>
+    {% endif %}
+
 </div>
-{% else %}
-<div class="table-card empty-state-card">
-    <h3>No classes found yet</h3>
-    <p class="page-subtitle">
-        Add your school’s classes so they appear in students, attendance, fees, results, and timetable pages.
-    </p>
-    <a href="{{ url_for('add_class') }}" class="btn btn-primary">+ Add First Class</a>
-</div>
-{% endif %}
+
 {% endblock %}

@@ -2475,6 +2475,28 @@ def class_students(class_name):
         students=students,
         class_name=class_name
     )
+@app.route("/delete_class/<int:class_id>", methods=["POST"])
+@login_required
+@roles_required("super_admin")
+def delete_class(class_id):
+    class_row = fetch_one("SELECT * FROM school_classes WHERE id = ?", (class_id,))
+
+    if not class_row:
+        flash("Class not found.", "danger")
+        return redirect(url_for("classes"))
+
+    execute_commit("DELETE FROM school_classes WHERE id = ?", (class_id,))
+
+    log_audit(
+        "Deleted class",
+        "school_classes",
+        class_id,
+        f"Deleted class {class_row['class_name']}"
+    )
+
+    flash("Class deleted successfully.", "success")
+    return redirect(url_for("classes"))
+
 @app.route("/subjects")
 @login_required
 @roles_required("school_admin", "super_admin", "teacher")
