@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+    .cashbook-page {
+        padding: 25px;
+        background: #f4f6f9;
+        min-height: 100vh;
+    }
+
+    .cashbook-header {
+        margin-bottom: 20px;
+    }
+
+    .cashbook-header h1 {
+        font-size: 28px;
+        margin: 0;
+        color: #1f2937;
+    }
+
+    .cashbook-header p {
+        margin-top: 6px;
+        color: #6b7280;
+        font-size: 15px;
+    }
+
+    .cashbook-card {
+        background: #ffffff;
+        border-radius: 14px;
+        padding: 20px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        margin-bottom: 20px;
+    }
+
+    .cashbook-filters {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        align-items: end;
+    }
+
+    .cashbook-filters input,
+    .cashbook-filters select {
+        width: 100%;
+        padding: 11px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 14px;
+        background: white;
+    }
+
+    .cashbook-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 18px;
+    }
+
+    .cashbook-btn {
+        padding: 10px 14px;
+        border-radius: 8px;
+        border: none;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-block;
+    }
+
+    .cashbook-btn-blue {
+        background: #2563eb;
+        color: white;
+    }
+
+    .cashbook-btn-green {
+        background: #16a34a;
+        color: white;
+    }
+
+    .cashbook-btn-dark {
+        background: #374151;
+        color: white;
+    }
+
+    .cashbook-btn-purple {
+        background: #7c3aed;
+        color: white;
+    }
+
+    .cashbook-summary {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .summary-box {
+        background: white;
+        border-radius: 14px;
+        padding: 20px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+
+    .summary-box h3 {
+        margin: 0;
+        font-size: 15px;
+        color: #6b7280;
+    }
+
+    .summary-box p {
+        margin: 10px 0 0;
+        font-size: 24px;
+        font-weight: bold;
+        color: #111827;
+    }
+
+    .cashbook-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 14px;
+        overflow: hidden;
+    }
+
+    .cashbook-table th {
+        background: #1e3a8a;
+        color: white;
+        padding: 13px;
+        text-align: left;
+        font-size: 14px;
+    }
+
+    .cashbook-table td {
+        padding: 13px;
+        border-bottom: 1px solid #e5e7eb;
+        font-size: 14px;
+    }
+
+    .cashbook-badge-income {
+        background: #dcfce7;
+        color: #166534;
+        padding: 5px 10px;
+        border-radius: 20px;
+        font-weight: 600;
+    }
+
+    .cashbook-badge-expense {
+        background: #fee2e2;
+        color: #991b1b;
+        padding: 5px 10px;
+        border-radius: 20px;
+        font-weight: 600;
+    }
+
+    .no-records {
+        padding: 20px;
+        text-align: center;
+        color: #6b7280;
+        background: white;
+    }
+
+    @media print {
+        .cashbook-filters,
+        .cashbook-actions,
+        nav,
+        .sidebar {
+            display: none !important;
+        }
+
+        .cashbook-page {
+            background: white;
+            padding: 0;
+        }
+
+        .cashbook-card,
+        .summary-box {
+            box-shadow: none;
+        }
+    }
+
+    @media (max-width: 900px) {
+        .cashbook-filters,
+        .cashbook-summary {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="cashbook-page">
+
+    <div class="cashbook-header">
+        <h1>Cashbook Report</h1>
+        <p>Track all income and expenses</p>
+    </div>
+
+    <div class="cashbook-card">
+        <form method="GET" action="{{ url_for('cashbook_reports') }}" class="cashbook-filters">
+            <input type="date" name="start_date" value="{{ request.args.get('start_date', '') }}">
+
+            <input type="date" name="end_date" value="{{ request.args.get('end_date', '') }}">
+
+            <select name="type">
+                <option value="">All Types</option>
+                <option value="income" {% if request.args.get('type') == 'income' %}selected{% endif %}>Income</option>
+                <option value="expense" {% if request.args.get('type') == 'expense' %}selected{% endif %}>Expense</option>
+            </select>
+
+            <button type="submit" class="cashbook-btn cashbook-btn-blue">Filter</button>
+        </form>
+
+        <div class="cashbook-actions">
+          <a href="{{ url_for('add_cashbook_entry') }}" class="cashbook-btn cashbook-btn-green">
+    + Add Entry
+</a>
+            <a href="{{ url_for('cashbook_reports', report='daily') }}" class="cashbook-btn cashbook-btn-blue">Daily</a>
+
+            <a href="{{ url_for('cashbook_reports', report='monthly') }}" class="cashbook-btn cashbook-btn-blue">Monthly</a>
+
+            <a href="{{ url_for('cashbook_reports', report='summary') }}" class="cashbook-btn cashbook-btn-green">Summary</a>
+
+            <button onclick="window.print()" class="cashbook-btn cashbook-btn-dark">Print</button>
+
+            <a href="{{ url_for('cashbook_reports') }}" class="cashbook-btn cashbook-btn-purple">Export</a>
+        </div>
+    </div>
+
+    <div class="cashbook-summary">
+        <div class="summary-box">
+            <h3>Total Income</h3>
+            <p>${{ "%.2f"|format(total_income or 0) }}</p>
+        </div>
+
+        <div class="summary-box">
+            <h3>Total Expenses</h3>
+            <p>${{ "%.2f"|format(total_expense or 0) }}</p>
+        </div>
+
+        <div class="summary-box">
+            <h3>Balance</h3>
+            <p>${{ "%.2f"|format((total_income or 0) - (total_expense or 0)) }}</p>
+        </div>
+    </div>
+
+    <div class="cashbook-card">
+        <table class="cashbook-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Type</th>
+                    <th>Amount</th>
+                    <th>Recorded By</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for entry in cashbook %}
+                <tr>
+                    <td>{{ entry.date }}</td>
+                    <td>{{ entry.description }}</td>
+                    <td>
+                        {% if entry.type == 'income' %}
+                            <span class="cashbook-badge-income">Income</span>
+                        {% else %}
+                            <span class="cashbook-badge-expense">Expense</span>
+                        {% endif %}
+                    </td>
+                    <td>${{ "%.2f"|format(entry.amount or 0) }}</td>
+                    <td>{{ entry.recorded_by }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="no-records">No records found</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+{% endblock %}

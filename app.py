@@ -2848,6 +2848,93 @@ def add_cashbook_entry():
         return redirect(url_for("cashbook"))
 
     return render_template("add_cashbook_entry.html", schools=schools)
+@app.route("/cashbook_reports")
+@login_required
+@roles_required("school_admin", "super_admin")
+def cashbook_reports():
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    report_type = request.args.get("report_type", "daily")
+    selected_date = request.args.get("date", datetime.now().strftime("%Y-%m-%d"))
+    selected_month = request.args.get("month", datetime.now().strftime("%Y-%m"))
+    start_date = request.args.get("start_date", "")
+    end_date = request.args.get("end_date", "")
+
+    query = """
+        SELECT *
+        FROM cashbook
+        WHERE 1=1
+    """
+    params = []
+
+    if role != "super_admin":
+        query += " AND school_id = ?"
+        params.append(school_id)
+
+    if report_type == "daily":
+        query += " AND entry_date = ?"
+        params.append(selected_date)
+
+    elif report_type == "monthly":
+        query += " AND entry_date LIKE ?"
+        params.append(f"{selected_month}%")
+
+    elif report_type == "custom":
+        if start_date:
+            query += " AND entry_date >= ?"
+            params.append(start_date)
+        if end_date:
+            query += " AND entry_date <= ?"
+            params.append(end_date)
+
+    query += " ORDER BY entry_date ASC, id ASC"
+
+    entries = fetch_all(query, tuple(params))
+
+    total_income = 0
+    total_expense = 0
+    running_balance = 0
+    processed_entries = []
+
+    for entry in entries:
+        amount = float(entry["amount"] or 0)
+
+        if entry["entry_type"] == "income":
+            total_income += amount
+            running_balance += amount
+        else:
+            total_expense += amount
+            running_balance -= amount
+
+        processed_entries.append({
+            "id": entry["id"],
+            "entry_date": entry["entry_date"],
+            "entry_type": entry["entry_type"],
+            "category": entry["category"],
+            "description": entry["description"],
+            "amount": amount,
+            "payment_method": entry["payment_method"],
+            "reference_number": entry["reference_number"],
+            "created_by": entry["created_by"],
+            "running_balance": running_balance
+        })
+
+    net_balance = total_income - total_expense
+
+    return render_template(
+        "cashbook_reports.html",
+        entries=processed_entries,
+        report_type=report_type,
+        selected_date=selected_date,
+        selected_month=selected_month,
+        start_date=start_date,
+        end_date=end_date,
+        total_income=total_income,
+        total_expense=total_expense,
+        net_balance=net_balance
+    )
+
 
 @app.route("/classes")
 @login_required
@@ -3183,40 +3270,82 @@ def users():
 @login_required
 @roles_required("school_admin", "super_admin")
 def edit_user(user_id):
-    conn = get_db()
-    user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    school_id = session.get("school_id")
+    current_role = session.get("role")
+
+    # Fetch user safely
+    if current_role == "super_admin":
+        user = fetch_one("SELECT * FROM users WHERE id = ?", (user_id,))
+    else:
+        user = fetch_one(
+            "SELECT * FROM users WHERE id = ? AND school_id = ?",
+            (user_id, school_id)
+        )
 
     if not user:
-        conn.close()
-        flash("User not found.", "error")
+        flash("User not found or access denied.", "danger")
+        return redirect(url_for("users"))
+
+    # 🔐 Protect super admin
+    if user["role"] == "super_admin" and current_role != "super_admin":
+        flash("Only super admin can edit a super admin account.", "danger")
         return redirect(url_for("users"))
 
     if request.method == "POST":
-        full_name = request.form["full_name"]
-        username = request.form["username"]
-        role = request.form["role"]
-        password = request.form.get("password")
+        full_name = request.form.get("full_name", "").strip()
+        username = request.form.get("username", "").strip()
+        new_role = request.form.get("role", "").strip()
+        password = request.form.get("password", "").strip()
 
+        # 🚫 Prevent changing super admin role
+        if user["role"] == "super_admin" and new_role != "super_admin":
+            flash("You cannot change a super admin's role.", "danger")
+            return redirect(url_for("users"))
+
+        # 🚫 Prevent normal admins assigning high roles
+        if current_role != "super_admin" and new_role in ["super_admin", "school_admin"]:
+            flash("You are not allowed to assign admin roles.", "danger")
+            return redirect(url_for("users"))
+
+        # Update user
         if password:
-            hashed_password = generate_password_hash(password)
-            conn.execute("""
+            execute_commit("""
                 UPDATE users
                 SET full_name = ?, username = ?, role = ?, password = ?
                 WHERE id = ?
-            """, (full_name, username, role, hashed_password, user_id))
+            """, (
+                full_name,
+                username,
+                new_role,
+                generate_password_hash(password),
+                user_id
+            ))
         else:
-            conn.execute("""
+            execute_commit("""
                 UPDATE users
                 SET full_name = ?, username = ?, role = ?
                 WHERE id = ?
-            """, (full_name, username, role, user_id))
+            """, (
+                full_name,
+                username,
+                new_role,
+                user_id
+            ))
 
-        conn.commit()
-        conn.close()
+        # 📜 Audit log (if you added audit system)
+        try:
+            log_audit(
+                action="Edited user",
+                table_name="users",
+                record_id=user_id,
+                details=f"Updated {username} role to {new_role}"
+            )
+        except:
+            pass
+
         flash("User updated successfully.", "success")
         return redirect(url_for("users"))
 
-    conn.close()
     return render_template("edit_user.html", user=user)
 
 @app.route("/reset_user_password/<int:user_id>", methods=["GET", "POST"])
@@ -3228,6 +3357,10 @@ def reset_user_password(user_id):
 
     if role == "super_admin":
         user = fetch_one("SELECT * FROM users WHERE id = ?", (user_id,))
+        
+        if user["role"] == "super_admin" and session.get("role") != "super_admin":
+            flash("Only super admin can reset a super admin password.", "danger")
+            return redirect(url_for("users"))
     else:
         user = fetch_one(
             "SELECT * FROM users WHERE id = ? AND school_id = ?",
@@ -3245,6 +3378,7 @@ def reset_user_password(user_id):
         if not new_password or new_password != confirm_password:
             flash("Passwords do not match.", "danger")
             return redirect(url_for("reset_user_password", user_id=user_id))
+        
 
         execute_commit(
             "UPDATE users SET password = ? WHERE id = ?",
@@ -3645,8 +3779,17 @@ def run_school_control_migration():
 
 
 def run_cashbook_migration():
+    """Create/repair the cashbook table.
+
+    This supports the current cashbook design used by:
+    - /cashbook
+    - /add_cashbook_entry
+    - /cashbook_reports
+    - automatic fee payment income entries
+    """
     conn = get_db()
     cursor = conn.cursor()
+
     try:
         if is_postgres():
             cursor.execute("""
@@ -3663,6 +3806,29 @@ def run_cashbook_migration():
                     created_by VARCHAR(255)
                 )
             """)
+
+            statements = [
+                "ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS school_id INTEGER",
+                "ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS entry_date VARCHAR(50)",
+                "ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS entry_type VARCHAR(20)",
+                "ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS category VARCHAR(100)",
+                "ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS description TEXT",
+                "ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS amount NUMERIC(12,2)",
+                "ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50)",
+                "ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS reference_number VARCHAR(100)",
+                "ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS created_by VARCHAR(255)",
+            ]
+            for stmt in statements:
+                cursor.execute(stmt)
+
+            # If an older table used date/type/recorded_by, copy those values into the new columns when possible.
+            cursor.execute("UPDATE cashbook SET entry_date = date WHERE entry_date IS NULL AND date IS NOT NULL")
+            cursor.execute("UPDATE cashbook SET entry_type = type WHERE entry_type IS NULL AND type IS NOT NULL")
+            cursor.execute("UPDATE cashbook SET created_by = recorded_by WHERE created_by IS NULL AND recorded_by IS NOT NULL")
+            cursor.execute("UPDATE cashbook SET category = 'General' WHERE category IS NULL OR category = ''")
+            cursor.execute("UPDATE cashbook SET payment_method = '' WHERE payment_method IS NULL")
+            cursor.execute("UPDATE cashbook SET reference_number = '' WHERE reference_number IS NULL")
+
         else:
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS cashbook (
@@ -3678,10 +3844,42 @@ def run_cashbook_migration():
                     created_by TEXT
                 )
             """)
+
+            sqlite_statements = [
+                "ALTER TABLE cashbook ADD COLUMN school_id INTEGER",
+                "ALTER TABLE cashbook ADD COLUMN entry_date TEXT",
+                "ALTER TABLE cashbook ADD COLUMN entry_type TEXT",
+                "ALTER TABLE cashbook ADD COLUMN category TEXT",
+                "ALTER TABLE cashbook ADD COLUMN payment_method TEXT",
+                "ALTER TABLE cashbook ADD COLUMN reference_number TEXT",
+                "ALTER TABLE cashbook ADD COLUMN created_by TEXT",
+            ]
+            for stmt in sqlite_statements:
+                try:
+                    cursor.execute(stmt)
+                except Exception:
+                    pass
+
+            # If an older table used date/type/recorded_by, copy those values into the new columns when possible.
+            try:
+                cursor.execute("UPDATE cashbook SET entry_date = date WHERE entry_date IS NULL AND date IS NOT NULL")
+            except Exception:
+                pass
+            try:
+                cursor.execute("UPDATE cashbook SET entry_type = type WHERE entry_type IS NULL AND type IS NOT NULL")
+            except Exception:
+                pass
+            try:
+                cursor.execute("UPDATE cashbook SET created_by = recorded_by WHERE created_by IS NULL AND recorded_by IS NOT NULL")
+            except Exception:
+                pass
+            cursor.execute("UPDATE cashbook SET category = 'General' WHERE category IS NULL OR category = ''")
+            cursor.execute("UPDATE cashbook SET payment_method = '' WHERE payment_method IS NULL")
+            cursor.execute("UPDATE cashbook SET reference_number = '' WHERE reference_number IS NULL")
+
         conn.commit()
     finally:
         conn.close()
-
 
 def update_school_subscription_states():
     try:

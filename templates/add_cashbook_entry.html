@@ -1,76 +1,125 @@
 {% extends "base.html" %}
-{% block title %}Add Cash Book Entry{% endblock %}
-{% block page_heading %}Add Cash Entry{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div>
-        <h2 class="page-title">Add Cash Book Entry</h2>
-        <p class="page-subtitle">Record an income or expense transaction</p>
-    </div>
-</div>
 
-<div class="form-card">
-    <form method="POST">
-        {% if session.get('role') == 'super_admin' %}
-        <label>School</label>
-        <select name="school_id" required>
-            <option value="">Select school</option>
-            {% for school in schools %}
-            <option value="{{ school.id }}">{{ school.school_name }}</option>
-            {% endfor %}
-        </select>
-        {% endif %}
+<style>
+    .cashbook-form-page {
+        padding: 25px;
+        background: #f4f6f9;
+        min-height: 100vh;
+    }
 
-        <div class="form-grid">
-            <div>
+    .cashbook-form-card {
+        max-width: 650px;
+        background: white;
+        padding: 25px;
+        border-radius: 14px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+
+    .cashbook-form-card h1 {
+        margin: 0 0 8px;
+        color: #1f2937;
+    }
+
+    .cashbook-form-card p {
+        color: #6b7280;
+        margin-bottom: 22px;
+    }
+
+    .form-group {
+        margin-bottom: 16px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 600;
+        color: #374151;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 14px;
+    }
+
+    .form-group textarea {
+        min-height: 90px;
+        resize: vertical;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+    }
+
+    .btn-save,
+    .btn-back {
+        padding: 11px 16px;
+        border-radius: 8px;
+        border: none;
+        text-decoration: none;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .btn-save {
+        background: #16a34a;
+        color: white;
+    }
+
+    .btn-back {
+        background: #374151;
+        color: white;
+    }
+</style>
+
+<div class="cashbook-form-page">
+
+    <div class="cashbook-form-card">
+        <h1>Add Cashbook Entry</h1>
+        <p>Record school income or expense</p>
+
+        <form method="POST">
+
+            <div class="form-group">
                 <label>Date</label>
                 <input type="date" name="entry_date" required>
             </div>
 
-            <div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea name="description" placeholder="Example: School fees payment, stationery purchase..." required></textarea>
+            </div>
+
+            <div class="form-group">
                 <label>Type</label>
                 <select name="entry_type" required>
-                    <option value="">Select type</option>
+                    <option value="">Select Type</option>
                     <option value="income">Income</option>
                     <option value="expense">Expense</option>
                 </select>
             </div>
 
-            <div>
-                <label>Category</label>
-                <input type="text" name="category" placeholder="e.g. Fees, Salaries, Stationery" required>
-            </div>
-
-            <div>
+            <div class="form-group">
                 <label>Amount</label>
-                <input type="number" step="0.01" name="amount" required>
+                <input type="number" name="amount" step="0.01" min="0" placeholder="0.00" required>
             </div>
 
-            <div>
-                <label>Payment Method</label>
-                <select name="payment_method">
-                    <option value="">Select method</option>
-                    <option value="Cash">Cash</option>
-                    <option value="Bank Transfer">Bank Transfer</option>
-                    <option value="Mobile Money">Mobile Money</option>
-                    <option value="Card">Card</option>
-                </select>
+            <div class="form-actions">
+                <button type="submit" class="btn-save">Save Entry</button>
+                <a href="{{ url_for('cashbook_reports') }}" class="btn-back">Cancel</a>
             </div>
 
-            <div>
-                <label>Reference Number</label>
-                <input type="text" name="reference_number" placeholder="Receipt or reference number">
-            </div>
-        </div>
+        </form>
+    </div>
 
-        <label>Description</label>
-        <textarea name="description" rows="4" placeholder="Add more details about this transaction"></textarea>
-
-        <div class="action-group" style="margin-top: 18px;">
-            <button type="submit" class="btn btn-primary">Save Entry</button>
-            <a href="{{ url_for('cashbook') }}" class="btn btn-secondary">Back to Cash Book</a>
-        </div>
-    </form>
 </div>
+
 {% endblock %}
