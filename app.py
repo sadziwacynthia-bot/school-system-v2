@@ -1166,17 +1166,16 @@ def save_student():
                     guardian2_relationship, guardian2_phone, guardian2_whatsapp, guardian2_email
                 ),
             )
-            try:
-    cursor.execute(
-        convert_query("""
-            INSERT INTO school_classes (school_id, class_name)
-            VALUES (?, ?)
-        """),
-        (school_id, class_name)
-    )
-except Exception:
-    pass
-
+        try:
+            cursor.execute(
+                convert_query("""
+                    INSERT INTO school_classes (school_id, class_name)
+                    VALUES (?, ?)
+                """),
+                (school_id, class_name)
+            )
+        except Exception:
+            pass
         conn.commit()
 
         log_audit(
