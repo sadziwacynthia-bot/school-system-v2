@@ -2691,6 +2691,42 @@ def print_result(student_id, term):
         total_balance=float(fee_summary["total_balance"] or 0)
     )
 
+# =========================================================
+# CASHBOOK
+# =========================================================
+
+def cashbook_insert_income(cursor, school_id, payment_date, amount_paid, receipt_number, student_name, term_name, created_by):
+    try:
+        amount = float(amount_paid or 0)
+    except Exception:
+        amount = 0
+
+    if amount <= 0:
+        return
+
+    entry_date = payment_date or datetime.now().strftime("%Y-%m-%d")
+
+    cursor.execute(
+        convert_query("""
+            INSERT INTO cashbook (
+                school_id, entry_date, entry_type, category, description,
+                amount, payment_method, reference_number, created_by
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """),
+        (
+            school_id,
+            entry_date,
+            "income",
+            "School Fees",
+            f"Fee payment from {student_name} for {term_name}",
+            amount,
+            "School Fee Payment",
+            receipt_number,
+            created_by,
+        )
+    )
+
 
 @app.route("/cashbook")
 @login_required
@@ -2700,6 +2736,8 @@ def cashbook():
     role = session.get("role")
 
     entry_type = request.args.get("entry_type", "").strip()
+    category = request.args.get("category", "").strip()
+    source = request.args.get("source", "").strip()
     start_date = request.args.get("start_date", "").strip()
     end_date = request.args.get("end_date", "").strip()
 
@@ -2714,6 +2752,18 @@ def cashbook():
         query += " AND entry_type = ?"
         params.append(entry_type)
 
+    if category:
+        query += " AND category = ?"
+        params.append(category)
+
+    if source == "auto_fees":
+        query += " AND category = ?"
+        params.append("School Fees")
+
+    elif source == "manual":
+        query += " AND category != ?"
+        params.append("School Fees")
+
     if start_date:
         query += " AND entry_date >= ?"
         params.append(start_date)
@@ -2722,17 +2772,23 @@ def cashbook():
         query += " AND entry_date <= ?"
         params.append(end_date)
 
-    query += " ORDER BY entry_date ASC, id ASC"
+    query += " ORDER BY entry_date DESC, id DESC"
+
     entries = fetch_all(query, tuple(params))
 
+    total_income = 0
+    total_expense = 0
     running_balance = 0
     processed_entries = []
 
-    for entry in entries:
+    for entry in reversed(entries):
         amount = float(entry["amount"] or 0)
+
         if entry["entry_type"] == "income":
+            total_income += amount
             running_balance += amount
         else:
+            total_expense += amount
             running_balance -= amount
 
         processed_entries.append({
@@ -2748,41 +2804,15 @@ def cashbook():
             "running_balance": running_balance
         })
 
-    summary_query = """
-        SELECT
-            COALESCE(SUM(CASE WHEN entry_type = 'income' THEN amount ELSE 0 END), 0) AS total_income,
-            COALESCE(SUM(CASE WHEN entry_type = 'expense' THEN amount ELSE 0 END), 0) AS total_expense
-        FROM cashbook
-        WHERE 1=1
-    """
-    summary_params = []
-
-    if role != "super_admin":
-        summary_query += " AND school_id = ?"
-        summary_params.append(school_id)
-
-    if start_date:
-        summary_query += " AND entry_date >= ?"
-        summary_params.append(start_date)
-
-    if end_date:
-        summary_query += " AND entry_date <= ?"
-        summary_params.append(end_date)
-
-    if entry_type:
-        summary_query += " AND entry_type = ?"
-        summary_params.append(entry_type)
-
-    summary = fetch_one(summary_query, tuple(summary_params))
-
-    total_income = float(summary["total_income"] or 0) if summary else 0
-    total_expense = float(summary["total_expense"] or 0) if summary else 0
+    processed_entries.reverse()
     net_balance = total_income - total_expense
 
     return render_template(
         "cashbook.html",
         entries=processed_entries,
         entry_type=entry_type,
+        category=category,
+        source=source,
         start_date=start_date,
         end_date=end_date,
         total_income=total_income,
@@ -2824,7 +2854,7 @@ def add_cashbook_entry():
             if amount <= 0:
                 raise ValueError
         except Exception:
-            flash("Amount must be a valid number greater than zero.", "danger")
+            flash("Amount must be greater than zero.", "danger")
             return redirect(url_for("add_cashbook_entry"))
 
         execute_commit("""
@@ -2834,20 +2864,30 @@ def add_cashbook_entry():
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            school_id, entry_date, entry_type, category, description,
-            amount, payment_method, reference_number, created_by
+            school_id,
+            entry_date,
+            entry_type,
+            category,
+            description,
+            amount,
+            payment_method,
+            reference_number,
+            created_by
         ))
-        log_audit(
-    "Added cashbook entry",
-    "cashbook",
-    None,
-    f"{entry_type} - {category} - Amount {amount}"
-)
 
-        flash("Cash book entry added successfully.", "success")
+        log_audit(
+            "Added cashbook entry",
+            "cashbook",
+            None,
+            f"{entry_type} - {category} - Amount {amount}"
+        )
+
+        flash("Cashbook entry added successfully.", "success")
         return redirect(url_for("cashbook"))
 
     return render_template("add_cashbook_entry.html", schools=schools)
+
+
 @app.route("/cashbook_reports")
 @login_required
 @roles_required("school_admin", "super_admin")
@@ -2855,17 +2895,17 @@ def cashbook_reports():
     school_id = session.get("school_id")
     role = session.get("role")
 
-    report_type = request.args.get("report_type", "daily")
-    selected_date = request.args.get("date", datetime.now().strftime("%Y-%m-%d"))
-    selected_month = request.args.get("month", datetime.now().strftime("%Y-%m"))
-    start_date = request.args.get("start_date", "")
-    end_date = request.args.get("end_date", "")
+    report_type = request.args.get("report_type", "daily").strip()
+    selected_date = request.args.get("date", datetime.now().strftime("%Y-%m-%d")).strip()
+    selected_month = request.args.get("month", datetime.now().strftime("%Y-%m")).strip()
+    start_date = request.args.get("start_date", "").strip()
+    end_date = request.args.get("end_date", "").strip()
 
-    query = """
-        SELECT *
-        FROM cashbook
-        WHERE 1=1
-    """
+    entry_type = request.args.get("entry_type", "").strip()
+    category = request.args.get("category", "").strip()
+    source = request.args.get("source", "").strip()
+
+    query = "SELECT * FROM cashbook WHERE 1=1"
     params = []
 
     if role != "super_admin":
@@ -2884,9 +2924,26 @@ def cashbook_reports():
         if start_date:
             query += " AND entry_date >= ?"
             params.append(start_date)
+
         if end_date:
             query += " AND entry_date <= ?"
             params.append(end_date)
+
+    if entry_type:
+        query += " AND entry_type = ?"
+        params.append(entry_type)
+
+    if category:
+        query += " AND category = ?"
+        params.append(category)
+
+    if source == "auto_fees":
+        query += " AND category = ?"
+        params.append("School Fees")
+
+    elif source == "manual":
+        query += " AND category != ?"
+        params.append("School Fees")
 
     query += " ORDER BY entry_date ASC, id ASC"
 
@@ -2930,12 +2987,13 @@ def cashbook_reports():
         selected_month=selected_month,
         start_date=start_date,
         end_date=end_date,
+        entry_type=entry_type,
+        category=category,
+        source=source,
         total_income=total_income,
         total_expense=total_expense,
         net_balance=net_balance
     )
-
-
 @app.route("/classes")
 @login_required
 @roles_required("school_admin", "super_admin", "teacher")
