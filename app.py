@@ -479,7 +479,37 @@ def init_db():
         """)
     conn.commit()
     conn.close()
+def create_notices_table():
+    conn = get_db()
+    cursor = conn.cursor()
 
+    try:
+        if is_postgres():
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS notices (
+                    id SERIAL PRIMARY KEY,
+                    school_id INTEGER,
+                    title TEXT,
+                    message TEXT,
+                    date DATE,
+                    created_by TEXT
+                )
+            """)
+        else:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS notices (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    school_id INTEGER,
+                    title TEXT,
+                    message TEXT,
+                    date TEXT,
+                    created_by TEXT
+                )
+            """)
+
+        conn.commit()
+    finally:
+        conn.close()
 
 def run_migrations():
     conn = get_db()
@@ -2168,6 +2198,7 @@ def parent_dashboard():
           AND school_id = ?
     """, (student["id"], school_id))
 
+    try:
     notices = fetch_all("""
         SELECT *
         FROM notices
@@ -2176,6 +2207,8 @@ def parent_dashboard():
         ORDER BY date DESC, id DESC
         LIMIT 5
     """, (school_id,))
+except Exception:
+    notices = []
 
     return render_template(
         "parent_dashboard.html",
@@ -4236,6 +4269,7 @@ def activate_school(school_id):
     flash("School activated successfully.", "success")
     return redirect(url_for("schools"))
 
+create_notices_table()
 setup_app()
 
 if __name__ == "__main__":
