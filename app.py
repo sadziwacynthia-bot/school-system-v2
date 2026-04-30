@@ -2329,7 +2329,25 @@ def parent_setup():
 
     return render_template("parent_setup.html")
 
+@app.route("/parent_fees")
+@login_required
+@roles_required("parent")
+def parent_fees():
+    school_id = session.get("school_id")
+    user_id = session.get("user_id")
 
+    fee_records = fetch_all("""
+        SELECT f.*, s.first_name, s.last_name, s.class_name, s.student_number
+        FROM fees f
+        JOIN students s ON f.student_id = s.id
+        JOIN guardians g ON s.id = g.student_id
+        WHERE g.parent_user_id = ?
+          AND f.school_id = ?
+        ORDER BY f.term_name
+    """, (user_id, school_id))
+
+    return render_template("parent_fees.html", fee_records=fee_records)
+    
 # =========================================================
 # TIMETABLE
 # =========================================================
