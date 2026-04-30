@@ -2133,30 +2133,53 @@ def add_assignment():
 @login_required
 @roles_required("parent")
 def parent_dashboard():
-    school_id = session.get("school_id")
-    user_id = session.get("user_id")
+    # Get logged-in student
+    student_id = session.get("student_id")
 
-    student = fetch_one("""
-        SELECT s.*
-        FROM students s
-        JOIN guardians g ON s.id = g.student_id
-        WHERE g.parent_user_id = ? AND s.school_id = ?
-        LIMIT 1
-    """, (user_id, school_id))
+    if not student_id:
+        flash("No student linked to this account.", "danger")
+        return redirect(url_for("logout"))
 
-    fee_summary = {"total_amount": 0, "total_paid": 0, "total_balance": 0}
-    if student:
-        fee_summary = fetch_one("""
-            SELECT
-                COALESCE(SUM(amount), 0) AS total_amount,
-                COALESCE(SUM(paid_amount), 0) AS total_paid,
-                COALESCE(SUM(balance), 0) AS total_balance
-            FROM fees
-            WHERE student_id = ? AND school_id = ?
-        """, (student["id"], school_id))
+    # Get student info
+    student = fetch_one(
+        "SELECT * FROM students WHERE id = ?",
+        (student_id,)
+    )
 
-    return render_template("parent_dashboard.html", student=student, fee_summary=fee_summary)
+    if not student:
+        flash("Student not found.", "danger")
+        return redirect(url_for("logout"))
 
+    # Fees summary
+    fee_summary = fetch_one("""
+        SELECT 
+            SUM(amount) as total_amount,
+            SUM(paid_amount) as total_paid,
+            SUM(balance) as total_balance
+        FROM fees
+        WHERE student_id = ?
+    """, (student_id,))
+
+    # Safety fallback
+    fee_summary = fee_summary or {
+        "total_amount": 0,
+        "total_paid": 0,
+        "total_balance": 0
+    }
+
+    # Notices (latest 5)
+    notices = fetch_all("""
+        SELECT * FROM notices
+        ORDER BY date DESC
+        LIMIT 5
+    """)
+
+    return render_template(
+        "parent_dashboard.html",
+        student=student,
+        fee_summary=fee_summary,
+        notices=notices
+    )
 
 @app.route("/parent_fees")
 @login_required
@@ -3065,7 +3088,7 @@ def classes():
         """, (school_id,))
 
     return render_template("classes.html", classes=class_rows)
-    
+
 @app.route("/add_class", methods=["GET", "POST"])
 @login_required
 @roles_required("school_admin", "super_admin")

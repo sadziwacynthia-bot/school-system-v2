@@ -3,142 +3,341 @@
 {% block title %}Parent Dashboard{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div>
-        <h2 class="page-title">Parent Dashboard</h2>
-        <p class="page-subtitle">View your child’s school information in one place</p>
-    </div>
-</div>
 
-{% if student %}
-<div class="dashboard-grid premium-stats-grid">
-    <div class="stats-card premium-card students-card">
-        <div class="stats-top">
-            <span class="stats-card-label">Student Name</span>
-            <span class="stats-icon">👨‍🎓</span>
+<style>
+    .parent-page {
+        padding: 25px;
+        background: #f4f6f9;
+        min-height: 100vh;
+    }
+
+    .parent-header {
+        background: linear-gradient(135deg, #1e3a8a, #2563eb);
+        color: white;
+        padding: 24px;
+        border-radius: 18px;
+        margin-bottom: 24px;
+        box-shadow: 0 8px 18px rgba(0,0,0,0.12);
+    }
+
+    .parent-header h1 {
+        margin: 0;
+        font-size: 30px;
+    }
+
+    .parent-header p {
+        margin: 8px 0 0;
+        opacity: 0.9;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        margin-bottom: 22px;
+    }
+
+    .stats-card,
+    .panel {
+        background: white;
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+
+    .stats-label {
+        color: #6b7280;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .stats-value {
+        margin-top: 8px;
+        font-size: 24px;
+        font-weight: 800;
+        color: #111827;
+    }
+
+    .main-grid {
+        display: grid;
+        grid-template-columns: 1.3fr 1fr;
+        gap: 18px;
+    }
+
+    .panel {
+        margin-bottom: 18px;
+    }
+
+    .panel h3 {
+        margin: 0;
+        color: #1f2937;
+        font-size: 20px;
+    }
+
+    .panel-subtitle {
+        color: #6b7280;
+        margin: 5px 0 18px;
+        font-size: 14px;
+    }
+
+    .summary-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .summary-item {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px;
+        background: #f9fafb;
+        border-radius: 10px;
+    }
+
+    .summary-item span {
+        color: #6b7280;
+    }
+
+    .summary-item strong {
+        color: #111827;
+        text-align: right;
+    }
+
+    .quick-actions {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    .quick-action {
+        text-decoration: none;
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 16px;
+        color: #111827;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        transition: 0.2s ease;
+    }
+
+    .quick-action:hover {
+        background: #dbeafe;
+        transform: translateY(-2px);
+    }
+
+    .quick-icon {
+        font-size: 22px;
+    }
+
+    .notice-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .notice-item {
+        background: #f9fafb;
+        padding: 13px;
+        border-radius: 12px;
+        border-left: 4px solid #2563eb;
+    }
+
+    .notice-title {
+        font-weight: 800;
+        color: #1f2937;
+        margin-bottom: 5px;
+    }
+
+    .notice-message {
+        color: #4b5563;
+        font-size: 14px;
+        line-height: 1.4;
+    }
+
+    .notice-date {
+        color: #9ca3af;
+        font-size: 12px;
+        margin-top: 7px;
+    }
+
+    .note-box {
+        background: #eff6ff;
+        border-left: 4px solid #2563eb;
+        padding: 14px;
+        border-radius: 12px;
+        color: #1f2937;
+        line-height: 1.5;
+    }
+
+    .empty-box {
+        background: white;
+        padding: 25px;
+        border-radius: 16px;
+        color: #6b7280;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+
+    @media (max-width: 900px) {
+        .stats-grid,
+        .main-grid,
+        .quick-actions {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="parent-page">
+
+    <div class="parent-header">
+        <h1>Parent Dashboard</h1>
+        <p>View your child’s school information in one place.</p>
+    </div>
+
+    {% if student %}
+
+    <div class="stats-grid">
+        <div class="stats-card">
+            <div class="stats-label">Student Name</div>
+            <div class="stats-value">{{ student.first_name }} {{ student.last_name }}</div>
         </div>
-        <div class="stats-card-value small-stat">{{ student.first_name }} {{ student.last_name }}</div>
-        <div class="stats-card-note">Current learner profile</div>
-    </div>
 
-    <div class="stats-card premium-card schools-card">
-        <div class="stats-top">
-            <span class="stats-card-label">Class</span>
-            <span class="stats-icon">🏫</span>
+        <div class="stats-card">
+            <div class="stats-label">Class</div>
+            <div class="stats-value">{{ student.class_name or 'Not Assigned' }}</div>
         </div>
-        <div class="stats-card-value small-stat">{{ student.class_name or 'Not Assigned' }}</div>
-        <div class="stats-card-note">Current class placement</div>
-    </div>
 
-    <div class="stats-card premium-card fees-card">
-        <div class="stats-top">
-            <span class="stats-card-label">Outstanding Balance</span>
-            <span class="stats-icon">💳</span>
+        <div class="stats-card">
+            <div class="stats-label">Outstanding Balance</div>
+            <div class="stats-value">${{ "%.2f"|format(fee_summary.total_balance or 0) }}</div>
         </div>
-        <div class="stats-card-value">${{ "%.2f"|format(fee_summary.total_balance or 0) }}</div>
-        <div class="stats-card-note">Total unpaid school fees</div>
     </div>
-</div>
 
-<div class="dashboard-main-grid">
-    <div class="dashboard-left-column">
-        <div class="dashboard-panel premium-panel">
-            <div class="panel-header">
+    <div class="main-grid">
+
+        <div>
+            <div class="panel">
                 <h3>Student Information</h3>
-                <p>Basic learner details</p>
+                <p class="panel-subtitle">Basic learner details</p>
+
+                <div class="summary-list">
+                    <div class="summary-item">
+                        <span>Student Number</span>
+                        <strong>{{ student.student_number or '-' }}</strong>
+                    </div>
+
+                    <div class="summary-item">
+                        <span>Full Name</span>
+                        <strong>{{ student.first_name }} {{ student.last_name }}</strong>
+                    </div>
+
+                    <div class="summary-item">
+                        <span>Class</span>
+                        <strong>{{ student.class_name or '-' }}</strong>
+                    </div>
+
+                    <div class="summary-item">
+                        <span>Status</span>
+                        <strong>{{ student.current_status or 'Active' }}</strong>
+                    </div>
+                </div>
             </div>
 
-            <div class="summary-list modern-summary-list">
-                <div class="summary-item">
-                    <span>Student Number</span>
-                    <strong>{{ student.student_number or '-' }}</strong>
-                </div>
-                <div class="summary-item">
-                    <span>Full Name</span>
-                    <strong>{{ student.first_name }} {{ student.last_name }}</strong>
-                </div>
-                <div class="summary-item">
-                    <span>Class</span>
-                    <strong>{{ student.class_name or '-' }}</strong>
-                </div>
-                <div class="summary-item">
-                    <span>Status</span>
-                    <strong>{{ student.current_status or 'Active' }}</strong>
-                </div>
-            </div>
-        </div>
-
-        <div class="dashboard-panel premium-panel">
-            <div class="panel-header">
+            <div class="panel">
                 <h3>Quick Parent Actions</h3>
-                <p>Open the sections you need most</p>
-            </div>
+                <p class="panel-subtitle">Open the sections you need most</p>
 
-            <div class="quick-actions-grid">
-                <a href="{{ url_for('parent_fees') }}" class="quick-action-tile">
-                    <span class="quick-action-icon">💳</span>
-                    <span>View Fees</span>
-                </a>
-                <a href="{{ url_for('parent_results') }}" class="quick-action-tile">
-                    <span class="quick-action-icon">📘</span>
-                    <span>View Results</span>
-                </a>
-                <a href="{{ url_for('parent_attendance') }}" class="quick-action-tile">
-                    <span class="quick-action-icon">✅</span>
-                    <span>View Attendance</span>
-                </a>
-                <a href="{{ url_for('parent_assignments') }}" class="quick-action-tile">
-                    <span class="quick-action-icon">📚</span>
-                    <span>View Assignments</span>
-                </a>
+                <div class="quick-actions">
+                    <a href="{{ url_for('parent_fees') }}" class="quick-action">
+                        <span class="quick-icon">💳</span>
+                        <span>View Fees</span>
+                    </a>
+
+                    <a href="{{ url_for('parent_results') }}" class="quick-action">
+                        <span class="quick-icon">📘</span>
+                        <span>View Results</span>
+                    </a>
+
+                    <a href="{{ url_for('parent_attendance') }}" class="quick-action">
+                        <span class="quick-icon">✅</span>
+                        <span>View Attendance</span>
+                    </a>
+
+                    <a href="{{ url_for('parent_assignments') }}" class="quick-action">
+                        <span class="quick-icon">📚</span>
+                        <span>View Assignments</span>
+                    </a>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="dashboard-right-column">
-        <div class="dashboard-panel premium-panel">
-            <div class="panel-header">
+        <div>
+            <div class="panel">
                 <h3>Fees Summary</h3>
-                <p>Current fee overview</p>
+                <p class="panel-subtitle">Current fee overview</p>
+
+                <div class="summary-list">
+                    <div class="summary-item">
+                        <span>Total Fees</span>
+                        <strong>${{ "%.2f"|format(fee_summary.total_amount or 0) }}</strong>
+                    </div>
+
+                    <div class="summary-item">
+                        <span>Total Paid</span>
+                        <strong>${{ "%.2f"|format(fee_summary.total_paid or 0) }}</strong>
+                    </div>
+
+                    <div class="summary-item">
+                        <span>Total Balance</span>
+                        <strong>${{ "%.2f"|format(fee_summary.total_balance or 0) }}</strong>
+                    </div>
+                </div>
             </div>
 
-            <div class="summary-list modern-summary-list">
-                <div class="summary-item">
-                    <span>Total Fees</span>
-                    <strong>${{ "%.2f"|format(fee_summary.total_amount or 0) }}</strong>
-                </div>
-                <div class="summary-item">
-                    <span>Total Paid</span>
-                    <strong>${{ "%.2f"|format(fee_summary.total_paid or 0) }}</strong>
-                </div>
-                <div class="summary-item">
-                    <span>Total Balance</span>
-                    <strong>${{ "%.2f"|format(fee_summary.total_balance or 0) }}</strong>
-                </div>
-            </div>
-        </div>
+            <div class="panel">
+                <h3>School Notices</h3>
+                <p class="panel-subtitle">Latest updates from the school</p>
 
-        <div class="dashboard-panel premium-panel">
-            <div class="panel-header">
+                {% if notices %}
+                    <div class="notice-list">
+                        {% for n in notices %}
+                        <div class="notice-item">
+                            <div class="notice-title">{{ n.title }}</div>
+                            <div class="notice-message">{{ n.message }}</div>
+                            <div class="notice-date">{{ n.date }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p style="color:#6b7280;">No notices available.</p>
+                {% endif %}
+            </div>
+
+            <div class="panel">
                 <h3>Parent Note</h3>
-                <p>Important reminder</p>
-            </div>
+                <p class="panel-subtitle">Important reminder</p>
 
-            <div class="dashboard-note-box">
-                <p>
-                    Use this portal to track your child’s fees, results,
-                    attendance, and assignments. Keep your login details safe.
-                </p>
+                <div class="note-box">
+                    Use this portal to track your child’s fees, results, attendance, assignments, and school notices.
+                    Keep your login details safe.
+                </div>
             </div>
         </div>
+
     </div>
-</div>
-{% else %}
-<div class="dashboard-panel premium-panel">
-    <div class="panel-header">
+
+    {% else %}
+
+    <div class="empty-box">
         <h3>No Linked Student Found</h3>
         <p>Your account is not yet connected to a student profile.</p>
     </div>
+
+    {% endif %}
+
 </div>
-{% endif %}
+
 {% endblock %}
