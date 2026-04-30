@@ -2166,6 +2166,7 @@ def parent_dashboard():
     school_id = session.get("school_id")
     user_id = session.get("user_id")
 
+    # Get linked student
     student = fetch_one("""
         SELECT s.*
         FROM students s
@@ -2175,8 +2176,8 @@ def parent_dashboard():
         LIMIT 1
     """, (user_id, school_id))
 
+    # If no student linked, still load page safely
     if not student:
-        flash("No student is linked to this parent account.", "danger")
         return render_template(
             "parent_dashboard.html",
             student=None,
@@ -2188,6 +2189,7 @@ def parent_dashboard():
             notices=[]
         )
 
+    # Fee summary
     fee_summary = fetch_one("""
         SELECT
             COALESCE(SUM(amount), 0) AS total_amount,
@@ -2198,17 +2200,19 @@ def parent_dashboard():
           AND school_id = ?
     """, (student["id"], school_id))
 
-    try:
-    notices = fetch_all("""
-        SELECT *
-        FROM notices
-        WHERE school_id = ?
-           OR school_id IS NULL
-        ORDER BY date DESC, id DESC
-        LIMIT 5
-    """, (school_id,))
-except Exception:
+    # Safe notices (no crash even if table missing)
     notices = []
+    try:
+        notices = fetch_all("""
+            SELECT *
+            FROM notices
+            WHERE school_id = ?
+               OR school_id IS NULL
+            ORDER BY date DESC, id DESC
+            LIMIT 5
+        """, (school_id,))
+    except Exception:
+        notices = []
 
     return render_template(
         "parent_dashboard.html",
