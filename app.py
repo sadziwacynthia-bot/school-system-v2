@@ -2133,46 +2133,49 @@ def add_assignment():
 @login_required
 @roles_required("parent")
 def parent_dashboard():
-    # Get logged-in student
-    student_id = session.get("student_id")
+    school_id = session.get("school_id")
+    user_id = session.get("user_id")
 
-    if not student_id:
-        flash("No student linked to this account.", "danger")
-        return redirect(url_for("logout"))
-
-    # Get student info
-    student = fetch_one(
-        "SELECT * FROM students WHERE id = ?",
-        (student_id,)
-    )
+    student = fetch_one("""
+        SELECT s.*
+        FROM students s
+        JOIN guardians g ON s.id = g.student_id
+        WHERE g.parent_user_id = ?
+          AND s.school_id = ?
+        LIMIT 1
+    """, (user_id, school_id))
 
     if not student:
-        flash("Student not found.", "danger")
-        return redirect(url_for("logout"))
+        flash("No student is linked to this parent account.", "danger")
+        return render_template(
+            "parent_dashboard.html",
+            student=None,
+            fee_summary={
+                "total_amount": 0,
+                "total_paid": 0,
+                "total_balance": 0
+            },
+            notices=[]
+        )
 
-    # Fees summary
     fee_summary = fetch_one("""
-        SELECT 
-            SUM(amount) as total_amount,
-            SUM(paid_amount) as total_paid,
-            SUM(balance) as total_balance
+        SELECT
+            COALESCE(SUM(amount), 0) AS total_amount,
+            COALESCE(SUM(paid_amount), 0) AS total_paid,
+            COALESCE(SUM(balance), 0) AS total_balance
         FROM fees
         WHERE student_id = ?
-    """, (student_id,))
+          AND school_id = ?
+    """, (student["id"], school_id))
 
-    # Safety fallback
-    fee_summary = fee_summary or {
-        "total_amount": 0,
-        "total_paid": 0,
-        "total_balance": 0
-    }
-
-    # Notices (latest 5)
     notices = fetch_all("""
-        SELECT * FROM notices
-        ORDER BY date DESC
+        SELECT *
+        FROM notices
+        WHERE school_id = ?
+           OR school_id IS NULL
+        ORDER BY date DESC, id DESC
         LIMIT 5
-    """)
+    """, (school_id,))
 
     return render_template(
         "parent_dashboard.html",
@@ -2180,25 +2183,6 @@ def parent_dashboard():
         fee_summary=fee_summary,
         notices=notices
     )
-
-@app.route("/parent_fees")
-@login_required
-@roles_required("parent")
-def parent_fees():
-    school_id = session.get("school_id")
-    user_id = session.get("user_id")
-
-    fee_records = fetch_all("""
-        SELECT f.*, s.first_name, s.last_name, s.class_name
-        FROM fees f
-        JOIN guardians g ON f.student_id = g.student_id
-        JOIN students s ON s.id = f.student_id
-        WHERE g.parent_user_id = ? AND f.school_id = ?
-        ORDER BY f.term_name
-    """, (user_id, school_id))
-
-    return render_template("parent_fees.html", fee_records=fee_records)
-
 
 @app.route("/parent_results")
 @login_required
@@ -3934,7 +3918,6 @@ def run_cashbook_migration():
                 cursor.execute(stmt)
 
             # If an older table used date/type/recorded_by, copy those values into the new columns when possible.
-            cursor.execute("UPDATE cashbook SET entry_date = date WHERE entry_date IS NULL AND date IS NOT NULL")
             cursor.execute("UPDATE cashbook SET entry_type = type WHERE entry_type IS NULL AND type IS NOT NULL")
             cursor.execute("UPDATE cashbook SET created_by = recorded_by WHERE created_by IS NULL AND recorded_by IS NOT NULL")
             cursor.execute("UPDATE cashbook SET category = 'General' WHERE category IS NULL OR category = ''")
