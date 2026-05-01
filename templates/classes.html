@@ -188,7 +188,20 @@
 {% for class in classes %}
     {% set ns.total_students = ns.total_students + (class.total_students or 0) %}
 {% endfor %}
-
+{% if session.get('role') == 'super_admin' %}
+<form method="GET" style="margin-bottom:20px;">
+    <select name="school_id" onchange="this.form.submit()"
+            style="padding:10px; border-radius:8px;">
+        <option value="">All Schools</option>
+        {% for school in schools %}
+            <option value="{{ school.id }}"
+                {% if selected_school == school.id|string %}selected{% endif %}>
+                {{ school.school_name }}
+            </option>
+        {% endfor %}
+    </select>
+</form>
+{% endif %}
 <div class="classes-page">
 
     <div class="classes-top">

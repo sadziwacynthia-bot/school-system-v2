@@ -2993,7 +2993,7 @@ def class_students(class_name):
         results_summary=results_summary,
         timetable_rows=timetable_rows
     )
-    
+
 @app.route("/delete_class/<int:class_id>", methods=["POST"])
 @login_required
 @roles_required("super_admin")
@@ -3551,31 +3551,47 @@ def classes():
     school_id = session.get("school_id")
     role = session.get("role")
 
+    selected_school = request.args.get("school_id")
+
     if role == "super_admin":
-        class_rows = fetch_all("""
-            SELECT 
-                sc.id,
-                sc.school_id,
-                sc.class_name,
-                s.school_name,
-                COUNT(st.id) AS total_students
+        schools = fetch_all("SELECT * FROM schools ORDER BY school_name")
+
+        query = """
+            SELECT sc.id, sc.school_id, sc.class_name, s.school_name,
+                   COUNT(st.id) AS total_students
             FROM school_classes sc
             LEFT JOIN schools s ON sc.school_id = s.id
-            LEFT JOIN students st 
+            LEFT JOIN students st
                 ON st.school_id = sc.school_id
                 AND LOWER(TRIM(st.class_name)) = LOWER(TRIM(sc.class_name))
+        """
+
+        params = []
+
+        if selected_school:
+            query += " WHERE sc.school_id = ?"
+            params.append(selected_school)
+
+        query += """
             GROUP BY sc.id, sc.school_id, sc.class_name, s.school_name
             ORDER BY s.school_name, sc.class_name
-        """)
+        """
+
+        class_rows = fetch_all(query, tuple(params))
+
+        return render_template(
+            "classes.html",
+            classes=class_rows,
+            schools=schools,
+            selected_school=selected_school
+        )
+
     else:
         class_rows = fetch_all("""
-            SELECT 
-                sc.id,
-                sc.school_id,
-                sc.class_name,
-                COUNT(st.id) AS total_students
+            SELECT sc.id, sc.school_id, sc.class_name,
+                   COUNT(st.id) AS total_students
             FROM school_classes sc
-            LEFT JOIN students st 
+            LEFT JOIN students st
                 ON st.school_id = sc.school_id
                 AND LOWER(TRIM(st.class_name)) = LOWER(TRIM(sc.class_name))
             WHERE sc.school_id = ?
@@ -3583,8 +3599,8 @@ def classes():
             ORDER BY sc.class_name
         """, (school_id,))
 
-    return render_template("classes.html", classes=class_rows)
-
+        return render_template("classes.html", classes=class_rows)
+        
 @app.route("/add_class", methods=["GET", "POST"])
 @login_required
 @roles_required("school_admin", "super_admin")
