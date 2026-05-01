@@ -6,7 +6,9 @@ import string
 import urllib.parse
 from functools import wraps
 from datetime import datetime, date
-
+import csv
+from io import StringIO
+from flask import Response
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -983,6 +985,208 @@ def audit_logs():
 def fix_audit_table():
     run_audit_migration()
     return "Audit table created successfully."
+
+@app.route("/export_students_csv")
+@login_required
+@roles_required("school_admin", "super_admin")
+def export_students_csv():
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    if role == "super_admin":
+        students = fetch_all("""
+            SELECT student_number, first_name, last_name, gender, class_name, current_status,
+                   guardian1_name, guardian1_phone, guardian1_email
+            FROM students
+            ORDER BY class_name, first_name, last_name
+        """)
+    else:
+        students = fetch_all("""
+            SELECT student_number, first_name, last_name, gender, class_name, current_status,
+                   guardian1_name, guardian1_phone, guardian1_email
+            FROM students
+            WHERE school_id = ?
+            ORDER BY class_name, first_name, last_name
+        """, (school_id,))
+
+    output = StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow([
+        "Student Number", "First Name", "Last Name", "Gender", "Class",
+        "Status", "Guardian", "Guardian Phone", "Guardian Email"
+    ])
+
+    for s in students:
+        writer.writerow([
+            s["student_number"],
+            s["first_name"],
+            s["last_name"],
+            s["gender"],
+            s["class_name"],
+            s["current_status"],
+            s["guardian1_name"],
+            s["guardian1_phone"],
+            s["guardian1_email"]
+        ])
+
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=students_export.csv"}
+    )
+
+
+@app.route("/export_fees_csv")
+@login_required
+@roles_required("school_admin", "super_admin")
+def export_fees_csv():
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    query = """
+        SELECT s.student_number, s.first_name, s.last_name, s.class_name,
+               f.term_name, f.amount, f.paid_amount, f.balance, f.status, f.due_date
+        FROM fees f
+        JOIN students s ON f.student_id = s.id
+    """
+    params = []
+
+    if role != "super_admin":
+        query += " WHERE f.school_id = ?"
+        params.append(school_id)
+
+    query += " ORDER BY s.class_name, s.first_name, s.last_name, f.term_name"
+
+    fees = fetch_all(query, tuple(params))
+
+    output = StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow([
+        "Student Number", "First Name", "Last Name", "Class", "Term",
+        "Total Fee", "Paid", "Balance", "Status", "Due Date"
+    ])
+
+    for f in fees:
+        writer.writerow([
+            f["student_number"],
+            f["first_name"],
+            f["last_name"],
+            f["class_name"],
+            f["term_name"],
+            f["amount"],
+            f["paid_amount"],
+            f["balance"],
+            f["status"],
+            f["due_date"]
+        ])
+
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=fees_export.csv"}
+    )
+
+
+@app.route("/export_results_csv")
+@login_required
+@roles_required("school_admin", "super_admin", "teacher")
+def export_results_csv():
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    query = """
+        SELECT s.student_number, s.first_name, s.last_name,
+               r.class_name, r.subject, r.term, r.marks, r.grade
+        FROM results r
+        JOIN students s ON r.student_id = s.id
+    """
+    params = []
+
+    if role != "super_admin":
+        query += " WHERE r.school_id = ?"
+        params.append(school_id)
+
+    query += " ORDER BY r.class_name, s.first_name, s.last_name, r.subject"
+
+    results = fetch_all(query, tuple(params))
+
+    output = StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow([
+        "Student Number", "First Name", "Last Name", "Class",
+        "Subject", "Term", "Marks", "Grade"
+    ])
+
+    for r in results:
+        writer.writerow([
+            r["student_number"],
+            r["first_name"],
+            r["last_name"],
+            r["class_name"],
+            r["subject"],
+            r["term"],
+            r["marks"],
+            r["grade"]
+        ])
+
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=results_export.csv"}
+    )
+
+
+@app.route("/export_cashbook_csv")
+@login_required
+@roles_required("school_admin", "super_admin")
+def export_cashbook_csv():
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    if role == "super_admin":
+        entries = fetch_all("""
+            SELECT entry_date, entry_type, category, description, amount,
+                   payment_method, reference_number, created_by
+            FROM cashbook
+            ORDER BY entry_date DESC, id DESC
+        """)
+    else:
+        entries = fetch_all("""
+            SELECT entry_date, entry_type, category, description, amount,
+                   payment_method, reference_number, created_by
+            FROM cashbook
+            WHERE school_id = ?
+            ORDER BY entry_date DESC, id DESC
+        """, (school_id,))
+
+    output = StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow([
+        "Date", "Type", "Category", "Description", "Amount",
+        "Payment Method", "Reference", "Recorded By"
+    ])
+
+    for e in entries:
+        writer.writerow([
+            e["entry_date"],
+            e["entry_type"],
+            e["category"],
+            e["description"],
+            e["amount"],
+            e["payment_method"],
+            e["reference_number"],
+            e["created_by"]
+        ])
+
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=cashbook_export.csv"}
+    )
 
 # =========================================================
 # STUDENTS

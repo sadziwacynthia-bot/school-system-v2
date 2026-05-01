@@ -12,6 +12,9 @@
     <a href="{{ url_for('add_student') }}" class="add-student-btn">
       + Add Student
     </a>
+    <a href="{{ url_for('export_students_csv') }}" class="btn btn-secondary">
+    Export Students
+</a>
   </div>
 
   <form method="GET" action="{{ url_for('students') }}" class="student-search-box">
