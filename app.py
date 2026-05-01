@@ -14,8 +14,15 @@ from psycopg2.extras import RealDictCursor
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = "school-v2-secret-key"
+app.secret_key = os.environ.get("SECRET_KEY", "dev-only-change-this")
 
+app.secret_key = os.environ.get("SECRET_KEY", "dev-only-change-this")
+
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=os.environ.get("RENDER") == "true"
+)
 CLASS_OPTIONS = [
     "Form 1 Grey", "Form 1 Blue",
     "Form 2 Grey", "Form 2 Blue",
@@ -502,23 +509,30 @@ def create_notices_table():
                 CREATE TABLE IF NOT EXISTS notices (
                     id SERIAL PRIMARY KEY,
                     school_id INTEGER,
+                    class_name VARCHAR(100),
                     title TEXT,
                     message TEXT,
                     date DATE,
                     created_by TEXT
                 )
             """)
+            cursor.execute("ALTER TABLE notices ADD COLUMN IF NOT EXISTS class_name VARCHAR(100)")
         else:
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS notices (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     school_id INTEGER,
+                    class_name TEXT,
                     title TEXT,
                     message TEXT,
                     date TEXT,
                     created_by TEXT
                 )
             """)
+            try:
+                cursor.execute("ALTER TABLE notices ADD COLUMN class_name TEXT")
+            except Exception:
+                pass
 
         conn.commit()
     finally:
@@ -4112,18 +4126,18 @@ def reset_user_password(user_id):
 
     if role == "super_admin":
         user = fetch_one("SELECT * FROM users WHERE id = ?", (user_id,))
-        
-        if user["role"] == "super_admin" and session.get("role") != "super_admin":
-            flash("Only super admin can reset a super admin password.", "danger")
-            return redirect(url_for("users"))
     else:
         user = fetch_one(
-            "SELECT * FROM users WHERE id = ? AND school_id = ?",
+            "SELECT * FROM users WHERE id = ? AND school_id = ? AND role IN ('teacher', 'parent')",
             (user_id, school_id)
         )
 
     if not user:
         flash("User not found or access denied.", "danger")
+        return redirect(url_for("users"))
+
+    if user["role"] == "super_admin" and role != "super_admin":
+        flash("Only super admin can reset a super admin password.", "danger")
         return redirect(url_for("users"))
 
     if request.method == "POST":
@@ -4133,11 +4147,21 @@ def reset_user_password(user_id):
         if not new_password or new_password != confirm_password:
             flash("Passwords do not match.", "danger")
             return redirect(url_for("reset_user_password", user_id=user_id))
-        
+
+        if len(new_password) < 8:
+            flash("Password must be at least 8 characters.", "danger")
+            return redirect(url_for("reset_user_password", user_id=user_id))
 
         execute_commit(
             "UPDATE users SET password = ? WHERE id = ?",
             (generate_password_hash(new_password), user_id)
+        )
+
+        log_audit(
+            "Reset user password",
+            "users",
+            user_id,
+            f"Password reset for {user['username']}"
         )
 
         flash("Password reset successfully.", "success")
@@ -4200,6 +4224,12 @@ def deactivate_user(user_id):
 
     execute_commit("UPDATE users SET is_active = ? WHERE id = ?", (0, user_id))
     flash("User deactivated successfully.", "success")
+    log_audit(
+    "Deactivated user",
+    "users",
+    user_id,
+    f"Deactivated {user['username']}"
+)
     return redirect(url_for("users"))
 
 
@@ -4224,6 +4254,12 @@ def activate_user(user_id):
 
     execute_commit("UPDATE users SET is_active = ? WHERE id = ?", (1, user_id))
     flash("User activated successfully.", "success")
+    log_audit(
+    "Activated user",
+    "users",
+    user_id,
+    f"Activated {user['username']}"
+)
     return redirect(url_for("users"))
 
 
@@ -4900,4 +4936,4 @@ setup_app()
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port, debug=not is_postgres())
+    app.run(host="0.0.0.0", port=port, debug=False)
