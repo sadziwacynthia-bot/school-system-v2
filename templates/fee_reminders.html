@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Fee Reminders{% endblock %}
+
+{% block content %}
+
+<div style="padding:25px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <div>
+            <h2>Fee Reminders</h2>
+            <p style="color:#6b7280;">Send reminders to parents with outstanding balances.</p>
+        </div>
+    </div>
+
+    <div style="background:white; padding:20px; border-radius:14px; box-shadow:0 4px 12px rgba(0,0,0,0.06);">
+        <table style="width:100%; border-collapse:collapse;">
+            <thead>
+                <tr style="background:#1e3a8a; color:white;">
+                    <th style="padding:12px; text-align:left;">Student</th>
+                    <th style="padding:12px; text-align:left;">Class</th>
+                    <th style="padding:12px; text-align:left;">Parent</th>
+                    <th style="padding:12px; text-align:left;">Phone</th>
+                    <th style="padding:12px; text-align:left;">Balance</th>
+                    <th style="padding:12px; text-align:left;">Action</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for item in reminders %}
+                <tr>
+                    <td style="padding:12px; border-bottom:1px solid #e5e7eb;">
+                        {{ item.student.first_name }} {{ item.student.last_name }}
+                    </td>
+                    <td style="padding:12px; border-bottom:1px solid #e5e7eb;">
+                        {{ item.student.class_name }}
+                    </td>
+                    <td style="padding:12px; border-bottom:1px solid #e5e7eb;">
+                        {{ item.student.guardian1_name or '-' }}
+                    </td>
+                    <td style="padding:12px; border-bottom:1px solid #e5e7eb;">
+                        {{ item.student.guardian1_phone or '-' }}
+                    </td>
+                    <td style="padding:12px; border-bottom:1px solid #e5e7eb; font-weight:bold;">
+                        ${{ "%.2f"|format(item.balance) }}
+                    </td>
+                    <td style="padding:12px; border-bottom:1px solid #e5e7eb;">
+                        {% if item.whatsapp_link %}
+                            <a href="{{ item.whatsapp_link }}" target="_blank" class="btn btn-primary">
+                                Send WhatsApp
+                            </a>
+                        {% else %}
+                            <span style="color:#dc2626;">No phone</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" style="padding:20px; color:#6b7280; text-align:center;">
+                        No outstanding balances found.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,48 +1,87 @@
 {% extends "base.html" %}
 
+{% block title %}Audit Trail{% endblock %}
+
 {% block content %}
-<div class="page-container">
 
-  <div class="page-header">
-    <div>
-      <h1>Audit Trail</h1>
-      <p>Track important actions made by admins, teachers, and staff.</p>
+<div style="padding:25px;">
+    <div style="margin-bottom:20px;">
+        <h2>Audit Trail</h2>
+        <p style="color:#6b7280;">Track who did what and when.</p>
     </div>
-  </div>
 
-  <div class="card">
-    <table class="clean-table">
-      <thead>
-        <tr>
-          <th>Date/Time</th>
-          <th>User</th>
-          <th>Role</th>
-          <th>Action</th>
-          <th>Table</th>
-          <th>Record ID</th>
-          <th>Details</th>
-        </tr>
-      </thead>
+    <div style="background:white; padding:18px; border-radius:14px; margin-bottom:20px; box-shadow:0 4px 12px rgba(0,0,0,0.06);">
+        <form method="GET" style="display:grid; grid-template-columns:repeat(5, 1fr); gap:12px;">
+            <input type="text" name="search" placeholder="Search user/action/details" value="{{ search }}"
+                   style="padding:10px; border:1px solid #d1d5db; border-radius:8px;">
 
-      <tbody>
-        {% for log in logs %}
-        <tr>
-          <td>{{ log.created_at }}</td>
-          <td>{{ log.username or "Unknown" }}</td>
-          <td>{{ log.role or "-" }}</td>
-          <td>{{ log.action }}</td>
-          <td>{{ log.table_name or "-" }}</td>
-          <td>{{ log.record_id or "-" }}</td>
-          <td>{{ log.details or "-" }}</td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="7" class="empty">No audit logs yet.</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+            <input type="text" name="action" placeholder="Action e.g. Added" value="{{ action_filter }}"
+                   style="padding:10px; border:1px solid #d1d5db; border-radius:8px;">
 
+            <select name="role" style="padding:10px; border:1px solid #d1d5db; border-radius:8px;">
+                <option value="">All Roles</option>
+                <option value="super_admin" {% if role_filter == 'super_admin' %}selected{% endif %}>Super Admin</option>
+                <option value="school_admin" {% if role_filter == 'school_admin' %}selected{% endif %}>School Admin</option>
+                <option value="teacher" {% if role_filter == 'teacher' %}selected{% endif %}>Teacher</option>
+                <option value="parent" {% if role_filter == 'parent' %}selected{% endif %}>Parent</option>
+            </select>
+
+            <input type="date" name="start_date" value="{{ start_date }}"
+                   style="padding:10px; border:1px solid #d1d5db; border-radius:8px;">
+
+            <input type="date" name="end_date" value="{{ end_date }}"
+                   style="padding:10px; border:1px solid #d1d5db; border-radius:8px;">
+
+            <button type="submit" class="btn btn-primary">Filter</button>
+            <a href="{{ url_for('audit_logs') }}" class="btn btn-secondary">Reset</a>
+        </form>
+    </div>
+
+    <div style="background:white; padding:20px; border-radius:14px; box-shadow:0 4px 12px rgba(0,0,0,0.06); overflow-x:auto;">
+        <table style="width:100%; border-collapse:collapse;">
+            <thead>
+                <tr style="background:#1e3a8a; color:white;">
+                    <th style="padding:12px; text-align:left;">Date/Time</th>
+                    <th style="padding:12px; text-align:left;">User</th>
+                    <th style="padding:12px; text-align:left;">Role</th>
+                    <th style="padding:12px; text-align:left;">Action</th>
+                    <th style="padding:12px; text-align:left;">Table</th>
+                    <th style="padding:12px; text-align:left;">Details</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td style="padding:12px; border-bottom:1px solid #e5e7eb;">
+                        {{ log.created_at }}
+                    </td>
+                    <td style="padding:12px; border-bottom:1px solid #e5e7eb;">
+                        {{ log.username or '-' }}
+                    </td>
+                    <td style="padding:12px; border-bottom:1px solid #e5e7eb;">
+                        {{ log.role or '-' }}
+                    </td>
+                    <td style="padding:12px; border-bottom:1px solid #e5e7eb;">
+                        {{ log.action }}
+                    </td>
+                    <td style="padding:12px; border-bottom:1px solid #e5e7eb;">
+                        {{ log.table_name or '-' }}
+                    </td>
+                    <td style="padding:12px; border-bottom:1px solid #e5e7eb;">
+                        {{ log.details or '-' }}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" style="padding:20px; text-align:center; color:#6b7280;">
+                        No audit logs found.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
+
 {% endblock %}

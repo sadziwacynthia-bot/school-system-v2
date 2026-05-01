@@ -980,15 +980,63 @@ def add_school_admin():
 @login_required
 @roles_required("super_admin", "school_admin")
 def audit_logs():
-    logs = fetch_all("""
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    search = request.args.get("search", "").strip()
+    action_filter = request.args.get("action", "").strip()
+    role_filter = request.args.get("role", "").strip()
+    start_date = request.args.get("start_date", "").strip()
+    end_date = request.args.get("end_date", "").strip()
+
+    query = """
         SELECT *
         FROM audit_logs
-        ORDER BY created_at DESC
-        LIMIT 200
-    """)
+        WHERE 1=1
+    """
+    params = []
 
-    return render_template("audit_logs.html", logs=logs)
+    if search:
+        query += """
+            AND (
+                username LIKE ?
+                OR action LIKE ?
+                OR table_name LIKE ?
+                OR details LIKE ?
+            )
+        """
+        like = f"%{search}%"
+        params.extend([like, like, like, like])
 
+    if action_filter:
+        query += " AND action LIKE ?"
+        params.append(f"%{action_filter}%")
+
+    if role_filter:
+        query += " AND role = ?"
+        params.append(role_filter)
+
+    if start_date:
+        query += " AND DATE(created_at) >= ?"
+        params.append(start_date)
+
+    if end_date:
+        query += " AND DATE(created_at) <= ?"
+        params.append(end_date)
+
+    query += " ORDER BY created_at DESC LIMIT 300"
+
+    logs = fetch_all(query, tuple(params))
+
+    return render_template(
+        "audit_logs.html",
+        logs=logs,
+        search=search,
+        action_filter=action_filter,
+        role_filter=role_filter,
+        start_date=start_date,
+        end_date=end_date
+    )
 
 @app.route("/fix_audit_table")
 @login_required
@@ -2092,6 +2140,72 @@ def update_fee(fee_id):
         )
 
     return render_template("update_fee.html", fee=fee, payment_history=payment_history)
+
+@app.route("/fee_reminders")
+@login_required
+@roles_required("school_admin", "super_admin")
+def fee_reminders():
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    query = """
+        SELECT
+            s.id,
+            s.student_number,
+            s.first_name,
+            s.last_name,
+            s.class_name,
+            s.guardian1_name,
+            s.guardian1_phone,
+            COALESCE(SUM(f.balance), 0) AS total_balance
+        FROM students s
+        JOIN fees f ON s.id = f.student_id
+        WHERE f.balance > 0
+    """
+    params = []
+
+    if role != "super_admin":
+        query += " AND s.school_id = ?"
+        params.append(school_id)
+
+    query += """
+        GROUP BY s.id, s.student_number, s.first_name, s.last_name,
+                 s.class_name, s.guardian1_name, s.guardian1_phone
+        HAVING COALESCE(SUM(f.balance), 0) > 0
+        ORDER BY s.class_name, s.first_name, s.last_name
+    """
+
+    students = fetch_all(query, tuple(params))
+
+    reminder_list = []
+
+    for student in students:
+        phone = student["guardian1_phone"] or ""
+        phone = phone.replace(" ", "").replace("+", "")
+
+        message = f"""
+Dear Parent/Guardian,
+
+This is a school fee reminder for {student['first_name']} {student['last_name']}.
+
+Outstanding balance: ${float(student['total_balance'] or 0):.2f}
+
+Please make payment as soon as possible.
+
+Thank you.
+""".strip()
+
+        whatsapp_link = ""
+        if phone:
+            whatsapp_link = "https://wa.me/" + phone + "?text=" + urllib.parse.quote(message)
+
+        reminder_list.append({
+            "student": student,
+            "balance": float(student["total_balance"] or 0),
+            "whatsapp_link": whatsapp_link
+        })
+
+    return render_template("fee_reminders.html", reminders=reminder_list)
 
 # =========================================================
 # RESULTS
