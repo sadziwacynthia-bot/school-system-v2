@@ -2552,6 +2552,35 @@ def parent_fees():
 
     return render_template("parent_fees.html", fee_records=fee_records)
 
+# =========================================================
+# NOTICES
+# =========================================================
+
+@app.route("/notices")
+@login_required
+@roles_required("school_admin", "super_admin")
+def notices():
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    if role == "super_admin":
+        notice_list = fetch_all("""
+            SELECT n.*, s.school_name
+            FROM notices n
+            LEFT JOIN schools s ON n.school_id = s.id
+            ORDER BY n.date DESC, n.id DESC
+        """)
+    else:
+        notice_list = fetch_all("""
+            SELECT *
+            FROM notices
+            WHERE school_id = ?
+            ORDER BY date DESC, id DESC
+        """, (school_id,))
+
+    return render_template("notices.html", notices=notice_list)
+
+
 @app.route("/add_notice", methods=["GET", "POST"])
 @login_required
 @roles_required("school_admin", "super_admin")
@@ -2581,33 +2610,95 @@ def add_notice():
             VALUES (?, ?, ?, ?, ?)
         """, (school_id, title, message, today, created_by))
 
+        log_audit(
+            "Added notice",
+            "notices",
+            None,
+            f"Posted notice: {title}"
+        )
+
         flash("Notice posted successfully.", "success")
         return redirect(url_for("notices"))
 
     return render_template("add_notice.html", schools=schools)
-@app.route("/notices")
+
+
+@app.route("/edit_notice/<int:notice_id>", methods=["GET", "POST"])
 @login_required
 @roles_required("school_admin", "super_admin")
-def notices():
+def edit_notice(notice_id):
     school_id = session.get("school_id")
     role = session.get("role")
 
     if role == "super_admin":
-        notice_list = fetch_all("""
-            SELECT n.*, s.school_name
-            FROM notices n
-            LEFT JOIN schools s ON n.school_id = s.id
-            ORDER BY n.date DESC, n.id DESC
-        """)
+        notice = fetch_one("SELECT * FROM notices WHERE id = ?", (notice_id,))
     else:
-        notice_list = fetch_all("""
-            SELECT *
-            FROM notices
-            WHERE school_id = ?
-            ORDER BY date DESC, id DESC
-        """, (school_id,))
+        notice = fetch_one(
+            "SELECT * FROM notices WHERE id = ? AND school_id = ?",
+            (notice_id, school_id)
+        )
 
-    return render_template("notices.html", notices=notice_list)   
+    if not notice:
+        flash("Notice not found or access denied.", "danger")
+        return redirect(url_for("notices"))
+
+    if request.method == "POST":
+        title = request.form.get("title", "").strip()
+        message = request.form.get("message", "").strip()
+
+        if not title or not message:
+            flash("Title and message are required.", "danger")
+            return redirect(url_for("edit_notice", notice_id=notice_id))
+
+        execute_commit("""
+            UPDATE notices
+            SET title = ?, message = ?
+            WHERE id = ?
+        """, (title, message, notice_id))
+
+        log_audit(
+            "Edited notice",
+            "notices",
+            notice_id,
+            f"Updated notice: {title}"
+        )
+
+        flash("Notice updated successfully.", "success")
+        return redirect(url_for("notices"))
+
+    return render_template("edit_notice.html", notice=notice)
+
+
+@app.route("/delete_notice/<int:notice_id>", methods=["POST"])
+@login_required
+@roles_required("school_admin", "super_admin")
+def delete_notice(notice_id):
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    if role == "super_admin":
+        notice = fetch_one("SELECT * FROM notices WHERE id = ?", (notice_id,))
+    else:
+        notice = fetch_one(
+            "SELECT * FROM notices WHERE id = ? AND school_id = ?",
+            (notice_id, school_id)
+        )
+
+    if not notice:
+        flash("Notice not found or access denied.", "danger")
+        return redirect(url_for("notices"))
+
+    execute_commit("DELETE FROM notices WHERE id = ?", (notice_id,))
+
+    log_audit(
+        "Deleted notice",
+        "notices",
+        notice_id,
+        f"Deleted notice: {notice['title']}"
+    )
+
+    flash("Notice deleted successfully.", "success")
+    return redirect(url_for("notices"))  
 # =========================================================
 # TIMETABLE
 # =========================================================
