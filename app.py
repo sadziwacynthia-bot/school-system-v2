@@ -290,6 +290,17 @@ def init_db():
                 lunch_duration INTEGER DEFAULT 40
             )
         """)
+        conn.execute("""
+CREATE TABLE IF NOT EXISTS notices (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    school_id INTEGER,
+    class_name TEXT,
+    title TEXT,
+    message TEXT,
+    date TEXT,
+    created_by TEXT
+)
+""")
     else:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS schools (
@@ -2408,13 +2419,13 @@ def parent_dashboard():
     notices = []
     try:
         notices = fetch_all("""
-            SELECT *
-            FROM notices
-            WHERE school_id = ?
-               OR school_id IS NULL
-            ORDER BY date DESC, id DESC
-            LIMIT 5
-        """, (school_id,))
+    SELECT *
+    FROM notices
+    WHERE (school_id = ? OR school_id IS NULL)
+      AND (class_name = ? OR class_name IS NULL OR class_name = '')
+    ORDER BY date DESC, id DESC
+    LIMIT 5
+""", (school_id, student["class_name"]))
     except Exception:
         notices = []
 
@@ -2588,40 +2599,46 @@ def add_notice():
     school_id = session.get("school_id")
     role = session.get("role")
 
+    # Super admin can choose school
     schools = []
     if role == "super_admin":
         schools = fetch_all("SELECT * FROM schools ORDER BY school_name")
+
+    # Get classes for dropdown
+    classes = fetch_all("""
+        SELECT DISTINCT class_name
+        FROM school_classes
+        WHERE school_id = ?
+        ORDER BY class_name
+    """, (school_id,))
 
     if request.method == "POST":
         if role == "super_admin":
             school_id = request.form.get("school_id")
 
+        class_name = request.form.get("class_name")
         title = request.form.get("title", "").strip()
         message = request.form.get("message", "").strip()
-        created_by = session.get("full_name", "System")
+        created_by = session.get("full_name")
         today = datetime.now().strftime("%Y-%m-%d")
 
-        if not school_id or not title or not message:
-            flash("School, title, and message are required.", "danger")
+        if not title or not message:
+            flash("Title and message are required.", "danger")
             return redirect(url_for("add_notice"))
 
         execute_commit("""
-            INSERT INTO notices (school_id, title, message, date, created_by)
-            VALUES (?, ?, ?, ?, ?)
-        """, (school_id, title, message, today, created_by))
-
-        log_audit(
-            "Added notice",
-            "notices",
-            None,
-            f"Posted notice: {title}"
-        )
+            INSERT INTO notices (school_id, class_name, title, message, date, created_by)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (school_id, class_name, title, message, today, created_by))
 
         flash("Notice posted successfully.", "success")
         return redirect(url_for("notices"))
 
-    return render_template("add_notice.html", schools=schools)
-
+    return render_template(
+        "add_notice.html",
+        schools=schools,
+        classes=classes
+    )
 
 @app.route("/edit_notice/<int:notice_id>", methods=["GET", "POST"])
 @login_required
@@ -3600,7 +3617,7 @@ def classes():
         """, (school_id,))
 
         return render_template("classes.html", classes=class_rows)
-        
+
 @app.route("/add_class", methods=["GET", "POST"])
 @login_required
 @roles_required("school_admin", "super_admin")

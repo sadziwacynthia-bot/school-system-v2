@@ -3,7 +3,14 @@
 {% block content %}
 <div style="padding:25px;">
     <h2>Add Notice</h2>
-
+<label>Class (Optional)</label>
+<select name="class_name">
+    <option value="">All Classes</option>
+    {% for class in classes %}
+        <option value="{{ class.class_name }}">{{ class.class_name }}</option>
+    {% endfor %}
+</select>
+<br><br>
     <form method="POST">
         {% if session.get('role') == 'super_admin' %}
         <label>School</label>
