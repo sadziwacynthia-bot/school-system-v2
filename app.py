@@ -2347,7 +2347,64 @@ def parent_fees():
     """, (user_id, school_id))
 
     return render_template("parent_fees.html", fee_records=fee_records)
-    
+
+@app.route("/add_notice", methods=["GET", "POST"])
+@login_required
+@roles_required("school_admin", "super_admin")
+def add_notice():
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    schools = []
+    if role == "super_admin":
+        schools = fetch_all("SELECT * FROM schools ORDER BY school_name")
+
+    if request.method == "POST":
+        if role == "super_admin":
+            school_id = request.form.get("school_id")
+
+        title = request.form.get("title", "").strip()
+        message = request.form.get("message", "").strip()
+        created_by = session.get("full_name", "System")
+        today = datetime.now().strftime("%Y-%m-%d")
+
+        if not school_id or not title or not message:
+            flash("School, title, and message are required.", "danger")
+            return redirect(url_for("add_notice"))
+
+        execute_commit("""
+            INSERT INTO notices (school_id, title, message, date, created_by)
+            VALUES (?, ?, ?, ?, ?)
+        """, (school_id, title, message, today, created_by))
+
+        flash("Notice posted successfully.", "success")
+        return redirect(url_for("notices"))
+
+    return render_template("add_notice.html", schools=schools)
+ @app.route("/notices")
+@login_required
+@roles_required("school_admin", "super_admin")
+def notices():
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    if role == "super_admin":
+        notice_list = fetch_all("""
+            SELECT n.*, s.school_name
+            FROM notices n
+            LEFT JOIN schools s ON n.school_id = s.id
+            ORDER BY n.date DESC, n.id DESC
+        """)
+    else:
+        notice_list = fetch_all("""
+            SELECT *
+            FROM notices
+            WHERE school_id = ?
+            ORDER BY date DESC, id DESC
+        """, (school_id,))
+
+    return render_template("notices.html", notices=notice_list)
+       
 # =========================================================
 # TIMETABLE
 # =========================================================

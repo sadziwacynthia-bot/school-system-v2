@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="padding:25px;">
+    <h2>Add Notice</h2>
+
+    <form method="POST">
+        {% if session.get('role') == 'super_admin' %}
+        <label>School</label>
+        <select name="school_id" required>
+            <option value="">Select School</option>
+            {% for school in schools %}
+                <option value="{{ school.id }}">{{ school.school_name }}</option>
+            {% endfor %}
+        </select>
+        <br><br>
+        {% endif %}
+
+        <label>Title</label>
+        <input type="text" name="title" required>
+        <br><br>
+
+        <label>Message</label>
+        <textarea name="message" required></textarea>
+        <br><br>
+
+        <button type="submit">Post Notice</button>
+    </form>
+</div>
+{% endblock %}
