@@ -2381,7 +2381,7 @@ def add_notice():
         return redirect(url_for("notices"))
 
     return render_template("add_notice.html", schools=schools)
- @app.route("/notices")
+@app.route("/notices")
 @login_required
 @roles_required("school_admin", "super_admin")
 def notices():
@@ -2403,8 +2403,7 @@ def notices():
             ORDER BY date DESC, id DESC
         """, (school_id,))
 
-    return render_template("notices.html", notices=notice_list)
-       
+    return render_template("notices.html", notices=notice_list)   
 # =========================================================
 # TIMETABLE
 # =========================================================
