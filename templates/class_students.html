@@ -1,58 +1,375 @@
 {% extends "base.html" %}
 
-{% block title %}{{ class_name }} Students{% endblock %}
+{% block title %}Class Dashboard{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div>
-        <h2 class="page-title">{{ class_name }}</h2>
-        <p class="page-subtitle">Students in this class</p>
+
+<style>
+.class-page {
+    padding: 25px;
+    background: #f4f6f9;
+    min-height: 100vh;
+}
+
+.class-hero {
+    background: linear-gradient(135deg, #1e3a8a, #2563eb);
+    color: white;
+    padding: 25px;
+    border-radius: 18px;
+    margin-bottom: 22px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.class-hero h1 {
+    margin: 0;
+    font-size: 30px;
+}
+
+.class-hero p {
+    margin: 8px 0 0;
+    opacity: 0.9;
+}
+
+.hero-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.btn {
+    padding: 10px 14px;
+    border-radius: 9px;
+    border: none;
+    text-decoration: none;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.btn-light {
+    background: white;
+    color: #1e3a8a;
+}
+
+.btn-dark {
+    background: #374151;
+    color: white;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    margin-bottom: 22px;
+}
+
+.summary-card {
+    background: white;
+    padding: 18px;
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+
+.summary-card h3 {
+    margin: 0;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.summary-card p {
+    margin: 8px 0 0;
+    font-size: 24px;
+    font-weight: 800;
+    color: #111827;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 18px;
+}
+
+.panel {
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    margin-bottom: 18px;
+}
+
+.panel h2 {
+    margin: 0;
+    color: #1f2937;
+}
+
+.panel-subtitle {
+    margin: 5px 0 18px;
+    color: #6b7280;
+}
+
+.info-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    background: #f9fafb;
+    padding: 12px;
+    border-radius: 10px;
+}
+
+.info-item span {
+    color: #6b7280;
+}
+
+.info-item strong {
+    color: #111827;
+}
+
+.students-table,
+.timetable-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.students-table th,
+.timetable-table th {
+    background: #1e3a8a;
+    color: white;
+    padding: 12px;
+    text-align: left;
+    font-size: 14px;
+}
+
+.students-table td,
+.timetable-table td {
+    padding: 12px;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 14px;
+}
+
+.badge {
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.badge-active {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.badge-inactive {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.empty-state {
+    color: #6b7280;
+    padding: 15px;
+    background: #f9fafb;
+    border-radius: 10px;
+}
+
+@media (max-width: 1000px) {
+    .summary-grid,
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .class-hero {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+}
+</style>
+
+<div class="class-page">
+
+    <div class="class-hero">
+        <div>
+            <h1>{{ class_name }}</h1>
+            <p>Class dashboard with students, fees, attendance, results, and timetable.</p>
+        </div>
+
+        <div class="hero-actions">
+            <a href="{{ url_for('classes') }}" class="btn btn-light">Back to Classes</a>
+            <a href="{{ url_for('print_class_list', class_name=class_name) }}" class="btn btn-dark">Print Class List</a>
+        </div>
     </div>
-    <div class="action-group">
-        <a href="{{ url_for('print_class_list', class_name=class_name) }}" class="btn btn-primary" target="_blank">Print List</a>
-        <a href="{{ url_for('classes') }}" class="btn btn-secondary">Back to Classes</a>
+
+    <div class="summary-grid">
+        <div class="summary-card">
+            <h3>Total Students</h3>
+            <p>{{ total_students }}</p>
+        </div>
+
+        <div class="summary-card">
+            <h3>Active Students</h3>
+            <p>{{ active_students }}</p>
+        </div>
+
+        <div class="summary-card">
+            <h3>Inactive Students</h3>
+            <p>{{ inactive_students }}</p>
+        </div>
+
+        <div class="summary-card">
+            <h3>Average Marks</h3>
+            <p>{{ "%.1f"|format(results_summary.average_marks or 0) }}%</p>
+        </div>
     </div>
+
+    <div class="dashboard-grid">
+
+        <div>
+            <div class="panel">
+                <h2>Students</h2>
+                <p class="panel-subtitle">Registered learners in this class</p>
+
+                <table class="students-table">
+                    <thead>
+                        <tr>
+                            <th>Student No.</th>
+                            <th>Name</th>
+                            <th>Guardian</th>
+                            <th>Status</th>
+                            <th>Profile</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for student in students %}
+                        <tr>
+                            <td>{{ student.student_number or '-' }}</td>
+                            <td>{{ student.first_name }} {{ student.last_name }}</td>
+                            <td>{{ student.guardian1_name or '-' }}</td>
+                            <td>
+                                {% if (student.current_status or 'Active') == 'Active' %}
+                                    <span class="badge badge-active">Active</span>
+                                {% else %}
+                                    <span class="badge badge-inactive">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('student_profile', id=student.id) }}">View</a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5">No students found in this class.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="panel">
+                <h2>Class Timetable</h2>
+                <p class="panel-subtitle">Scheduled lessons for this class</p>
+
+                {% if timetable_rows %}
+                <table class="timetable-table">
+                    <thead>
+                        <tr>
+                            <th>Day</th>
+                            <th>Time</th>
+                            <th>Subject</th>
+                            <th>Teacher</th>
+                            <th>Room</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for row in timetable_rows %}
+                        <tr>
+                            <td>{{ row.day_of_week }}</td>
+                            <td>{{ row.start_time }} - {{ row.end_time }}</td>
+                            <td>{{ row.subject }}</td>
+                            <td>{{ row.full_name or '-' }}</td>
+                            <td>{{ row.room or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                    <div class="empty-state">No timetable entries found for this class.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div>
+            <div class="panel">
+                <h2>Fees Summary</h2>
+                <p class="panel-subtitle">Financial position for this class</p>
+
+                <div class="info-list">
+                    <div class="info-item">
+                        <span>Total Fees</span>
+                        <strong>${{ "%.2f"|format(fee_summary.total_fees or 0) }}</strong>
+                    </div>
+
+                    <div class="info-item">
+                        <span>Total Paid</span>
+                        <strong>${{ "%.2f"|format(fee_summary.total_paid or 0) }}</strong>
+                    </div>
+
+                    <div class="info-item">
+                        <span>Total Balance</span>
+                        <strong>${{ "%.2f"|format(fee_summary.total_balance or 0) }}</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>Attendance Summary</h2>
+                <p class="panel-subtitle">Attendance records for this class</p>
+
+                <div class="info-list">
+                    <div class="info-item">
+                        <span>Total Records</span>
+                        <strong>{{ attendance_summary.total_records or 0 }}</strong>
+                    </div>
+
+                    <div class="info-item">
+                        <span>Present</span>
+                        <strong>{{ attendance_summary.present_count or 0 }}</strong>
+                    </div>
+
+                    <div class="info-item">
+                        <span>Absent</span>
+                        <strong>{{ attendance_summary.absent_count or 0 }}</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>Results Summary</h2>
+                <p class="panel-subtitle">Academic overview for this class</p>
+
+                <div class="info-list">
+                    <div class="info-item">
+                        <span>Total Results</span>
+                        <strong>{{ results_summary.total_results or 0 }}</strong>
+                    </div>
+
+                    <div class="info-item">
+                        <span>Average Marks</span>
+                        <strong>{{ "%.1f"|format(results_summary.average_marks or 0) }}%</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
 </div>
 
-<div class="table-card">
-    <div class="table-responsive">
-        <table>
-            <thead>
-                <tr>
-                    <th>Student Number</th>
-                    <th>Full Name</th>
-                    <th>Gender</th>
-                    <th>Guardian</th>
-                    <th>Phone</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for student in students %}
-                <tr>
-                    <td>{{ student.student_number or '-' }}</td>
-                    <td>{{ student.first_name }} {{ student.last_name }}</td>
-                    <td>{{ student.gender or '-' }}</td>
-                    <td>{{ student.guardian1_name or '-' }}</td>
-                    <td>{{ student.guardian1_phone or '-' }}</td>
-                    <td>
-                        {% set status = student.current_status or 'Active' %}
-                        {% if status == 'Active' %}
-                            <span class="status-badge status-active">Active</span>
-                        {% elif status == 'Inactive' %}
-                            <span class="status-badge status-inactive">Inactive</span>
-                        {% else %}
-                            <span class="status-badge status-pending">{{ status }}</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="6">No students found in this class.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
 {% endblock %}

@@ -2873,21 +2873,127 @@ def class_students(class_name):
     role = session.get("role")
 
     if role == "super_admin":
-        students = fetch_all(
-            "SELECT * FROM students WHERE class_name = ? ORDER BY first_name, last_name",
-            (class_name,)
-        )
+        students = fetch_all("""
+            SELECT *
+            FROM students
+            WHERE class_name = ?
+            ORDER BY first_name, last_name
+        """, (class_name,))
+
+        attendance_summary = fetch_one("""
+            SELECT
+                COUNT(*) AS total_records,
+                SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END) AS present_count,
+                SUM(CASE WHEN status = 'Absent' THEN 1 ELSE 0 END) AS absent_count
+            FROM attendance
+            WHERE class_name = ?
+        """, (class_name,))
+
+        fee_summary = fetch_one("""
+            SELECT
+                COALESCE(SUM(f.amount), 0) AS total_fees,
+                COALESCE(SUM(f.paid_amount), 0) AS total_paid,
+                COALESCE(SUM(f.balance), 0) AS total_balance
+            FROM fees f
+            JOIN students s ON f.student_id = s.id
+            WHERE s.class_name = ?
+        """, (class_name,))
+
+        results_summary = fetch_one("""
+            SELECT
+                COUNT(*) AS total_results,
+                COALESCE(AVG(marks), 0) AS average_marks
+            FROM results
+            WHERE class_name = ?
+        """, (class_name,))
+
+        timetable_rows = fetch_all("""
+            SELECT t.*, tr.full_name
+            FROM timetables t
+            LEFT JOIN teachers tr ON t.teacher_id = tr.id
+            WHERE t.class_name = ?
+            ORDER BY
+                CASE t.day_of_week
+                    WHEN 'Monday' THEN 1
+                    WHEN 'Tuesday' THEN 2
+                    WHEN 'Wednesday' THEN 3
+                    WHEN 'Thursday' THEN 4
+                    WHEN 'Friday' THEN 5
+                    WHEN 'Saturday' THEN 6
+                    WHEN 'Sunday' THEN 7
+                END,
+                t.start_time
+        """, (class_name,))
+
     else:
-        students = fetch_all(
-            "SELECT * FROM students WHERE school_id = ? AND class_name = ? ORDER BY first_name, last_name",
-            (school_id, class_name)
-        )
+        students = fetch_all("""
+            SELECT *
+            FROM students
+            WHERE school_id = ? AND class_name = ?
+            ORDER BY first_name, last_name
+        """, (school_id, class_name))
+
+        attendance_summary = fetch_one("""
+            SELECT
+                COUNT(*) AS total_records,
+                SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END) AS present_count,
+                SUM(CASE WHEN status = 'Absent' THEN 1 ELSE 0 END) AS absent_count
+            FROM attendance
+            WHERE school_id = ? AND class_name = ?
+        """, (school_id, class_name))
+
+        fee_summary = fetch_one("""
+            SELECT
+                COALESCE(SUM(f.amount), 0) AS total_fees,
+                COALESCE(SUM(f.paid_amount), 0) AS total_paid,
+                COALESCE(SUM(f.balance), 0) AS total_balance
+            FROM fees f
+            JOIN students s ON f.student_id = s.id
+            WHERE f.school_id = ? AND s.class_name = ?
+        """, (school_id, class_name))
+
+        results_summary = fetch_one("""
+            SELECT
+                COUNT(*) AS total_results,
+                COALESCE(AVG(marks), 0) AS average_marks
+            FROM results
+            WHERE school_id = ? AND class_name = ?
+        """, (school_id, class_name))
+
+        timetable_rows = fetch_all("""
+            SELECT t.*, tr.full_name
+            FROM timetables t
+            LEFT JOIN teachers tr ON t.teacher_id = tr.id
+            WHERE t.school_id = ? AND t.class_name = ?
+            ORDER BY
+                CASE t.day_of_week
+                    WHEN 'Monday' THEN 1
+                    WHEN 'Tuesday' THEN 2
+                    WHEN 'Wednesday' THEN 3
+                    WHEN 'Thursday' THEN 4
+                    WHEN 'Friday' THEN 5
+                    WHEN 'Saturday' THEN 6
+                    WHEN 'Sunday' THEN 7
+                END,
+                t.start_time
+        """, (school_id, class_name))
+
+    active_students = sum(1 for s in students if (s["current_status"] or "Active") == "Active")
+    inactive_students = len(students) - active_students
 
     return render_template(
         "class_students.html",
+        class_name=class_name,
         students=students,
-        class_name=class_name
+        total_students=len(students),
+        active_students=active_students,
+        inactive_students=inactive_students,
+        attendance_summary=attendance_summary,
+        fee_summary=fee_summary,
+        results_summary=results_summary,
+        timetable_rows=timetable_rows
     )
+    
 @app.route("/delete_class/<int:class_id>", methods=["POST"])
 @login_required
 @roles_required("super_admin")
