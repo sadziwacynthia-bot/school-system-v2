@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block title %}Add Assessment{% endblock %}
+
+{% block content %}
+
+<style>
+.assessment-page {
+    padding: 25px;
+    background: #f4f6f9;
+    min-height: 100vh;
+}
+
+.assessment-card {
+    max-width: 850px;
+    background: white;
+    padding: 25px;
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+
+.assessment-card h2 {
+    margin: 0;
+    color: #1f2937;
+}
+
+.assessment-card p {
+    color: #6b7280;
+    margin-bottom: 22px;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group.full {
+    grid-column: 1 / -1;
+}
+
+label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    color: #374151;
+}
+
+input,
+select,
+textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 9px;
+    font-size: 14px;
+}
+
+textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.student-select {
+    height: 180px;
+}
+
+.actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.btn-save,
+.btn-cancel {
+    padding: 11px 16px;
+    border-radius: 9px;
+    border: none;
+    text-decoration: none;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.btn-save {
+    background: #2563eb;
+    color: white;
+}
+
+.btn-cancel {
+    background: #374151;
+    color: white;
+}
+
+@media (max-width: 800px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<div class="assessment-page">
+
+    <div class="assessment-card">
+        <h2>Add Assessment</h2>
+        <p>Record exercises, homework, tests, end-month exams, final exams, and progress comments.</p>
+
+        <form method="POST">
+
+            <div class="form-group full">
+                <label>Find Student</label>
+                <input type="text" id="student_search" placeholder="Search by student name, number, or class...">
+
+                <select name="student_id" id="student_select" class="student-select" size="8" required>
+                    {% for s in students %}
+                        <option value="{{ s.id }}">
+                            {{ s.student_number or 'No Number' }} - {{ s.first_name }} {{ s.last_name }} ({{ s.class_name }})
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-grid">
+
+                <div class="form-group">
+                    <label>Subject</label>
+                    <input type="text" name="subject" placeholder="Example: Mathematics" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Term</label>
+                    <select name="term" required>
+                        <option value="Term 1">Term 1</option>
+                        <option value="Term 2">Term 2</option>
+                        <option value="Term 3">Term 3</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Assessment Type</label>
+                    <select name="assessment_type" required>
+                        <option value="Exercise">Exercise</option>
+                        <option value="Homework">Homework</option>
+                        <option value="Class Test">Class Test</option>
+                        <option value="End of Month Exam">End of Month Exam</option>
+                        <option value="Final Exam">Final Exam</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Date</label>
+                    <input type="date" name="date">
+                </div>
+
+                <div class="form-group">
+                    <label>Marks</label>
+                    <input type="number" step="0.01" name="marks" placeholder="Example: 18" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Total Marks</label>
+                    <input type="number" step="0.01" name="total_marks" placeholder="Example: 20" required>
+                </div>
+
+                <div class="form-group full">
+                    <label>Progress Comment</label>
+                    <textarea name="comment" placeholder="Example: Student is improving but needs more practice with fractions."></textarea>
+                </div>
+
+            </div>
+
+            <div class="actions">
+                <button type="submit" class="btn-save">Save Assessment</button>
+                <a href="{{ url_for('dashboard') }}" class="btn-cancel">Cancel</a>
+            </div>
+
+        </form>
+    </div>
+
+</div>
+
+<script>
+document.getElementById("student_search").addEventListener("keyup", function () {
+    const filter = this.value.toLowerCase();
+    const options = document.getElementById("student_select").options;
+
+    for (let i = 0; i < options.length; i++) {
+        const text = options[i].text.toLowerCase();
+        options[i].style.display = text.includes(filter) ? "" : "none";
+    }
+});
+</script>
+
+{% endblock %}

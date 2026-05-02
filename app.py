@@ -632,7 +632,47 @@ def create_super_admin():
                 "super_admin",
             ),
         )
+def create_assessments_table():
+    conn = get_db()
+    cursor = conn.cursor()
 
+    if is_postgres():
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS assessments (
+                id SERIAL PRIMARY KEY,
+                student_id INTEGER,
+                school_id INTEGER,
+                class_name VARCHAR(50),
+                subject VARCHAR(100),
+                term VARCHAR(20),
+                assessment_type VARCHAR(50),
+                marks FLOAT,
+                total_marks FLOAT,
+                percentage FLOAT,
+                comment TEXT,
+                date DATE
+            )
+        """)
+    else:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS assessments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                student_id INTEGER,
+                school_id INTEGER,
+                class_name TEXT,
+                subject TEXT,
+                term TEXT,
+                assessment_type TEXT,
+                marks REAL,
+                total_marks REAL,
+                percentage REAL,
+                comment TEXT,
+                date TEXT
+            )
+        """)
+
+    conn.commit()
+    conn.close()
 
 # =========================================================
 # HELPERS
@@ -3808,6 +3848,57 @@ def add_class():
 
     return render_template("add_class.html", schools=schools)
 
+@app.route("/add_assessment", methods=["GET", "POST"])
+@login_required
+@roles_required("school_admin", "super_admin", "teacher")
+def add_assessment():
+    school_id = session.get("school_id")
+
+    students = fetch_all(
+        "SELECT id, first_name, last_name, class_name FROM students WHERE school_id = ?",
+        (school_id,)
+    )
+
+    if request.method == "POST":
+        student_id = request.form.get("student_id")
+        subject = request.form.get("subject")
+        term = request.form.get("term")
+        assessment_type = request.form.get("assessment_type")
+        marks = float(request.form.get("marks", 0))
+        total_marks = float(request.form.get("total_marks", 0))
+        comment = request.form.get("comment")
+
+        percentage = 0
+        if total_marks > 0:
+            percentage = round((marks / total_marks) * 100, 2)
+
+        student = fetch_one("SELECT class_name FROM students WHERE id = ?", (student_id,))
+
+        execute_commit("""
+            INSERT INTO assessments (
+                student_id, school_id, class_name, subject, term,
+                assessment_type, marks, total_marks, percentage, comment, date
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            student_id,
+            school_id,
+            student["class_name"],
+            subject,
+            term,
+            assessment_type,
+            marks,
+            total_marks,
+            percentage,
+            comment,
+            datetime.now().strftime("%Y-%m-%d")
+        ))
+
+        flash("Assessment added successfully.", "success")
+        return redirect(url_for("add_assessment"))
+
+    return render_template("add_assessment.html", students=students)
+
 @app.route("/print_class_list/<class_name>")
 @login_required
 @roles_required("school_admin", "super_admin", "teacher")
@@ -4962,6 +5053,7 @@ def activate_school(school_id):
     return redirect(url_for("schools"))
 
 create_notices_table()
+create_assessments_table()
 setup_app()
 
 if __name__ == "__main__":
