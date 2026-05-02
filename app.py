@@ -2408,24 +2408,54 @@ def attendance_records():
     school_id = session.get("school_id")
     role = session.get("role")
 
-    if role == "super_admin":
-        attendance_list = fetch_all("""
-            SELECT a.*, s.first_name, s.last_name, s.student_number
-            FROM attendance a
-            JOIN students s ON a.student_id = s.id
-            ORDER BY a.date DESC, s.first_name, s.last_name
-        """)
-    else:
-        attendance_list = fetch_all("""
-            SELECT a.*, s.first_name, s.last_name, s.student_number
-            FROM attendance a
-            JOIN students s ON a.student_id = s.id
-            WHERE a.school_id = ?
-            ORDER BY a.date DESC, s.first_name, s.last_name
-        """, (school_id,))
+    selected_class = request.args.get("class_name", "").strip()
+    selected_date = request.args.get("date", "").strip()
 
-    return render_template("attendance_records.html", attendance_records=attendance_list)
+    query = """
+        SELECT a.*, s.first_name, s.last_name, s.student_number, s.class_name
+        FROM attendance a
+        JOIN students s ON a.student_id = s.id
+        WHERE 1=1
+    """
+    params = []
 
+    if role != "super_admin":
+        query += " AND a.school_id = ?"
+        params.append(school_id)
+
+    if selected_class:
+        query += " AND a.class_name = ?"
+        params.append(selected_class)
+
+    if selected_date:
+        query += " AND a.date = ?"
+        params.append(selected_date)
+
+    query += " ORDER BY a.date DESC, a.class_name, s.first_name, s.last_name"
+
+    attendance_list = fetch_all(query, tuple(params))
+
+    total_records = len(attendance_list)
+    present_count = sum(1 for a in attendance_list if a["status"] == "Present")
+    absent_count = sum(1 for a in attendance_list if a["status"] == "Absent")
+    late_count = sum(1 for a in attendance_list if a["status"] == "Late")
+
+    attendance_percentage = 0
+    if total_records > 0:
+        attendance_percentage = round((present_count / total_records) * 100, 1)
+
+    return render_template(
+        "attendance_records.html",
+        attendance_records=attendance_list,
+        class_options=CLASS_OPTIONS,
+        selected_class=selected_class,
+        selected_date=selected_date,
+        total_records=total_records,
+        present_count=present_count,
+        absent_count=absent_count,
+        late_count=late_count,
+        attendance_percentage=attendance_percentage
+    )
 
 # =========================================================
 # ASSIGNMENTS

@@ -1,94 +1,293 @@
 {% extends "base.html" %}
+
 {% block title %}Attendance Records{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>Attendance Records</h1>
-    <p>View recorded attendance by date and student.</p>
-</div>
 
-<div class="page-actions">
-    <a href="{{ url_for('attendance') }}" class="btn-primary">Take Attendance</a>
-</div>
+<style>
+.attendance-page {
+    padding: 25px;
+    background: #f4f6f9;
+    min-height: 100vh;
+}
 
-<div class="card-box">
-    {% if attendance_records %}
-    <div class="table-wrapper">
-        <table>
+.attendance-header {
+    background: linear-gradient(135deg, #1e3a8a, #2563eb);
+    color: white;
+    padding: 24px;
+    border-radius: 18px;
+    margin-bottom: 22px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.attendance-header h1 {
+    margin: 0;
+}
+
+.attendance-header p {
+    margin: 6px 0 0;
+    opacity: 0.9;
+}
+
+.btn {
+    padding: 10px 14px;
+    border-radius: 9px;
+    border: none;
+    text-decoration: none;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.btn-light {
+    background: white;
+    color: #1e3a8a;
+}
+
+.btn-primary {
+    background: #2563eb;
+    color: white;
+}
+
+.filter-card,
+.table-card {
+    background: white;
+    padding: 20px;
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    margin-bottom: 20px;
+}
+
+.filter-form {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+}
+
+.filter-form input,
+.filter-form select {
+    padding: 11px;
+    border: 1px solid #d1d5db;
+    border-radius: 9px;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.summary-card {
+    background: white;
+    padding: 18px;
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+
+.summary-card h3 {
+    margin: 0;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.summary-card p {
+    margin: 8px 0 0;
+    font-size: 24px;
+    font-weight: 800;
+    color: #111827;
+}
+
+.attendance-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.attendance-table th {
+    background: #1e3a8a;
+    color: white;
+    padding: 12px;
+    text-align: left;
+}
+
+.attendance-table td {
+    padding: 12px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.badge {
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.badge-present {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.badge-absent {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.badge-late {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.no-data {
+    text-align: center;
+    color: #6b7280;
+    padding: 20px;
+}
+
+@media print {
+    nav,
+    .sidebar,
+    .filter-card,
+    .print-hide,
+    .attendance-header .btn {
+        display: none !important;
+    }
+
+    .attendance-page {
+        background: white;
+        padding: 0;
+    }
+
+    .summary-card,
+    .table-card {
+        box-shadow: none;
+        border: 1px solid #ddd;
+    }
+
+    .attendance-header {
+        background: white;
+        color: black;
+        box-shadow: none;
+        border-bottom: 2px solid #111;
+        border-radius: 0;
+    }
+}
+
+@media (max-width: 1000px) {
+    .summary-grid,
+    .filter-form {
+        grid-template-columns: 1fr;
+    }
+
+    .attendance-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+}
+</style>
+
+<div class="attendance-page">
+
+    <div class="attendance-header">
+        <div>
+            <h1>Attendance Records</h1>
+            <p>View, filter, summarize, and print attendance reports.</p>
+        </div>
+
+        <button onclick="window.print()" class="btn btn-light">
+            Print Report
+        </button>
+    </div>
+
+    <div class="filter-card print-hide">
+        <form method="GET" class="filter-form">
+            <select name="class_name">
+                <option value="">All Classes</option>
+                {% for class in class_options %}
+                    <option value="{{ class }}" {% if selected_class == class %}selected{% endif %}>
+                        {{ class }}
+                    </option>
+                {% endfor %}
+            </select>
+
+            <input type="date" name="date" value="{{ selected_date }}">
+
+            <button type="submit" class="btn btn-primary">Filter</button>
+
+            <a href="{{ url_for('attendance_records') }}" class="btn btn-light" style="background:#374151;color:white;text-align:center;">
+                Reset
+            </a>
+        </form>
+    </div>
+
+    <div class="summary-grid">
+        <div class="summary-card">
+            <h3>Total Records</h3>
+            <p>{{ total_records }}</p>
+        </div>
+
+        <div class="summary-card">
+            <h3>Present</h3>
+            <p>{{ present_count }}</p>
+        </div>
+
+        <div class="summary-card">
+            <h3>Absent</h3>
+            <p>{{ absent_count }}</p>
+        </div>
+
+        <div class="summary-card">
+            <h3>Late</h3>
+            <p>{{ late_count }}</p>
+        </div>
+
+        <div class="summary-card">
+            <h3>Attendance Rate</h3>
+            <p>{{ attendance_percentage }}%</p>
+        </div>
+    </div>
+
+    <div class="table-card">
+        <table class="attendance-table">
             <thead>
                 <tr>
                     <th>Date</th>
-                    <th>Student Number</th>
-                    <th>Name</th>
+                    <th>Student No.</th>
+                    <th>Student Name</th>
                     <th>Class</th>
                     <th>Status</th>
                 </tr>
             </thead>
+
             <tbody>
                 {% for record in attendance_records %}
                 <tr>
                     <td>{{ record.date }}</td>
-                    <td>{{ record.student_number }}</td>
+                    <td>{{ record.student_number or '-' }}</td>
                     <td>{{ record.first_name }} {{ record.last_name }}</td>
                     <td>{{ record.class_name }}</td>
-                    <td>{{ record.status }}</td>
+                    <td>
+                        {% if record.status == 'Present' %}
+                            <span class="badge badge-present">Present</span>
+                        {% elif record.status == 'Absent' %}
+                            <span class="badge badge-absent">Absent</span>
+                        {% elif record.status == 'Late' %}
+                            <span class="badge badge-late">Late</span>
+                        {% else %}
+                            <span class="badge">{{ record.status }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="no-data">No attendance records found.</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
-    {% else %}
-        <p>No attendance records found yet.</p>
-    {% endif %}
+
 </div>
 
-<style>
-.page-header {
-    margin-bottom: 24px;
-}
-.page-header h1 {
-    margin: 0;
-    color: #2563eb;
-    font-size: 30px;
-}
-.page-header p {
-    margin-top: 8px;
-    color: #6b7280;
-}
-.page-actions {
-    margin-bottom: 20px;
-}
-.btn-primary {
-    display: inline-block;
-    background: #2563eb;
-    color: white;
-    text-decoration: none;
-    padding: 12px 18px;
-    border-radius: 10px;
-    font-weight: 600;
-}
-.card-box {
-    background: #ffffff;
-    border-radius: 16px;
-    padding: 24px;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
-}
-.table-wrapper {
-    overflow-x: auto;
-}
-table {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 850px;
-}
-th, td {
-    padding: 12px;
-    text-align: left;
-    border-bottom: 1px solid #e5e7eb;
-}
-th {
-    background: #2563eb;
-    color: white;
-}
-</style>
 {% endblock %}
