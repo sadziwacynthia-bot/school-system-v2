@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block title %}Year-End Promotion{% endblock %}
+
+{% block content %}
+
+<style>
+.promotion-page {
+    padding: 25px;
+    background: #f4f6f9;
+    min-height: 100vh;
+}
+
+.promotion-header {
+    background: linear-gradient(135deg, #1e3a8a, #2563eb);
+    color: white;
+    padding: 24px;
+    border-radius: 18px;
+    margin-bottom: 22px;
+}
+
+.card {
+    background: white;
+    padding: 20px;
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    margin-bottom: 20px;
+}
+
+.filter-form {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    align-items: end;
+}
+
+input, select {
+    padding: 11px;
+    border: 1px solid #d1d5db;
+    border-radius: 9px;
+    width: 100%;
+}
+
+.btn {
+    padding: 10px 14px;
+    border-radius: 9px;
+    border: none;
+    text-decoration: none;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.btn-primary { background: #2563eb; color: white; }
+.btn-danger { background: #dc2626; color: white; }
+.btn-dark { background: #374151; color: white; }
+
+.warning-box {
+    background: #fef3c7;
+    color: #92400e;
+    padding: 14px;
+    border-radius: 12px;
+    margin-bottom: 18px;
+    font-weight: 600;
+}
+
+.done-box {
+    background: #dcfce7;
+    color: #166534;
+    padding: 14px;
+    border-radius: 12px;
+    margin-bottom: 18px;
+    font-weight: 600;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th {
+    background: #1e3a8a;
+    color: white;
+    padding: 12px;
+    text-align: left;
+}
+
+.table td {
+    padding: 12px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.badge {
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.badge-green {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.badge-red {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+@media (max-width: 900px) {
+    .filter-form {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<div class="promotion-page">
+
+    <div class="promotion-header">
+        <h1>Year-End Promotion</h1>
+        <p>Promote students to the next class and carry unpaid balances forward.</p>
+    </div>
+
+    <div class="card">
+        <form method="GET" action="{{ url_for('year_end_promotion') }}" class="filter-form">
+
+            {% if session.get('role') == 'super_admin' %}
+            <div>
+                <label>School</label>
+                <select name="school_id" required>
+                    <option value="">Select School</option>
+                    {% for school in schools %}
+                        <option value="{{ school.id }}"
+                            {% if selected_school_id|string == school.id|string %}selected{% endif %}>
+                            {{ school.school_name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+
+            <div>
+                <label>Academic Year</label>
+                <input type="text" name="academic_year" value="{{ academic_year }}" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Preview Promotion</button>
+        </form>
+    </div>
+
+    {% if already_done %}
+        <div class="done-box">
+            Year-end promotion has already been run for this school and academic year.
+        </div>
+    {% endif %}
+
+    {% if students %}
+    <div class="card">
+
+        <div class="warning-box">
+            Please review carefully before confirming. This action promotes students and creates carried-forward fee balances.
+        </div>
+
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Student No.</th>
+                    <th>Name</th>
+                    <th>Current Class</th>
+                    <th>Next Class</th>
+                    <th>Outstanding Balance</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for student in students %}
+                <tr>
+                    <td>{{ student.student_number or '-' }}</td>
+                    <td>{{ student.first_name }} {{ student.last_name }}</td>
+                    <td>{{ student.current_class }}</td>
+                    <td>{{ student.next_class }}</td>
+                    <td>${{ "%.2f"|format(student.outstanding_balance or 0) }}</td>
+                    <td>
+                        {% if student.will_graduate %}
+                            <span class="badge badge-red">Will Graduate</span>
+                        {% else %}
+                            <span class="badge badge-green">Will Promote</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% if not already_done %}
+        <form method="POST"
+              action="{{ url_for('run_year_end_promotion') }}"
+              onsubmit="return confirm('Are you sure? This will promote students and carry balances forward.');"
+              style="margin-top:20px;">
+
+            {% if selected_school_id %}
+                <input type="hidden" name="school_id" value="{{ selected_school_id }}">
+            {% endif %}
+
+            <input type="hidden" name="academic_year" value="{{ academic_year }}">
+
+            <button type="submit" class="btn btn-danger">
+                Confirm Year-End Promotion
+            </button>
+        </form>
+        {% endif %}
+    </div>
+    {% else %}
+        <div class="card">
+            No students found for promotion preview.
+        </div>
+    {% endif %}
+
+</div>
+
+{% endblock %}

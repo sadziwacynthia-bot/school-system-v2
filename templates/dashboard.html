@@ -3,6 +3,7 @@
 {% block page_heading %}Dashboard{% endblock %}
 
 {% block content %}
+
 <div class="dashboard-hero">
     <div>
         <p class="dashboard-eyebrow">School Overview</p>
@@ -10,15 +11,14 @@
             Welcome back{% if session.get('full_name') %}, {{ session.get('full_name') }}{% endif %}
         </h2>
         <p class="dashboard-hero-text">
-            Here is a live summary of your school operations, student activity, and financial position.
+            Here is a quick summary of your school operations.
         </p>
     </div>
 
     <div class="dashboard-hero-actions">
         <a href="{{ url_for('add_student') }}" class="btn btn-primary">+ Add Student</a>
         <a href="{{ url_for('add_fee') }}" class="btn btn-secondary">Add Fee</a>
-        <a href="{{ url_for('enter_result') }}" class="btn btn-secondary">Enter Result</a>
-        <li><a href="{{ url_for('add_notice') }}" class="btn btn-secondary">📢 Notices</a></li>
+        <a href="{{ url_for('add_notice') }}" class="btn btn-secondary">Post Notice</a>
     </div>
 </div>
 
@@ -30,7 +30,7 @@
             <span class="metric-icon">🏫</span>
         </div>
         <div class="metric-value">{{ total_schools|default(0) }}</div>
-        <div class="metric-note">Schools on your platform</div>
+        <div class="metric-note">Registered schools</div>
     </div>
     {% endif %}
 
@@ -40,7 +40,7 @@
             <span class="metric-icon">🎓</span>
         </div>
         <div class="metric-value">{{ total_students|default(0) }}</div>
-        <div class="metric-note">Total registered students</div>
+        <div class="metric-note">Total students</div>
     </div>
 
     <div class="metric-card metric-card-emerald">
@@ -49,16 +49,7 @@
             <span class="metric-icon">👩‍🏫</span>
         </div>
         <div class="metric-value">{{ total_teachers|default(0) }}</div>
-        <div class="metric-note">Active teaching staff</div>
-    </div>
-
-    <div class="metric-card metric-card-amber">
-        <div class="metric-top">
-            <span class="metric-label">Fee Records</span>
-            <span class="metric-icon">💳</span>
-        </div>
-        <div class="metric-value">{{ total_fee_records|default(0) }}</div>
-        <div class="metric-note">Tracked fee entries</div>
+        <div class="metric-note">Teaching staff</div>
     </div>
 
     <div class="metric-card metric-card-slate">
@@ -76,16 +67,99 @@
             <span class="metric-icon">⚠️</span>
         </div>
         <div class="metric-value">${{ "%.2f"|format(total_balance|default(0)) }}</div>
-        <div class="metric-note">Unpaid balance remaining</div>
+        <div class="metric-note">Unpaid balance</div>
     </div>
 </div>
 
 <div class="dashboard-layout">
+
+    <section class="dashboard-panel premium-surface">
+        <div class="panel-header-row">
+            <div>
+                <p class="panel-kicker">Main</p>
+                <h3>Core Actions</h3>
+            </div>
+        </div>
+
+        <div class="dashboard-shortcuts">
+            <a href="{{ url_for('students') }}" class="shortcut-card">
+                <span class="shortcut-icon">👥</span>
+                <span>Students</span>
+            </a>
+
+            <a href="{{ url_for('classes') }}" class="shortcut-card">
+                <span class="shortcut-icon">🏫</span>
+                <span>Classes</span>
+            </a>
+
+            <a href="{{ url_for('teachers') }}" class="shortcut-card">
+                <span class="shortcut-icon">🧑‍🏫</span>
+                <span>Teachers</span>
+            </a>
+
+            <a href="{{ url_for('attendance') }}" class="shortcut-card">
+                <span class="shortcut-icon">🗓️</span>
+                <span>Attendance</span>
+            </a>
+
+            <a href="{{ url_for('fees') }}" class="shortcut-card">
+                <span class="shortcut-icon">💰</span>
+                <span>Fees</span>
+            </a>
+
+            <a href="{{ url_for('results') }}" class="shortcut-card">
+                <span class="shortcut-icon">📘</span>
+                <span>Results</span>
+            </a>
+        </div>
+    </section>
+
+    <section class="dashboard-panel premium-surface">
+        <div class="panel-header-row">
+            <div>
+                <p class="panel-kicker">Management</p>
+                <h3>Admin Tools</h3>
+            </div>
+        </div>
+
+        <div class="dashboard-shortcuts">
+            <a href="{{ url_for('notices') }}" class="shortcut-card">
+                <span class="shortcut-icon">📢</span>
+                <span>Notices</span>
+            </a>
+
+            <a href="{{ url_for('add_assessment') }}" class="shortcut-card">
+                <span class="shortcut-icon">📊</span>
+                <span>Assessment</span>
+            </a>
+
+            <a href="{{ url_for('assign_teacher') }}" class="shortcut-card">
+                <span class="shortcut-icon">🧑‍🏫</span>
+                <span>Assign Teacher</span>
+            </a>
+
+            <a href="{{ url_for('assign_class_teacher') }}" class="shortcut-card">
+                <span class="shortcut-icon">🏫</span>
+                <span>Class Teacher</span>
+            </a>
+
+            <a href="{{ url_for('fee_reminders') }}" class="shortcut-card">
+                <span class="shortcut-icon">📲</span>
+                <span>Fee Reminders</span>
+            </a>
+
+            <a href="{{ url_for('year_end_promotion') }}" class="shortcut-card">
+                <span class="shortcut-icon">🎓</span>
+                <span>Year-End</span>
+            </a>
+        </div>
+    </section>
+
     <section class="dashboard-panel premium-surface">
         <div class="panel-header-row">
             <div>
                 <p class="panel-kicker">Finance</p>
-                <h3>Fee Status Overview</h3>
+                <h3>Fee Status</h3>
             </div>
         </div>
 
@@ -101,7 +175,7 @@
             <div class="status-tile">
                 <span class="status-dot status-dot-yellow"></span>
                 <div>
-                    <p>Partially Paid</p>
+                    <p>Partial</p>
                     <strong>{{ partial_count|default(0) }}</strong>
                 </div>
             </div>
@@ -121,38 +195,6 @@
                     <strong>${{ "%.2f"|format(total_billed|default(0)) }}</strong>
                 </div>
             </div>
-        </div>
-    </section>
-
-    <section class="dashboard-panel premium-surface">
-        <div class="panel-header-row">
-            <div>
-                <p class="panel-kicker">Shortcuts</p>
-                <h3>Quick Actions</h3>
-            </div>
-        </div>
-
-        <div class="dashboard-shortcuts">
-            <a href="{{ url_for('students') }}" class="shortcut-card"><span class="shortcut-icon">👥</span><span>Manage Students</span></a>
-            <a href="{{ url_for('teachers') }}" class="shortcut-card"><span class="shortcut-icon">🧑‍🏫</span><span>Teachers</span></a>
-            <a href="{{ url_for('fees') }}" class="shortcut-card"><span class="shortcut-icon">💰</span><span>Fees</span></a>
-            <a href="{{ url_for('results') }}" class="shortcut-card"><span class="shortcut-icon">📘</span><span>Results</span></a>
-            <a href="{{ url_for('attendance') }}" class="shortcut-card"><span class="shortcut-icon">🗓️</span><span>Attendance</span></a>
-            <a href="{{ url_for('timetable') }}" class="shortcut-card"><span class="shortcut-icon">📅</span><span>Timetable</span></a>
-            <a href="{{ url_for('fee_reminders') }}" class="shortcut-card">
-    <span class="shortcut-icon">📲</span>
-    <span>Fee Reminders</span>
-    <a href="{{ url_for('add_assessment') }}" class="shortcut-card">
-    <span>📊</span>
-    <span>Add Assessment</span>
-</a>
-            <a href="{{ url_for('notices') }}" class="shortcut-card">
-    <span class="shortcut-icon">📢</span>
-    <span>Notices</span>
-</a>
-    <span class="quick-icon">📊</span>
-    <span>Progress Report</span>
-</a>
         </div>
     </section>
 
@@ -182,62 +224,6 @@
         </div>
     </section>
 
-    <section class="dashboard-panel premium-surface">
-        <div class="panel-header-row">
-            <div>
-                <p class="panel-kicker">Activity</p>
-                <h3>Recent Students</h3>
-            </div>
-        </div>
-
-        <div class="activity-list">
-            {% for student in recent_students|default([]) %}
-            <div class="activity-item">
-                <div class="activity-avatar">
-                    {{ (student.first_name or 'S')[0] }}{{ (student.last_name or '')[:1] }}
-                </div>
-                <div class="activity-content">
-                    <strong>{{ student.first_name }} {{ student.last_name }}</strong>
-                    <span>{{ student.class_name or '-' }}</span>
-                </div>
-                <div class="activity-meta">{{ student.student_number or '-' }}</div>
-            </div>
-            {% else %}
-            <div class="empty-state-lite">No recent students found.</div>
-            {% endfor %}
-        </div>
-    </section>
-
-    <section class="dashboard-panel premium-surface dashboard-panel-wide">
-        <div class="panel-header-row">
-            <div>
-                <p class="panel-kicker">Payments</p>
-                <h3>Recent Payments</h3>
-            </div>
-        </div>
-
-        <div class="payments-table-wrap">
-            <table class="dashboard-mini-table">
-                <thead>
-                    <tr>
-                        <th>Student</th>
-                        <th>Amount</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for payment in recent_payments|default([]) %}
-                    <tr>
-                        <td>{{ payment.first_name }} {{ payment.last_name }}</td>
-                        <td>${{ "%.2f"|format(payment.amount_paid or 0) }}</td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="2">No recent payments found.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </section>
 </div>
+
 {% endblock %}

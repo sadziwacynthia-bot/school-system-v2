@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div style="padding:25px; max-width:700px;">
+    <h2>Assign Class Teacher</h2>
+
+    <form method="POST">
+
+        <label>Class</label>
+        <select name="class_id" required>
+            {% for c in classes %}
+                <option value="{{ c.id }}">{{ c.class_name }}</option>
+            {% endfor %}
+        </select>
+
+        <br><br>
+
+        <label>Teacher</label>
+        <select name="teacher_id" required>
+            {% for t in teachers %}
+                <option value="{{ t.id }}">{{ t.full_name }}</option>
+            {% endfor %}
+        </select>
+
+        <br><br>
+
+        <button type="submit">Assign Class Teacher</button>
+
+    </form>
+
+    <hr><br>
+
+    <h3>Current Class Teachers</h3>
+
+    <table border="1" cellpadding="8">
+        <tr>
+            <th>Class</th>
+            <th>Teacher</th>
+        </tr>
+
+        {% for a in assignments %}
+        <tr>
+            <td>{{ a.class_name }}</td>
+            <td>{{ a.full_name or "Not Assigned" }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+</div>
+
+{% endblock %}

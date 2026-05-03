@@ -632,6 +632,30 @@ def create_super_admin():
                 "super_admin",
             ),
         )
+
+def add_class_teacher_column():
+    conn = get_db()
+    cursor = conn.cursor()
+
+    try:
+        if is_postgres():
+            cursor.execute("""
+                ALTER TABLE school_classes
+                ADD COLUMN IF NOT EXISTS class_teacher_id INTEGER
+            """)
+        else:
+            try:
+                cursor.execute("""
+                    ALTER TABLE school_classes
+                    ADD COLUMN class_teacher_id INTEGER
+                """)
+            except Exception:
+                pass
+
+        conn.commit()
+    finally:
+        conn.close()
+
 def create_assessments_table():
     conn = get_db()
     cursor = conn.cursor()
@@ -833,6 +857,21 @@ def get_school_classes(school_id):
 
     return CLASS_OPTIONS
 
+def get_next_class(class_name):
+    promotion_map = {
+        "Form 1 Grey": "Form 2 Grey",
+        "Form 1 Blue": "Form 2 Blue",
+        "Form 2 Grey": "Form 3 Grey",
+        "Form 2 Blue": "Form 3 Blue",
+        "Form 3 Grey": "Form 4 Grey",
+        "Form 3 Blue": "Form 4 Blue",
+        "Form 4 Grey": "Form 5",
+        "Form 4 Blue": "Form 5",
+        "Form 5": "Form 6",
+        "Form 6": "Graduated"
+    }
+
+    return promotion_map.get(class_name, class_name)
 
 # =========================================================
 # BASIC ROUTES
@@ -1821,7 +1860,6 @@ def teacher_registration():
 
     return render_template("teacher_registration.html")
 
-
 @app.route("/assign_teacher", methods=["GET", "POST"])
 @login_required
 @roles_required("school_admin", "super_admin")
@@ -1829,60 +1867,102 @@ def assign_teacher():
     school_id = session.get("school_id")
     role = session.get("role")
 
+    selected_school_id = request.args.get("school_id") or school_id
+
+    schools = []
     if role == "super_admin":
-        teachers_list = fetch_all("SELECT * FROM teachers ORDER BY full_name")
-        assignments_list = fetch_all("""
-            SELECT ta.*, t.full_name
-            FROM teacher_assignments ta
-            JOIN teachers t ON ta.teacher_id = t.id
-            ORDER BY t.full_name, ta.class_name, ta.subject
-        """)
-    else:
-        teachers_list = fetch_all("SELECT * FROM teachers WHERE school_id = ? ORDER BY full_name", (school_id,))
+        schools = fetch_all("SELECT * FROM schools ORDER BY school_name")
+
+    if request.method == "POST":
+        if role == "super_admin":
+            selected_school_id = request.form.get("school_id")
+
+        teacher_id = request.form.get("teacher_id")
+        class_name = request.form.get("class_name")
+        subject = request.form.get("subject")
+
+        if not selected_school_id or not teacher_id or not class_name or not subject:
+            flash("School, teacher, class, and subject are required.", "danger")
+            return redirect(url_for("assign_teacher", school_id=selected_school_id))
+
+        teacher = fetch_one(
+            "SELECT * FROM teachers WHERE id = ? AND school_id = ?",
+            (teacher_id, selected_school_id)
+        )
+
+        if not teacher:
+            flash("Invalid teacher selected for this school.", "danger")
+            return redirect(url_for("assign_teacher", school_id=selected_school_id))
+
+        existing = fetch_one("""
+            SELECT *
+            FROM teacher_assignments
+            WHERE school_id = ?
+              AND teacher_id = ?
+              AND class_name = ?
+              AND subject = ?
+        """, (selected_school_id, teacher_id, class_name, subject))
+
+        if existing:
+            flash("This teacher is already assigned to that class and subject.", "warning")
+            return redirect(url_for("assign_teacher", school_id=selected_school_id))
+
+        execute_commit("""
+            INSERT INTO teacher_assignments (school_id, teacher_id, class_name, subject)
+            VALUES (?, ?, ?, ?)
+        """, (selected_school_id, teacher_id, class_name, subject))
+
+        flash("Teacher assigned successfully.", "success")
+        return redirect(url_for("assign_teacher", school_id=selected_school_id))
+
+    teachers_list = []
+    class_options = []
+    subjects_list = []
+    assignments_list = []
+
+    if selected_school_id:
+        teachers_list = fetch_all("""
+            SELECT *
+            FROM teachers
+            WHERE school_id = ?
+            ORDER BY full_name
+        """, (selected_school_id,))
+
+        class_rows = fetch_all("""
+            SELECT DISTINCT class_name
+            FROM school_classes
+            WHERE school_id = ?
+            ORDER BY class_name
+        """, (selected_school_id,))
+
+        class_options = [row["class_name"] for row in class_rows]
+
+        subject_rows = fetch_all("""
+            SELECT subject_name
+            FROM subjects
+            WHERE school_id = ?
+            ORDER BY subject_name
+        """, (selected_school_id,))
+
+        subjects_list = [row["subject_name"] for row in subject_rows]
+
         assignments_list = fetch_all("""
             SELECT ta.*, t.full_name
             FROM teacher_assignments ta
             JOIN teachers t ON ta.teacher_id = t.id
             WHERE ta.school_id = ?
             ORDER BY t.full_name, ta.class_name, ta.subject
-        """, (school_id,))
-
-    subjects_list = ["Math", "English", "Science", "History", "Geography", "Biology"]
-
-    if request.method == "POST":
-        teacher_id = request.form.get("teacher_id")
-        class_name = request.form.get("class_name")
-        subject = request.form.get("subject")
-
-        if not teacher_id or not class_name or not subject:
-            flash("Teacher, class, and subject are required.", "danger")
-            return redirect(url_for("assign_teacher"))
-
-        if role != "super_admin":
-            teacher = fetch_one("SELECT * FROM teachers WHERE id = ? AND school_id = ?", (teacher_id, school_id))
-            if not teacher:
-                flash("Invalid teacher selected.", "danger")
-                return redirect(url_for("assign_teacher"))
-
-        execute_commit(
-            """
-            INSERT INTO teacher_assignments (school_id, teacher_id, class_name, subject)
-            VALUES (?, ?, ?, ?)
-            """,
-            (school_id, teacher_id, class_name, subject),
-        )
-
-        flash("Teacher assigned successfully.", "success")
-        return redirect(url_for("assign_teacher"))
+        """, (selected_school_id,))
 
     return render_template(
         "assign_teacher.html",
+        schools=schools,
+        selected_school_id=str(selected_school_id) if selected_school_id else "",
         teachers=teachers_list,
-        class_options=CLASS_OPTIONS,
+        class_options=class_options,
         subjects=subjects_list,
         assignments=assignments_list,
     )
-
 
 @app.route("/teacher_dashboard")
 @login_required
@@ -2380,22 +2460,122 @@ def results():
 def attendance():
     school_id = session.get("school_id")
     role = session.get("role")
+    user_id = session.get("user_id")
 
-    selected_class = request.form.get("class_name") if request.method == "POST" else request.args.get("class_name")
+    selected_class = request.args.get("class_name", "").strip()
     students_list = []
+    class_options = []
 
-    if selected_class:
-        if role == "super_admin":
-            students_list = fetch_all("SELECT * FROM students WHERE class_name = ? ORDER BY first_name, last_name", (selected_class,))
-        else:
-            students_list = fetch_all(
-                "SELECT * FROM students WHERE school_id = ? AND class_name = ? ORDER BY first_name, last_name",
-                (school_id, selected_class),
+    # =====================================================
+    # TEACHER VIEW
+    # =====================================================
+    if role == "teacher":
+        teacher = fetch_one("""
+            SELECT *
+            FROM teachers
+            WHERE user_id = ? AND school_id = ?
+            LIMIT 1
+        """, (user_id, school_id))
+
+        if not teacher:
+            flash("No teacher profile is linked to this account.", "danger")
+            return render_template(
+                "attendance.html",
+                class_options=[],
+                selected_class="",
+                students=[],
+                today=datetime.now().strftime("%Y-%m-%d")
             )
 
-    return render_template("attendance.html", class_options=CLASS_OPTIONS, selected_class=selected_class, students=students_list)
+        # 1. Classes where teacher is the main class teacher
+        class_teacher_rows = fetch_all("""
+            SELECT class_name
+            FROM school_classes
+            WHERE class_teacher_id = ?
+              AND school_id = ?
+            ORDER BY class_name
+        """, (teacher["id"], school_id))
 
+        # 2. Classes where teacher is assigned as subject teacher
+        subject_teacher_rows = fetch_all("""
+            SELECT DISTINCT class_name
+            FROM teacher_assignments
+            WHERE teacher_id = ?
+              AND school_id = ?
+            ORDER BY class_name
+        """, (teacher["id"], school_id))
 
+        class_options = sorted(list(set(
+            [row["class_name"] for row in class_teacher_rows] +
+            [row["class_name"] for row in subject_teacher_rows]
+        )))
+
+        # Auto-select if teacher only has one class
+        if not selected_class and len(class_options) == 1:
+            selected_class = class_options[0]
+
+        if selected_class and selected_class in class_options:
+            students_list = fetch_all("""
+                SELECT *
+                FROM students
+                WHERE school_id = ?
+                  AND class_name = ?
+                  AND COALESCE(current_status, 'Active') = 'Active'
+                ORDER BY first_name, last_name
+            """, (school_id, selected_class))
+
+    # =====================================================
+    # SUPER ADMIN VIEW
+    # =====================================================
+    elif role == "super_admin":
+        class_rows = fetch_all("""
+            SELECT DISTINCT class_name
+            FROM school_classes
+            ORDER BY class_name
+        """)
+
+        class_options = [row["class_name"] for row in class_rows] or CLASS_OPTIONS
+
+        if selected_class:
+            students_list = fetch_all("""
+                SELECT *
+                FROM students
+                WHERE class_name = ?
+                  AND COALESCE(current_status, 'Active') = 'Active'
+                ORDER BY first_name, last_name
+            """, (selected_class,))
+
+    # =====================================================
+    # SCHOOL ADMIN VIEW
+    # =====================================================
+    else:
+        class_rows = fetch_all("""
+            SELECT DISTINCT class_name
+            FROM school_classes
+            WHERE school_id = ?
+            ORDER BY class_name
+        """, (school_id,))
+
+        class_options = [row["class_name"] for row in class_rows] or CLASS_OPTIONS
+
+        if selected_class:
+            students_list = fetch_all("""
+                SELECT *
+                FROM students
+                WHERE school_id = ?
+                  AND class_name = ?
+                  AND COALESCE(current_status, 'Active') = 'Active'
+                ORDER BY first_name, last_name
+            """, (school_id, selected_class))
+
+    return render_template(
+        "attendance.html",
+        class_options=class_options,
+        selected_class=selected_class,
+        students=students_list,
+        today=datetime.now().strftime("%Y-%m-%d")
+    )
+    
 @app.route("/save_attendance", methods=["POST"])
 @login_required
 @roles_required("school_admin", "super_admin", "teacher")
@@ -3455,7 +3635,56 @@ def print_result(student_id, term):
         average=average,
         total_balance=float(fee_summary["total_balance"] or 0)
     )
+@app.route("/assign_class_teacher", methods=["GET", "POST"])
+@login_required
+@roles_required("school_admin", "super_admin")
+def assign_class_teacher():
+    school_id = session.get("school_id")
+    role = session.get("role")
 
+    if role == "super_admin":
+        teachers = fetch_all("SELECT * FROM teachers ORDER BY full_name")
+        classes = fetch_all("SELECT * FROM school_classes ORDER BY class_name")
+    else:
+        teachers = fetch_all(
+            "SELECT * FROM teachers WHERE school_id = ? ORDER BY full_name",
+            (school_id,)
+        )
+        classes = fetch_all(
+            "SELECT * FROM school_classes WHERE school_id = ? ORDER BY class_name",
+            (school_id,)
+        )
+
+    if request.method == "POST":
+        class_id = request.form.get("class_id")
+        teacher_id = request.form.get("teacher_id")
+
+        if not class_id or not teacher_id:
+            flash("Class and teacher are required.", "danger")
+            return redirect(url_for("assign_class_teacher"))
+
+        execute_commit("""
+            UPDATE school_classes
+            SET class_teacher_id = ?
+            WHERE id = ?
+        """, (teacher_id, class_id))
+
+        flash("Class teacher assigned successfully.", "success")
+        return redirect(url_for("assign_class_teacher"))
+
+    class_assignments = fetch_all("""
+        SELECT sc.*, t.full_name
+        FROM school_classes sc
+        LEFT JOIN teachers t ON sc.class_teacher_id = t.id
+        ORDER BY sc.class_name
+    """)
+
+    return render_template(
+        "assign_class_teacher.html",
+        teachers=teachers,
+        classes=classes,
+        assignments=class_assignments
+    )
 # =========================================================
 # CASHBOOK
 # =========================================================
@@ -3983,7 +4212,7 @@ def student_progress(student_id):
         overall_average=overall_average,
         progress_status=progress_status
     )
-    
+
 @app.route("/print_class_list/<class_name>")
 @login_required
 @roles_required("school_admin", "super_admin", "teacher")
@@ -4160,6 +4389,205 @@ def school_profile(school_id):
         total_paid=fee_totals["total_paid"] or 0,
         total_balance=fee_totals["total_balance"] or 0
     )
+@app.route("/year_end_promotion", methods=["GET", "POST"])
+@login_required
+@roles_required("school_admin", "super_admin")
+def year_end_promotion():
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    schools = []
+    selected_school_id = school_id
+
+    if role == "super_admin":
+        schools = fetch_all("SELECT * FROM schools ORDER BY school_name")
+        selected_school_id = request.args.get("school_id") or request.form.get("school_id")
+
+    academic_year = request.args.get("academic_year") or request.form.get("academic_year") or str(datetime.now().year)
+
+    students = []
+    already_done = False
+
+    if selected_school_id:
+        existing_batch = fetch_one("""
+            SELECT *
+            FROM promotion_batches
+            WHERE school_id = ? AND academic_year = ?
+        """, (selected_school_id, academic_year))
+
+        already_done = existing_batch is not None
+
+        student_rows = fetch_all("""
+            SELECT 
+                s.id,
+                s.student_number,
+                s.first_name,
+                s.last_name,
+                s.class_name,
+                s.current_status,
+                COALESCE(SUM(f.balance), 0) AS outstanding_balance
+            FROM students s
+            LEFT JOIN fees f ON s.id = f.student_id
+            WHERE s.school_id = ?
+              AND COALESCE(s.current_status, 'Active') = 'Active'
+            GROUP BY s.id, s.student_number, s.first_name, s.last_name, s.class_name, s.current_status
+            ORDER BY s.class_name, s.first_name, s.last_name
+        """, (selected_school_id,))
+
+        for student in student_rows:
+            next_class = get_next_class(student["class_name"])
+
+            students.append({
+                "id": student["id"],
+                "student_number": student["student_number"],
+                "first_name": student["first_name"],
+                "last_name": student["last_name"],
+                "current_class": student["class_name"],
+                "next_class": next_class,
+                "outstanding_balance": float(student["outstanding_balance"] or 0),
+                "will_graduate": next_class == "Graduated"
+            })
+
+    return render_template(
+        "year_end_promotion.html",
+        schools=schools,
+        selected_school_id=selected_school_id,
+        academic_year=academic_year,
+        students=students,
+        already_done=already_done
+    )
+
+@app.route("/run_year_end_promotion", methods=["POST"])
+@login_required
+@roles_required("school_admin", "super_admin")
+def run_year_end_promotion():
+    role = session.get("role")
+    school_id = session.get("school_id")
+
+    if role == "super_admin":
+        school_id = request.form.get("school_id")
+
+    academic_year = request.form.get("academic_year") or str(datetime.now().year)
+
+    if not school_id:
+        flash("School is required.", "danger")
+        return redirect(url_for("year_end_promotion"))
+
+    existing_batch = fetch_one("""
+        SELECT *
+        FROM promotion_batches
+        WHERE school_id = ? AND academic_year = ?
+    """, (school_id, academic_year))
+
+    if existing_batch:
+        flash("Year-end promotion has already been run for this school and year.", "danger")
+        return redirect(url_for("year_end_promotion", school_id=school_id, academic_year=academic_year))
+
+    students = fetch_all("""
+        SELECT *
+        FROM students
+        WHERE school_id = ?
+          AND COALESCE(current_status, 'Active') = 'Active'
+        ORDER BY class_name, first_name, last_name
+    """, (school_id,))
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    try:
+        for student in students:
+            student_id = student["id"]
+            old_class = student["class_name"]
+            new_class = get_next_class(old_class)
+
+            balance_row = fetch_one("""
+                SELECT COALESCE(SUM(balance), 0) AS total_balance
+                FROM fees
+                WHERE student_id = ?
+                  AND school_id = ?
+            """, (student_id, school_id))
+
+            outstanding_balance = float(balance_row["total_balance"] or 0)
+
+            if new_class == "Graduated":
+                cursor.execute(
+                    convert_query("""
+                        UPDATE students
+                        SET current_status = ?
+                        WHERE id = ? AND school_id = ?
+                    """),
+                    ("Graduated", student_id, school_id)
+                )
+            else:
+                cursor.execute(
+                    convert_query("""
+                        UPDATE students
+                        SET class_name = ?
+                        WHERE id = ? AND school_id = ?
+                    """),
+                    (new_class, student_id, school_id)
+                )
+
+                try:
+                    cursor.execute(
+                        convert_query("""
+                            INSERT INTO school_classes (school_id, class_name)
+                            VALUES (?, ?)
+                        """),
+                        (school_id, new_class)
+                    )
+                except Exception:
+                    pass
+
+            if outstanding_balance > 0:
+                cursor.execute(
+                    convert_query("""
+                        INSERT INTO fees (
+                            school_id, student_id, term_name, amount,
+                            paid_amount, balance, status, due_date
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """),
+                    (
+                        school_id,
+                        student_id,
+                        f"Previous Year Balance {academic_year}",
+                        outstanding_balance,
+                        0,
+                        outstanding_balance,
+                        "Pending",
+                        ""
+                    )
+                )
+
+        cursor.execute(
+            convert_query("""
+                INSERT INTO promotion_batches (school_id, academic_year, promoted_by)
+                VALUES (?, ?, ?)
+            """),
+            (school_id, academic_year, session.get("full_name", "System"))
+        )
+
+        conn.commit()
+
+        log_audit(
+            "Ran year-end promotion",
+            "students",
+            None,
+            f"Promoted students for academic year {academic_year}"
+        )
+
+        flash("Year-end promotion completed successfully.", "success")
+
+    except Exception as e:
+        conn.rollback()
+        flash(f"Year-end promotion failed: {str(e)}", "danger")
+
+    finally:
+        conn.close()
+
+    return redirect(url_for("year_end_promotion", school_id=school_id, academic_year=academic_year))
+
 @app.route("/users")
 @login_required
 @roles_required("school_admin", "super_admin")
@@ -4900,6 +5328,39 @@ def update_school_subscription_states():
                 (1, "active", school["id"])
             )
 
+
+def create_year_end_tables():
+    conn = get_db()
+    cursor = conn.cursor()
+
+    try:
+        if is_postgres():
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS promotion_batches (
+                    id SERIAL PRIMARY KEY,
+                    school_id INTEGER,
+                    academic_year VARCHAR(20),
+                    promoted_by VARCHAR(255),
+                    promoted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(school_id, academic_year)
+                )
+            """)
+        else:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS promotion_batches (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    school_id INTEGER,
+                    academic_year TEXT,
+                    promoted_by TEXT,
+                    promoted_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(school_id, academic_year)
+                )
+            """)
+
+        conn.commit()
+    finally:
+        conn.close()
+
 def run_audit_migration():
     conn = get_db()
     cursor = conn.cursor()
@@ -4971,6 +5432,9 @@ def setup_app():
 
             run_audit_migration()
             print("Audit migration completed")
+
+            create_year_end_tables()
+            print("Year-end promotion tables ready")
             
             create_default_school()
             print("Default school ready")
@@ -5139,6 +5603,7 @@ def activate_school(school_id):
 
 create_notices_table()
 create_assessments_table()
+add_class_teacher_column()
 setup_app()
 
 if __name__ == "__main__":
