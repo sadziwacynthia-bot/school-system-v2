@@ -3899,6 +3899,91 @@ def add_assessment():
 
     return render_template("add_assessment.html", students=students)
 
+@app.route("/student_progress/<int:student_id>")
+@login_required
+@roles_required("school_admin", "super_admin", "teacher", "parent")
+def student_progress(student_id):
+    school_id = session.get("school_id")
+    role = session.get("role")
+    selected_term = request.args.get("term", "Term 1")
+
+    if role == "parent":
+        student = fetch_one("""
+            SELECT s.*
+            FROM students s
+            JOIN guardians g ON s.id = g.student_id
+            WHERE s.id = ?
+              AND g.parent_user_id = ?
+              AND s.school_id = ?
+        """, (student_id, session.get("user_id"), school_id))
+    elif role == "super_admin":
+        student = fetch_one("SELECT * FROM students WHERE id = ?", (student_id,))
+    else:
+        student = fetch_one(
+            "SELECT * FROM students WHERE id = ? AND school_id = ?",
+            (student_id, school_id)
+        )
+
+    if not student:
+        flash("Student not found or access denied.", "danger")
+        return redirect(url_for("dashboard"))
+
+    assessments = fetch_all("""
+        SELECT *
+        FROM assessments
+        WHERE student_id = ?
+          AND term = ?
+        ORDER BY subject, date DESC
+    """, (student_id, selected_term))
+
+    subjects = {}
+
+    for a in assessments:
+        subject = a["subject"] or "Unknown"
+
+        if subject not in subjects:
+            subjects[subject] = {
+                "records": [],
+                "total_percentage": 0,
+                "count": 0,
+                "average": 0
+            }
+
+        subjects[subject]["records"].append(a)
+        subjects[subject]["total_percentage"] += float(a["percentage"] or 0)
+        subjects[subject]["count"] += 1
+
+    overall_total = 0
+    subject_count = 0
+
+    for subject, data in subjects.items():
+        if data["count"] > 0:
+            data["average"] = round(data["total_percentage"] / data["count"], 1)
+            overall_total += data["average"]
+            subject_count += 1
+
+    overall_average = round(overall_total / subject_count, 1) if subject_count > 0 else 0
+
+    if overall_average >= 80:
+        progress_status = "Excellent Progress"
+    elif overall_average >= 70:
+        progress_status = "Good Progress"
+    elif overall_average >= 60:
+        progress_status = "Satisfactory Progress"
+    elif overall_average >= 50:
+        progress_status = "Needs Improvement"
+    else:
+        progress_status = "Serious Support Needed"
+
+    return render_template(
+        "student_progress.html",
+        student=student,
+        selected_term=selected_term,
+        subjects=subjects,
+        overall_average=overall_average,
+        progress_status=progress_status
+    )
+    
 @app.route("/print_class_list/<class_name>")
 @login_required
 @roles_required("school_admin", "super_admin", "teacher")

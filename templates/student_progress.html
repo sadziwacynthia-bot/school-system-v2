@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+
+{% block title %}Student Progress Report{% endblock %}
+
+{% block content %}
+
+<style>
+.progress-page {
+    padding: 25px;
+    background: #f4f6f9;
+    min-height: 100vh;
+}
+
+.progress-header {
+    background: linear-gradient(135deg, #1e3a8a, #2563eb);
+    color: white;
+    padding: 24px;
+    border-radius: 18px;
+    margin-bottom: 22px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.progress-header h1 {
+    margin: 0;
+}
+
+.progress-header p {
+    margin: 6px 0 0;
+    opacity: 0.9;
+}
+
+.btn {
+    padding: 10px 14px;
+    border-radius: 9px;
+    border: none;
+    text-decoration: none;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.btn-light {
+    background: white;
+    color: #1e3a8a;
+}
+
+.btn-primary {
+    background: #2563eb;
+    color: white;
+}
+
+.filter-card,
+.report-card {
+    background: white;
+    padding: 20px;
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    margin-bottom: 20px;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.summary-card {
+    background: white;
+    padding: 18px;
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+
+.summary-card h3 {
+    margin: 0;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.summary-card p {
+    margin: 8px 0 0;
+    font-size: 22px;
+    font-weight: 800;
+    color: #111827;
+}
+
+.subject-card {
+    background: white;
+    border-radius: 16px;
+    margin-bottom: 18px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+
+.subject-header {
+    background: #1e3a8a;
+    color: white;
+    padding: 14px 18px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.assessment-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.assessment-table th {
+    background: #f3f4f6;
+    color: #374151;
+    padding: 12px;
+    text-align: left;
+    font-size: 14px;
+}
+
+.assessment-table td {
+    padding: 12px;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 14px;
+}
+
+.badge {
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.badge-good {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.badge-mid {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.badge-low {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.no-data {
+    background: white;
+    padding: 25px;
+    border-radius: 16px;
+    color: #6b7280;
+    text-align: center;
+}
+
+@media print {
+    nav,
+    .sidebar,
+    .filter-card,
+    .print-hide,
+    .progress-header .btn {
+        display: none !important;
+    }
+
+    .progress-page {
+        background: white;
+        padding: 0;
+    }
+
+    .progress-header {
+        background: white;
+        color: black;
+        border-bottom: 2px solid #111;
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+    .summary-card,
+    .subject-card {
+        box-shadow: none;
+        border: 1px solid #ddd;
+    }
+}
+
+@media (max-width: 900px) {
+    .summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .progress-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+}
+</style>
+
+<div class="progress-page">
+
+    <div class="progress-header">
+        <div>
+            <h1>Progress Report</h1>
+            <p>{{ student.first_name }} {{ student.last_name }} — {{ student.class_name }}</p>
+        </div>
+
+        <button onclick="window.print()" class="btn btn-light">Print Report</button>
+    </div>
+
+    <div class="filter-card print-hide">
+        <form method="GET">
+            <label>Term</label>
+            <select name="term" onchange="this.form.submit()" style="padding:10px; border-radius:8px;">
+                <option value="Term 1" {% if selected_term == 'Term 1' %}selected{% endif %}>Term 1</option>
+                <option value="Term 2" {% if selected_term == 'Term 2' %}selected{% endif %}>Term 2</option>
+                <option value="Term 3" {% if selected_term == 'Term 3' %}selected{% endif %}>Term 3</option>
+            </select>
+        </form>
+    </div>
+
+    <div class="summary-grid">
+        <div class="summary-card">
+            <h3>Student Number</h3>
+            <p>{{ student.student_number or '-' }}</p>
+        </div>
+
+        <div class="summary-card">
+            <h3>Term</h3>
+            <p>{{ selected_term }}</p>
+        </div>
+
+        <div class="summary-card">
+            <h3>Overall Average</h3>
+            <p>{{ overall_average }}%</p>
+        </div>
+
+        <div class="summary-card">
+            <h3>Progress Status</h3>
+            <p>{{ progress_status }}</p>
+        </div>
+    </div>
+
+    {% if subjects %}
+        {% for subject, data in subjects.items() %}
+        <div class="subject-card">
+            <div class="subject-header">
+                <strong>{{ subject }}</strong>
+                <strong>Average: {{ data.average }}%</strong>
+            </div>
+
+            <table class="assessment-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Marks</th>
+                        <th>Total</th>
+                        <th>Percentage</th>
+                        <th>Comment</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for a in data.records %}
+                    <tr>
+                        <td>{{ a.date or '-' }}</td>
+                        <td>{{ a.assessment_type }}</td>
+                        <td>{{ a.marks }}</td>
+                        <td>{{ a.total_marks }}</td>
+                        <td>
+                            {% if (a.percentage or 0) >= 70 %}
+                                <span class="badge badge-good">{{ a.percentage }}%</span>
+                            {% elif (a.percentage or 0) >= 50 %}
+                                <span class="badge badge-mid">{{ a.percentage }}%</span>
+                            {% else %}
+                                <span class="badge badge-low">{{ a.percentage }}%</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ a.comment or '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="no-data">
+            No assessment records found for {{ selected_term }}.
+        </div>
+    {% endif %}
+
+</div>
+
+{% endblock %}
