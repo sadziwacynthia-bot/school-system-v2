@@ -71,6 +71,13 @@
                   <button type="submit" class="action-btn reactivate">Reactivate</button>
                 </form>
                 {% endif %}
+                {% if session.get('role') == 'super_admin' %}
+<form method="POST"
+      action="{{ url_for('delete_student', id=student.id) }}"
+      onsubmit="return confirm('Delete this student permanently? This will also delete related fees, results, attendance, and guardian records.');">
+    <button type="submit" class="btn btn-danger">Delete</button>
+</form>
+{% endif %}
               </div>
             </td>
           </tr>

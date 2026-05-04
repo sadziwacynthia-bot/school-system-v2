@@ -1756,7 +1756,27 @@ def delete_student(id):
 
     return redirect(url_for("students"))
 
+@app.route("/delete_cashbook_entry/<int:entry_id>", methods=["POST"])
+@login_required
+@roles_required("super_admin")
+def delete_cashbook_entry(entry_id):
+    entry = fetch_one("SELECT * FROM cashbook WHERE id = ?", (entry_id,))
 
+    if not entry:
+        flash("Cashbook entry not found.", "danger")
+        return redirect(url_for("cashbook"))
+
+    execute_commit("DELETE FROM cashbook WHERE id = ?", (entry_id,))
+
+    log_audit(
+        "Deleted cashbook entry",
+        "cashbook",
+        entry_id,
+        f"Deleted {entry['entry_type']} - {entry['category']} - Amount {entry['amount']}"
+    )
+
+    flash("Cashbook entry deleted successfully.", "success")
+    return redirect(url_for("cashbook"))
 
 @app.route("/student/activate/<int:id>", methods=["POST"])
 @login_required
