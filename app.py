@@ -5609,7 +5609,21 @@ def suspend_school(school_id):
     flash("School suspended successfully.", "success")
     return redirect(url_for("schools"))
 
+@app.route("/debug_students")
+@login_required
+@roles_required("super_admin")
+def debug_students():
+    students = fetch_all("""
+        SELECT id, school_id, student_number, first_name, last_name, class_name, current_status
+        FROM students
+        ORDER BY id DESC
+        LIMIT 100
+    """)
 
+    return "<br>".join([
+        f"ID: {s['id']} | School: {s['school_id']} | {s['student_number']} | {s['first_name']} {s['last_name']} | Class: {s['class_name']} | Status: {s['current_status']}"
+        for s in students
+    ])
 @app.route("/activate_school/<int:school_id>", methods=["POST"])
 @login_required
 @roles_required("super_admin")
