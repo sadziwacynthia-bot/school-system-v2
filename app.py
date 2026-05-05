@@ -5613,17 +5613,35 @@ def suspend_school(school_id):
 @login_required
 @roles_required("super_admin")
 def debug_students():
+    total = fetch_one("SELECT COUNT(*) AS total FROM students")
+
     students = fetch_all("""
         SELECT id, school_id, student_number, first_name, last_name, class_name, current_status
         FROM students
         ORDER BY id DESC
-        LIMIT 100
+        LIMIT 300
     """)
 
-    return "<br>".join([
-        f"ID: {s['id']} | School: {s['school_id']} | {s['student_number']} | {s['first_name']} {s['last_name']} | Class: {s['class_name']} | Status: {s['current_status']}"
-        for s in students
-    ])
+    output = f"<h2>Total students in database: {total['total']}</h2>"
+
+    if not students:
+        output += "<p>No students found in students table.</p>"
+        return output
+
+    for s in students:
+        output += f"""
+        <p>
+            <strong>ID:</strong> {s['id']} |
+            <strong>School:</strong> {s['school_id']} |
+            <strong>No:</strong> {s['student_number']} |
+            <strong>Name:</strong> {s['first_name']} {s['last_name']} |
+            <strong>Class:</strong> {s['class_name']} |
+            <strong>Status:</strong> {s['current_status']}
+        </p>
+        """
+
+    return output
+
 @app.route("/activate_school/<int:school_id>", methods=["POST"])
 @login_required
 @roles_required("super_admin")
