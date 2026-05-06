@@ -1390,12 +1390,13 @@ def add_student():
     schools = fetch_all("SELECT * FROM schools ORDER BY school_name")
     return render_template("add_student.html", class_options=CLASS_OPTIONS, schools=schools)
 
-
 @app.route("/save_student", methods=["POST"])
 @login_required
 @roles_required("school_admin", "super_admin")
 def save_student():
-    if session.get("role") == "super_admin":
+    role = session.get("role")
+
+    if role == "super_admin":
         school_id = request.form.get("school_id")
     else:
         school_id = session.get("school_id")
@@ -1404,31 +1405,34 @@ def save_student():
         flash("Please select a school.", "danger")
         return redirect(url_for("add_student"))
 
-    first_name = request.form.get("first_name")
-    last_name = request.form.get("last_name")
-    birthday = request.form.get("birthday")
-    gender = request.form.get("gender")
-    enrollment_date = request.form.get("enrollment_date")
-    leaving_year = request.form.get("leaving_year")
-    class_name = request.form.get("class_name")
-    boarding_status = request.form.get("boarding_status")
-    home_address = request.form.get("home_address")
-    mailing_address = request.form.get("mailing_address")
-    student_phone = request.form.get("student_phone")
-    medical_info = request.form.get("medical_info")
-    emergency_contact = request.form.get("emergency_contact")
-    guardian1_name = request.form.get("guardian1_name")
-    guardian1_relationship = request.form.get("guardian1_relationship")
-    guardian1_phone = request.form.get("guardian1_phone")
-    guardian1_whatsapp = request.form.get("guardian1_whatsapp")
-    guardian1_email = request.form.get("guardian1_email")
-    guardian2_name = request.form.get("guardian2_name")
-    guardian2_relationship = request.form.get("guardian2_relationship")
-    guardian2_phone = request.form.get("guardian2_phone")
-    guardian2_whatsapp = request.form.get("guardian2_whatsapp")
-    guardian2_email = request.form.get("guardian2_email")
-    current_status = request.form.get("current_status") or "Active"
-    parent_username = (request.form.get("parent_username") or guardian1_phone or "").strip()
+    first_name = request.form.get("first_name", "").strip()
+    last_name = request.form.get("last_name", "").strip()
+    birthday = request.form.get("birthday", "").strip()
+    gender = request.form.get("gender", "").strip()
+    enrollment_date = request.form.get("enrollment_date", "").strip()
+    leaving_year = request.form.get("leaving_year", "").strip()
+    class_name = request.form.get("class_name", "").strip()
+    boarding_status = request.form.get("boarding_status", "").strip()
+    home_address = request.form.get("home_address", "").strip()
+    mailing_address = request.form.get("mailing_address", "").strip()
+    student_phone = request.form.get("student_phone", "").strip()
+    medical_info = request.form.get("medical_info", "").strip()
+    emergency_contact = request.form.get("emergency_contact", "").strip()
+
+    guardian1_name = request.form.get("guardian1_name", "").strip()
+    guardian1_relationship = request.form.get("guardian1_relationship", "").strip()
+    guardian1_phone = request.form.get("guardian1_phone", "").strip()
+    guardian1_whatsapp = request.form.get("guardian1_whatsapp", "").strip()
+    guardian1_email = request.form.get("guardian1_email", "").strip()
+
+    guardian2_name = request.form.get("guardian2_name", "").strip()
+    guardian2_relationship = request.form.get("guardian2_relationship", "").strip()
+    guardian2_phone = request.form.get("guardian2_phone", "").strip()
+    guardian2_whatsapp = request.form.get("guardian2_whatsapp", "").strip()
+    guardian2_email = request.form.get("guardian2_email", "").strip()
+
+    current_status = request.form.get("current_status", "Active").strip() or "Active"
+    parent_username = request.form.get("parent_username", "").strip() or guardian1_phone
 
     if not first_name or not last_name or not class_name:
         flash("First name, last name, and class are required.", "danger")
@@ -1490,6 +1494,7 @@ def save_student():
             ))
             student_id = cursor.lastrowid
 
+        # Parent user
         parent_user_id = None
         if parent_username:
             existing_parent = fetch_one("SELECT * FROM users WHERE username = ?", (parent_username,))
@@ -1508,8 +1513,8 @@ def save_student():
                             guardian1_name or f"{first_name} Parent",
                             parent_username,
                             generate_password_hash(temporary_password),
-                            "parent",
-                        ),
+                            "parent"
+                        )
                     )
                     parent_user_id = cursor.fetchone()["id"]
                 else:
@@ -1521,60 +1526,71 @@ def save_student():
                         guardian1_name or f"{first_name} Parent",
                         parent_username,
                         generate_password_hash(temporary_password),
-                        "parent",
+                        "parent"
                     ))
                     parent_user_id = cursor.lastrowid
 
+        # Guardian 1
         if guardian1_name or guardian1_phone:
             cursor.execute(
                 convert_query("""
                     INSERT INTO guardians (
-                        school_id, student_id, parent_user_id, full_name, relationship, phone, whatsapp, email
+                        school_id, student_id, parent_user_id, full_name,
+                        relationship, phone, whatsapp, email
                     )
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """),
                 (
                     school_id, student_id, parent_user_id, guardian1_name,
                     guardian1_relationship, guardian1_phone, guardian1_whatsapp, guardian1_email
-                ),
+                )
             )
 
+        # Guardian 2
         if guardian2_name or guardian2_phone:
             cursor.execute(
                 convert_query("""
                     INSERT INTO guardians (
-                        school_id, student_id, parent_user_id, full_name, relationship, phone, whatsapp, email
+                        school_id, student_id, parent_user_id, full_name,
+                        relationship, phone, whatsapp, email
                     )
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """),
                 (
                     school_id, student_id, parent_user_id, guardian2_name,
                     guardian2_relationship, guardian2_phone, guardian2_whatsapp, guardian2_email
-                ),
+                )
             )
-        try:
+
+        # Safely create class
+        if is_postgres():
             cursor.execute(
                 convert_query("""
                     INSERT INTO school_classes (school_id, class_name)
                     VALUES (?, ?)
+                    ON CONFLICT (school_id, class_name) DO NOTHING
                 """),
                 (school_id, class_name)
             )
-        except Exception:
-            pass
+        else:
+            cursor.execute("""
+                INSERT OR IGNORE INTO school_classes (school_id, class_name)
+                VALUES (?, ?)
+            """, (school_id, class_name))
+
         conn.commit()
 
         log_audit(
-    "Added student",
-    "students",
-    student_id,
-    f"Added {first_name} {last_name} - {student_number}"
-)
+            "Added student",
+            "students",
+            student_id,
+            f"Added {first_name} {last_name} - {student_number}"
+        )
 
         if parent_username and parent_user_id:
             flash(
                 f"Student added successfully. Student Number: {student_number}. Parent username: {parent_username}. Temporary password: {temporary_password}",
-                "success",
+                "success"
             )
         else:
             flash(f"Student added successfully. Student Number: {student_number}", "success")
@@ -1588,7 +1604,6 @@ def save_student():
 
     finally:
         conn.close()
-
 
 
 @app.route("/student_profile/<int:id>")
