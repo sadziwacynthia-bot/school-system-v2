@@ -297,16 +297,16 @@ def init_db():
                 lunch_duration INTEGER DEFAULT 40
             )
         """)
-        conn.execute("""
-CREATE TABLE IF NOT EXISTS notices (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    school_id INTEGER,
-    class_name TEXT,
-    title TEXT,
-    message TEXT,
-    date TEXT,
-    created_by TEXT
-)
+        cursor.execute("""
+    CREATE TABLE IF NOT EXISTS notices (
+        id SERIAL PRIMARY KEY,
+        school_id INTEGER,
+        class_name VARCHAR(100),
+        title TEXT,
+        message TEXT,
+        date DATE,
+        created_by TEXT
+    )
 """)
     else:
         cursor.execute("""
