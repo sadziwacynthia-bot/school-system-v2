@@ -1,221 +1,176 @@
 {% extends "base.html" %}
 {% block title %}Dashboard{% endblock %}
-{% block page_heading %}Dashboard{% endblock %}
 
 {% block content %}
 
-<div class="dashboard-hero">
-    <div>
-        <p class="dashboard-eyebrow">School Overview</p>
-        <h2 class="dashboard-hero-title">
-            Welcome back{% if session.get('full_name') %}, {{ session.get('full_name') }}{% endif %}
-        </h2>
-        <p class="dashboard-hero-text">
-            Quick summary of students, teachers, fees, and school activity.
-        </p>
+<style>
+.dashboard {
+    padding: 25px;
+    background: #f4f6f9;
+    min-height: 100vh;
+}
+
+.header {
+    background: linear-gradient(135deg, #1e3a8a, #2563eb);
+    color: white;
+    padding: 20px;
+    border-radius: 14px;
+    margin-bottom: 20px;
+}
+
+.header h2 {
+    margin: 0;
+}
+
+.stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.card {
+    background: white;
+    padding: 18px;
+    border-radius: 12px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.05);
+}
+
+.card h4 {
+    margin: 0;
+    color: #6b7280;
+}
+
+.card p {
+    font-size: 22px;
+    font-weight: bold;
+    margin-top: 8px;
+}
+
+.shortcuts {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.shortcut {
+    background: white;
+    padding: 14px;
+    border-radius: 10px;
+    text-align: center;
+    text-decoration: none;
+    color: #111827;
+    font-weight: bold;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+.shortcut:hover {
+    background: #e5e7eb;
+}
+
+.section {
+    background: white;
+    padding: 18px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+}
+
+.status {
+    display: flex;
+    gap: 20px;
+}
+
+.status div {
+    font-weight: bold;
+}
+
+.green { color: green; }
+.orange { color: orange; }
+.red { color: red; }
+
+@media (max-width: 900px) {
+    .stats, .shortcuts {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+</style>
+
+<div class="dashboard">
+
+    <!-- HEADER -->
+    <div class="header">
+        <h2>Welcome{% if session.get('full_name') %}, {{ session.get('full_name') }}{% endif %}</h2>
+        <p>Quick overview of your school system</p>
     </div>
 
-    <div class="dashboard-hero-actions">
-        <a href="{{ url_for('add_student') }}" class="btn btn-primary">+ Add Student</a>
-        <a href="{{ url_for('add_fee') }}" class="btn btn-secondary">Add Fee</a>
-        <a href="{{ url_for('add_notice') }}" class="btn btn-secondary">Post Notice</a>
-    </div>
-</div>
+    <!-- STATS -->
+    <div class="stats">
 
-<div class="dashboard-stat-grid">
-    {% if session.get('role') == 'super_admin' %}
-    <div class="metric-card metric-card-indigo">
-        <div class="metric-top">
-            <span class="metric-label">Schools</span>
-            <span class="metric-icon">🏫</span>
+        {% if session.get('role') == 'super_admin' %}
+        <div class="card">
+            <h4>Schools</h4>
+            <p>{{ total_schools|default(0) }}</p>
         </div>
-        <div class="metric-value">{{ total_schools|default(0) }}</div>
-        <div class="metric-note">Registered schools</div>
-    </div>
-    {% endif %}
+        {% endif %}
 
-    <div class="metric-card metric-card-blue">
-        <div class="metric-top">
-            <span class="metric-label">Students</span>
-            <span class="metric-icon">🎓</span>
+        <div class="card">
+            <h4>Students</h4>
+            <p>{{ total_students|default(0) }}</p>
         </div>
-        <div class="metric-value">{{ total_students|default(0) }}</div>
-        <div class="metric-note">Total students</div>
-    </div>
 
-    <div class="metric-card metric-card-emerald">
-        <div class="metric-top">
-            <span class="metric-label">Teachers</span>
-            <span class="metric-icon">👩‍🏫</span>
+        <div class="card">
+            <h4>Teachers</h4>
+            <p>{{ total_teachers|default(0) }}</p>
         </div>
-        <div class="metric-value">{{ total_teachers|default(0) }}</div>
-        <div class="metric-note">Teaching staff</div>
+
+        <div class="card">
+            <h4>Outstanding Fees</h4>
+            <p>${{ "%.2f"|format(total_balance|default(0)) }}</p>
+        </div>
+
     </div>
 
-    <div class="metric-card metric-card-slate">
-        <div class="metric-top">
-            <span class="metric-label">Total Paid</span>
-            <span class="metric-icon">💵</span>
-        </div>
-        <div class="metric-value">${{ "%.2f"|format(total_paid|default(0)) }}</div>
-        <div class="metric-note">Payments received</div>
+    <!-- SHORTCUTS -->
+    <div class="shortcuts">
+
+        <a href="{{ url_for('students') }}" class="shortcut">Students</a>
+        <a href="{{ url_for('classes') }}" class="shortcut">Classes</a>
+        <a href="{{ url_for('teachers') }}" class="shortcut">Teachers</a>
+        <a href="{{ url_for('attendance') }}" class="shortcut">Attendance</a>
+        <a href="{{ url_for('fees') }}" class="shortcut">Fees</a>
+        <a href="{{ url_for('results') }}" class="shortcut">Results</a>
+
+        <a href="{{ url_for('notices') }}" class="shortcut">Notices</a>
+        <a href="{{ url_for('add_assessment') }}" class="shortcut">Assessment</a>
+        <a href="{{ url_for('assign_teacher') }}" class="shortcut">Assign Teacher</a>
+        <a href="{{ url_for('assign_class_teacher') }}" class="shortcut">Class Teacher</a>
+        <a href="{{ url_for('fee_reminders') }}" class="shortcut">Reminders</a>
+        <a href="{{ url_for('year_end_promotion') }}" class="shortcut">Year End</a>
+
     </div>
 
-    <div class="metric-card metric-card-rose">
-        <div class="metric-top">
-            <span class="metric-label">Outstanding</span>
-            <span class="metric-icon">⚠️</span>
+    <!-- FEE STATUS -->
+    <div class="section">
+        <h3>Fee Status</h3>
+        <div class="status">
+            <div class="green">Paid: {{ paid_count|default(0) }}</div>
+            <div class="orange">Partial: {{ partial_count|default(0) }}</div>
+            <div class="red">Pending: {{ pending_count|default(0) }}</div>
         </div>
-        <div class="metric-value">${{ "%.2f"|format(total_balance|default(0)) }}</div>
-        <div class="metric-note">Unpaid balance</div>
     </div>
-</div>
 
-<div class="dashboard-layout">
+    <!-- STUDENTS BY CLASS -->
+    <div class="section">
+        <h3>Students by Class</h3>
 
-    <section class="dashboard-panel premium-surface">
-        <div class="panel-header-row">
-            <div>
-                <p class="panel-kicker">Main</p>
-                <h3>Core Actions</h3>
-            </div>
-        </div>
+        {% for item in students_by_class|default([]) %}
+            <p>{{ item.class_name }} — {{ item.total }}</p>
+        {% else %}
+            <p>No data available</p>
+        {% endfor %}
 
-        <div class="dashboard-shortcuts">
-            <a href="{{ url_for('students') }}" class="shortcut-card">
-                <span class="shortcut-icon">👥</span>
-                <span>Students</span>
-            </a>
-
-            <a href="{{ url_for('classes') }}" class="shortcut-card">
-                <span class="shortcut-icon">🏫</span>
-                <span>Classes</span>
-            </a>
-
-            <a href="{{ url_for('teachers') }}" class="shortcut-card">
-                <span class="shortcut-icon">🧑‍🏫</span>
-                <span>Teachers</span>
-            </a>
-
-            <a href="{{ url_for('attendance') }}" class="shortcut-card">
-                <span class="shortcut-icon">🗓️</span>
-                <span>Attendance</span>
-            </a>
-
-            <a href="{{ url_for('fees') }}" class="shortcut-card">
-                <span class="shortcut-icon">💰</span>
-                <span>Fees</span>
-            </a>
-
-            <a href="{{ url_for('results') }}" class="shortcut-card">
-                <span class="shortcut-icon">📘</span>
-                <span>Results</span>
-            </a>
-        </div>
-    </section>
-
-    <section class="dashboard-panel premium-surface">
-        <div class="panel-header-row">
-            <div>
-                <p class="panel-kicker">Management</p>
-                <h3>Admin Tools</h3>
-            </div>
-        </div>
-
-        <div class="dashboard-shortcuts">
-            <a href="{{ url_for('notices') }}" class="shortcut-card">
-                <span class="shortcut-icon">📢</span>
-                <span>Notices</span>
-            </a>
-
-            <a href="{{ url_for('add_assessment') }}" class="shortcut-card">
-                <span class="shortcut-icon">📊</span>
-                <span>Assessment</span>
-            </a>
-
-            <a href="{{ url_for('assign_teacher') }}" class="shortcut-card">
-                <span class="shortcut-icon">🧑‍🏫</span>
-                <span>Assign Teacher</span>
-            </a>
-
-            <a href="{{ url_for('assign_class_teacher') }}" class="shortcut-card">
-                <span class="shortcut-icon">🏫</span>
-                <span>Class Teacher</span>
-            </a>
-
-            <a href="{{ url_for('fee_reminders') }}" class="shortcut-card">
-                <span class="shortcut-icon">📲</span>
-                <span>Fee Reminders</span>
-            </a>
-
-            <a href="{{ url_for('year_end_promotion') }}" class="shortcut-card">
-                <span class="shortcut-icon">🎓</span>
-                <span>Year-End</span>
-            </a>
-        </div>
-    </section>
-
-    <section class="dashboard-panel premium-surface">
-        <div class="panel-header-row">
-            <div>
-                <p class="panel-kicker">Finance</p>
-                <h3>Fee Status</h3>
-            </div>
-        </div>
-
-        <div class="status-tiles">
-            <div class="status-tile">
-                <span class="status-dot status-dot-green"></span>
-                <div>
-                    <p>Paid</p>
-                    <strong>{{ paid_count|default(0) }}</strong>
-                </div>
-            </div>
-
-            <div class="status-tile">
-                <span class="status-dot status-dot-yellow"></span>
-                <div>
-                    <p>Partial</p>
-                    <strong>{{ partial_count|default(0) }}</strong>
-                </div>
-            </div>
-
-            <div class="status-tile">
-                <span class="status-dot status-dot-red"></span>
-                <div>
-                    <p>Pending</p>
-                    <strong>{{ pending_count|default(0) }}</strong>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="dashboard-panel premium-surface">
-        <div class="panel-header-row">
-            <div>
-                <p class="panel-kicker">Students</p>
-                <h3>Students by Class</h3>
-            </div>
-        </div>
-
-        <div class="class-stack">
-            {% for item in students_by_class|default([]) %}
-            <div class="class-row">
-                <div class="class-row-text">
-                    <span>{{ item.class_name or 'Unassigned' }}</span>
-                    <strong>{{ item.total }}</strong>
-                </div>
-
-                <div class="class-bar-track">
-                    {% set width = ((item.total / total_students) * 100) if total_students|default(0) and item.total else 0 %}
-                    <div class="class-bar-fill" style="width: {{ width }}%;"></div>
-                </div>
-            </div>
-            {% else %}
-            <div class="empty-state-lite">No class data available.</div>
-            {% endfor %}
-        </div>
-    </section>
+    </div>
 
 </div>
 
