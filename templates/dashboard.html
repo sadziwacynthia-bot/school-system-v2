@@ -52,11 +52,6 @@
         <div class="metric-note">Teaching staff</div>
     </div>
 
-    <div class="metric-card metric-card-slate">
-        <div class="metric-top">
-            <span class="metric-label">Total Paid</span>
-            <span class="metric-icon">💵</span>
-        </div>
         <div class="metric-value">${{ "%.2f"|format(total_paid|default(0)) }}</div>
         <div class="metric-note">Payments received</div>
     </div>
@@ -188,14 +183,7 @@
                 </div>
             </div>
 
-            <div class="status-tile">
-                <span class="status-dot status-dot-blue"></span>
-                <div>
-                    <p>Total Billed</p>
-                    <strong>${{ "%.2f"|format(total_billed|default(0)) }}</strong>
-                </div>
-            </div>
-        </div>
+        
     </section>
 
     <section class="dashboard-panel premium-surface">
