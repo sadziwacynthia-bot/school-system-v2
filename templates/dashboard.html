@@ -11,7 +11,7 @@
             Welcome back{% if session.get('full_name') %}, {{ session.get('full_name') }}{% endif %}
         </h2>
         <p class="dashboard-hero-text">
-            Here is a quick summary of your school operations.
+            Quick summary of students, teachers, fees, and school activity.
         </p>
     </div>
 
@@ -52,6 +52,11 @@
         <div class="metric-note">Teaching staff</div>
     </div>
 
+    <div class="metric-card metric-card-slate">
+        <div class="metric-top">
+            <span class="metric-label">Total Paid</span>
+            <span class="metric-icon">💵</span>
+        </div>
         <div class="metric-value">${{ "%.2f"|format(total_paid|default(0)) }}</div>
         <div class="metric-note">Payments received</div>
     </div>
@@ -182,8 +187,7 @@
                     <strong>{{ pending_count|default(0) }}</strong>
                 </div>
             </div>
-
-        
+        </div>
     </section>
 
     <section class="dashboard-panel premium-surface">
@@ -201,6 +205,7 @@
                     <span>{{ item.class_name or 'Unassigned' }}</span>
                     <strong>{{ item.total }}</strong>
                 </div>
+
                 <div class="class-bar-track">
                     {% set width = ((item.total / total_students) * 100) if total_students|default(0) and item.total else 0 %}
                     <div class="class-bar-fill" style="width: {{ width }}%;"></div>
