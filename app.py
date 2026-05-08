@@ -1836,19 +1836,21 @@ def teachers():
 
     if role == "super_admin":
         teacher_list = fetch_all("""
-        SELECT t.*, COALESCE(u.is_active, 1) AS is_active
-        FROM teachers t
-        LEFT JOIN users u ON t.user_id = u.id
-        ORDER BY t.full_name
-    """)
+            SELECT t.*, COALESCE(u.is_active, 1) AS is_active
+            FROM teachers t
+            LEFT JOIN users u ON t.user_id = u.id
+            ORDER BY t.full_name
+        """)
     else:
         teacher_list = fetch_all("""
-        SELECT t.*, COALESCE(u.is_active, 1) AS is_active
-        FROM teachers t
-        LEFT JOIN users u ON t.user_id = u.id
-        WHERE t.school_id = ?
-        ORDER BY t.full_name
-    """, (school_id,))
+            SELECT t.*, COALESCE(u.is_active, 1) AS is_active
+            FROM teachers t
+            LEFT JOIN users u ON t.user_id = u.id
+            WHERE t.school_id = ?
+            ORDER BY t.full_name
+        """, (school_id,))
+
+    return render_template("teachers.html", teachers=teacher_list)
 
 @app.route("/teacher_registration", methods=["GET", "POST"])
 @login_required
