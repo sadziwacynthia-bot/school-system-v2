@@ -29,6 +29,31 @@
                     <td>{{ teacher.full_name }}</td>
                     <td>{{ teacher.phone or "-" }}</td>
                     <td>{{ teacher.email or "-" }}</td>
+                    <td>
+    {% if teacher.is_active == 1 %}
+        <span class="badge badge-active">Active</span>
+    {% else %}
+        <span class="badge badge-inactive">Inactive</span>
+    {% endif %}
+</td>
+
+<td>
+    {% if teacher.is_active == 1 %}
+        <form method="POST"
+              action="{{ url_for('deactivate_teacher', teacher_id=teacher.id) }}"
+              onsubmit="return confirm('Deactivate this teacher account?');"
+              style="display:inline;">
+            <button type="submit" class="btn btn-danger">Deactivate</button>
+        </form>
+    {% else %}
+        <form method="POST"
+              action="{{ url_for('activate_teacher', teacher_id=teacher.id) }}"
+              onsubmit="return confirm('Activate this teacher account?');"
+              style="display:inline;">
+            <button type="submit" class="btn btn-primary">Activate</button>
+        </form>
+    {% endif %}
+</td>
                 </tr>
                 {% else %}
                 <tr>
