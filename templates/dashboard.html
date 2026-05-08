@@ -145,6 +145,15 @@
                 <span class="shortcut-icon">🎓</span>
                 <span>Year End</span>
             </a>
+            <a href="{{ url_for('teacher_resources') }}" class="shortcut-card">
+    <span class="shortcut-icon">📁</span>
+    <span>Resources</span>
+</a>
+
+<a href="{{ url_for('upload_resource') }}" class="shortcut-card">
+    <span class="shortcut-icon">⬆️</span>
+    <span>Upload Resource</span>
+</a>
         </div>
     </section>
 
@@ -192,22 +201,26 @@
         </div>
 
         <div class="class-stack">
-            {% for item in students_by_class|default([]) %}
-            <div class="class-row">
-                <div class="class-row-text">
-                    <span>{{ item.class_name or 'Unassigned' }}</span>
-                    <strong>{{ item.total }}</strong>
-                </div>
-
-                <div class="class-bar-track">
-                    {% set width = ((item.total / total_students) * 100) if total_students|default(0) and item.total else 0 %}
-                    <div class="class-bar-fill" style="width: {{ width }}%;"></div>
-                </div>
-            </div>
-            {% else %}
-            <div class="empty-state-lite">No class data available.</div>
-            {% endfor %}
+    {% for item in students_by_class|default([]) %}
+    <div class="class-row">
+        <div class="class-row-text">
+            <span>{{ item.class_name or 'Unassigned' }}</span>
+            <strong>{{ item.total or 0 }}</strong>
         </div>
+
+        <div class="class-bar-track">
+            {% if total_students and item.total %}
+                {% set width = (item.total / total_students) * 100 %}
+            {% else %}
+                {% set width = 0 %}
+            {% endif %}
+            <div class="class-bar-fill" style="width: {{ width }}%;"></div>
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-state-lite">No class data available.</div>
+    {% endfor %}
+</div>
     </section>
 
 </div>

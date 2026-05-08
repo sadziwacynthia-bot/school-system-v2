@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Resource{% endblock %}
+
+{% block content %}
+
+<div style="padding:25px; background:#f4f6f9; min-height:100vh;">
+    <div style="background:white; padding:25px; border-radius:16px; max-width:850px; box-shadow:0 4px 12px rgba(0,0,0,0.06);">
+        <h2>Upload Teaching Resource</h2>
+        <p style="color:#6b7280;">Upload notes, PowerPoints, test papers, homework, and study guides.</p>
+
+        <form method="POST" enctype="multipart/form-data">
+
+            <label>Title</label>
+            <input type="text" name="title" required style="width:100%; padding:11px; margin-bottom:14px;">
+
+            <label>Class</label>
+            <select name="class_name" required style="width:100%; padding:11px; margin-bottom:14px;">
+                <option value="">Select Class</option>
+                {% for class in class_options %}
+                    <option value="{{ class }}">{{ class }}</option>
+                {% endfor %}
+            </select>
+
+            <label>Subject</label>
+            <select name="subject" required style="width:100%; padding:11px; margin-bottom:14px;">
+                <option value="">Select Subject</option>
+                {% for subject in subjects %}
+                    <option value="{{ subject }}">{{ subject }}</option>
+                {% endfor %}
+            </select>
+
+            <label>Term</label>
+            <select name="term" required style="width:100%; padding:11px; margin-bottom:14px;">
+                <option value="Term 1">Term 1</option>
+                <option value="Term 2">Term 2</option>
+                <option value="Term 3">Term 3</option>
+            </select>
+
+            <label>Resource Type</label>
+            <select name="resource_type" required style="width:100%; padding:11px; margin-bottom:14px;">
+                <option value="">Select Type</option>
+                <option value="Notes">Notes</option>
+                <option value="PowerPoint">PowerPoint</option>
+                <option value="Test Paper">Test Paper</option>
+                <option value="Homework">Homework</option>
+                <option value="Study Guide">Study Guide</option>
+                <option value="Other">Other</option>
+            </select>
+
+            <label>Upload File</label>
+            <input type="file" name="resource_file" required style="width:100%; padding:11px; margin-bottom:18px;">
+
+            <button type="submit" class="btn btn-primary">Upload Resource</button>
+            <a href="{{ url_for('teacher_resources') }}" class="btn btn-secondary">View Resources</a>
+
+        </form>
+    </div>
+</div>
+
+{% endblock %}

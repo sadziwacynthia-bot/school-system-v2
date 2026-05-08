@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Teacher Resources{% endblock %}
+
+{% block content %}
+
+<div style="padding:25px; background:#f4f6f9; min-height:100vh;">
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <div>
+            <h2>Teacher Resources</h2>
+            <p style="color:#6b7280;">View and download uploaded notes, PowerPoints, and test papers.</p>
+        </div>
+
+        {% if session.get('role') in ['teacher', 'school_admin', 'super_admin'] %}
+        <a href="{{ url_for('upload_resource') }}" class="btn btn-primary">+ Upload Resource</a>
+        {% endif %}
+    </div>
+
+    <div style="background:white; padding:18px; border-radius:14px; margin-bottom:20px;">
+        <form method="GET" style="display:grid; grid-template-columns:repeat(4, 1fr); gap:12px;">
+            <select name="class_name">
+                <option value="">All Classes</option>
+                {% for class in class_options %}
+                    <option value="{{ class }}" {% if class_filter == class %}selected{% endif %}>{{ class }}</option>
+                {% endfor %}
+            </select>
+
+            <select name="subject">
+                <option value="">All Subjects</option>
+                {% for subject in subjects %}
+                    <option value="{{ subject }}" {% if subject_filter == subject %}selected{% endif %}>{{ subject }}</option>
+                {% endfor %}
+            </select>
+
+            <select name="term">
+                <option value="">All Terms</option>
+                <option value="Term 1" {% if term_filter == 'Term 1' %}selected{% endif %}>Term 1</option>
+                <option value="Term 2" {% if term_filter == 'Term 2' %}selected{% endif %}>Term 2</option>
+                <option value="Term 3" {% if term_filter == 'Term 3' %}selected{% endif %}>Term 3</option>
+            </select>
+
+            <button type="submit" class="btn btn-primary">Filter</button>
+        </form>
+    </div>
+
+    <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:16px;">
+        {% for r in resources %}
+        <div style="background:white; padding:18px; border-radius:14px; box-shadow:0 4px 12px rgba(0,0,0,0.06);">
+            <h3 style="margin:0 0 8px;">{{ r.title }}</h3>
+
+            <p style="color:#6b7280; margin:4px 0;">{{ r.resource_type }} • {{ r.term }}</p>
+            <p style="color:#374151; margin:4px 0;">{{ r.class_name }} — {{ r.subject }}</p>
+            <p style="color:#6b7280; margin:4px 0;">Uploaded by {{ r.uploaded_by or r.teacher_name or 'Teacher' }}</p>
+
+            <a href="{{ url_for('static', filename='uploads/resources/' ~ r.filename) }}"
+               target="_blank"
+               class="btn btn-primary"
+               style="display:inline-block; margin-top:10px;">
+                Download / Open
+            </a>
+        </div>
+        {% else %}
+        <div style="background:white; padding:25px; border-radius:14px; color:#6b7280;">
+            No resources found.
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+
+{% endblock %}

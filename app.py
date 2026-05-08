@@ -12,6 +12,16 @@ from flask import Response
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
+
+
+UPLOAD_FOLDER = os.path.join("static", "uploads", "resources")
+ALLOWED_RESOURCE_EXTENSIONS = {"pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "png", "jpg", "jpeg"}
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+def allowed_resource_file(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_RESOURCE_EXTENSIONS
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-only-change-this")
@@ -5009,6 +5019,198 @@ def run_users_migration():
     finally:
         conn.close()
 
+@app.route("/upload_resource", methods=["GET", "POST"])
+@login_required
+@roles_required("teacher", "school_admin", "super_admin")
+def upload_resource():
+    school_id = session.get("school_id")
+    role = session.get("role")
+    user_id = session.get("user_id")
+
+    teacher = None
+    class_options = []
+    subjects = []
+
+    if role == "teacher":
+        teacher = fetch_one("""
+            SELECT *
+            FROM teachers
+            WHERE user_id = ? AND school_id = ?
+            LIMIT 1
+        """, (user_id, school_id))
+
+        if not teacher:
+            flash("No teacher profile linked to this account.", "danger")
+            return redirect(url_for("teacher_dashboard"))
+
+        assignments = fetch_all("""
+            SELECT DISTINCT class_name, subject
+            FROM teacher_assignments
+            WHERE teacher_id = ?
+              AND school_id = ?
+            ORDER BY class_name, subject
+        """, (teacher["id"], school_id))
+
+        class_options = sorted(list(set([a["class_name"] for a in assignments])))
+        subjects = sorted(list(set([a["subject"] for a in assignments])))
+
+    else:
+        class_rows = fetch_all("""
+            SELECT DISTINCT class_name
+            FROM school_classes
+            WHERE school_id = ?
+            ORDER BY class_name
+        """, (school_id,))
+
+        subject_rows = fetch_all("""
+            SELECT subject_name
+            FROM subjects
+            WHERE school_id = ?
+            ORDER BY subject_name
+        """, (school_id,))
+
+        class_options = [c["class_name"] for c in class_rows]
+        subjects = [s["subject_name"] for s in subject_rows]
+
+    if request.method == "POST":
+        class_name = request.form.get("class_name", "").strip()
+        subject = request.form.get("subject", "").strip()
+        term = request.form.get("term", "").strip()
+        title = request.form.get("title", "").strip()
+        resource_type = request.form.get("resource_type", "").strip()
+        file = request.files.get("resource_file")
+
+        if not class_name or not subject or not term or not title or not resource_type or not file:
+            flash("All fields and file upload are required.", "danger")
+            return redirect(url_for("upload_resource"))
+
+        if not allowed_resource_file(file.filename):
+            flash("Invalid file type. Allowed: PDF, Word, PowerPoint, Excel, PNG, JPG.", "danger")
+            return redirect(url_for("upload_resource"))
+
+        original_filename = secure_filename(file.filename)
+        ext = original_filename.rsplit(".", 1)[1].lower()
+        saved_filename = f"resource_{school_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{random.randint(1000,9999)}.{ext}"
+
+        file_path = os.path.join(UPLOAD_FOLDER, saved_filename)
+        file.save(file_path)
+
+        teacher_id = teacher["id"] if teacher else None
+
+        execute_commit("""
+            INSERT INTO teacher_resources (
+                school_id, teacher_id, class_name, subject, term,
+                title, resource_type, filename, original_filename, uploaded_by
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            school_id,
+            teacher_id,
+            class_name,
+            subject,
+            term,
+            title,
+            resource_type,
+            saved_filename,
+            original_filename,
+            session.get("full_name", "System")
+        ))
+
+        log_audit(
+            "Uploaded teacher resource",
+            "teacher_resources",
+            None,
+            f"{title} - {class_name} - {subject}"
+        )
+
+        flash("Resource uploaded successfully.", "success")
+        return redirect(url_for("teacher_resources"))
+
+    return render_template(
+        "upload_resource.html",
+        class_options=class_options,
+        subjects=subjects
+    )
+@app.route("/teacher_resources")
+@login_required
+@roles_required("teacher", "school_admin", "super_admin", "parent")
+def teacher_resources():
+    school_id = session.get("school_id")
+    role = session.get("role")
+    user_id = session.get("user_id")
+
+    class_filter = request.args.get("class_name", "").strip()
+    subject_filter = request.args.get("subject", "").strip()
+    term_filter = request.args.get("term", "").strip()
+
+    query = """
+        SELECT tr.*, t.full_name AS teacher_name
+        FROM teacher_resources tr
+        LEFT JOIN teachers t ON tr.teacher_id = t.id
+        WHERE 1=1
+    """
+    params = []
+
+    if role != "super_admin":
+        query += " AND tr.school_id = ?"
+        params.append(school_id)
+
+    if role == "teacher":
+        teacher = fetch_one("""
+            SELECT *
+            FROM teachers
+            WHERE user_id = ? AND school_id = ?
+            LIMIT 1
+        """, (user_id, school_id))
+
+        if teacher:
+            query += " AND tr.teacher_id = ?"
+            params.append(teacher["id"])
+
+    if role == "parent":
+        student = fetch_one("""
+            SELECT s.*
+            FROM students s
+            JOIN guardians g ON s.id = g.student_id
+            WHERE g.parent_user_id = ?
+              AND s.school_id = ?
+            LIMIT 1
+        """, (user_id, school_id))
+
+        if student:
+            query += " AND tr.class_name = ?"
+            params.append(student["class_name"])
+        else:
+            query += " AND 1=0"
+
+    if class_filter:
+        query += " AND tr.class_name = ?"
+        params.append(class_filter)
+
+    if subject_filter:
+        query += " AND tr.subject = ?"
+        params.append(subject_filter)
+
+    if term_filter:
+        query += " AND tr.term = ?"
+        params.append(term_filter)
+
+    query += " ORDER BY tr.uploaded_at DESC"
+
+    resources = fetch_all(query, tuple(params))
+
+    class_options = sorted(list(set([r["class_name"] for r in resources if r["class_name"]])))
+    subjects = sorted(list(set([r["subject"] for r in resources if r["subject"]])))
+
+    return render_template(
+        "teacher_resources.html",
+        resources=resources,
+        class_options=class_options,
+        subjects=subjects,
+        class_filter=class_filter,
+        subject_filter=subject_filter,
+        term_filter=term_filter
+    )
 
 @app.route("/send_fee_reminder/<int:student_id>")
 @login_required
@@ -5483,6 +5685,9 @@ def setup_app():
             create_super_admin()
             print("Super admin ready")
 
+            create_teacher_resources_table()
+            print("Teacher resources table ready")
+
             update_school_subscription_states()
             print("School subscription states updated")
 
@@ -5522,6 +5727,49 @@ def run_audit_migration():
                     record_id INTEGER,
                     details TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
+        conn.commit()
+    finally:
+        conn.close()
+def create_teacher_resources_table():
+    conn = get_db()
+    cursor = conn.cursor()
+
+    try:
+        if is_postgres():
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS teacher_resources (
+                    id SERIAL PRIMARY KEY,
+                    school_id INTEGER,
+                    teacher_id INTEGER,
+                    class_name VARCHAR(100),
+                    subject VARCHAR(100),
+                    term VARCHAR(50),
+                    title VARCHAR(255),
+                    resource_type VARCHAR(100),
+                    filename TEXT,
+                    original_filename TEXT,
+                    uploaded_by VARCHAR(255),
+                    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+        else:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS teacher_resources (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    school_id INTEGER,
+                    teacher_id INTEGER,
+                    class_name TEXT,
+                    subject TEXT,
+                    term TEXT,
+                    title TEXT,
+                    resource_type TEXT,
+                    filename TEXT,
+                    original_filename TEXT,
+                    uploaded_by TEXT,
+                    uploaded_at TEXT DEFAULT CURRENT_TIMESTAMP
                 )
             """)
 
