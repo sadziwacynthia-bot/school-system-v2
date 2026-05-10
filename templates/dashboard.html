@@ -5,14 +5,26 @@
 {% block content %}
 
 <div class="dashboard-hero">
-    <div>
-        <p class="dashboard-eyebrow">School Overview</p>
-        <h2 class="dashboard-hero-title">
-            Welcome back{% if session.get('full_name') %}, {{ session.get('full_name') }}{% endif %}
-        </h2>
-        <p class="dashboard-hero-text">
-            A clean overview of your school activity, learners, teachers, and fees.
-        </p>
+    <div style="display:flex; align-items:center; gap:18px;">
+        {% if session.get("logo_url") %}
+            <img src="{{ url_for('static', filename=session.get('logo_url')) }}"
+                 alt="School Logo"
+                 style="height:70px; width:70px; object-fit:contain; background:white; border-radius:14px; padding:8px;">
+        {% else %}
+            <div style="height:70px; width:70px; background:white; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:34px;">
+                🏫
+            </div>
+        {% endif %}
+
+        <div>
+            <p class="dashboard-eyebrow">{{ session.get("school_name", "EduTrack") }}</p>
+            <h2 class="dashboard-hero-title">
+                Welcome back{% if session.get('full_name') %}, {{ session.get('full_name') }}{% endif %}
+            </h2>
+            <p class="dashboard-hero-text">
+                A clean overview of your school activity, learners, teachers, and fees.
+            </p>
+        </div>
     </div>
 
     <div class="dashboard-hero-actions">
@@ -104,6 +116,11 @@
                 <span class="shortcut-icon">📘</span>
                 <span>Results</span>
             </a>
+
+            <a href="{{ url_for('teacher_resources') }}" class="shortcut-card">
+                <span class="shortcut-icon">📁</span>
+                <span>Resources</span>
+            </a>
         </div>
     </section>
 
@@ -126,6 +143,11 @@
                 <span>Assessment</span>
             </a>
 
+            <a href="{{ url_for('upload_resource') }}" class="shortcut-card">
+                <span class="shortcut-icon">⬆️</span>
+                <span>Upload Resource</span>
+            </a>
+
             <a href="{{ url_for('assign_teacher') }}" class="shortcut-card">
                 <span class="shortcut-icon">🧑‍🏫</span>
                 <span>Assign Teacher</span>
@@ -145,15 +167,6 @@
                 <span class="shortcut-icon">🎓</span>
                 <span>Year End</span>
             </a>
-            <a href="{{ url_for('teacher_resources') }}" class="shortcut-card">
-    <span class="shortcut-icon">📁</span>
-    <span>Resources</span>
-</a>
-
-<a href="{{ url_for('upload_resource') }}" class="shortcut-card">
-    <span class="shortcut-icon">⬆️</span>
-    <span>Upload Resource</span>
-</a>
         </div>
     </section>
 
@@ -201,26 +214,27 @@
         </div>
 
         <div class="class-stack">
-    {% for item in students_by_class|default([]) %}
-    <div class="class-row">
-        <div class="class-row-text">
-            <span>{{ item.class_name or 'Unassigned' }}</span>
-            <strong>{{ item.total or 0 }}</strong>
-        </div>
+            {% for item in students_by_class|default([]) %}
+            <div class="class-row">
+                <div class="class-row-text">
+                    <span>{{ item.class_name or 'Unassigned' }}</span>
+                    <strong>{{ item.total or 0 }}</strong>
+                </div>
 
-        <div class="class-bar-track">
-            {% if total_students and item.total %}
-                {% set width = (item.total / total_students) * 100 %}
+                <div class="class-bar-track">
+                    {% if total_students|default(0) > 0 and item.total %}
+                        {% set width = ((item.total or 0) / (total_students|default(1))) * 100 %}
+                    {% else %}
+                        {% set width = 0 %}
+                    {% endif %}
+
+                    <div class="class-bar-fill" style="width: {{ width|round(0) }}%;"></div>
+                </div>
+            </div>
             {% else %}
-                {% set width = 0 %}
-            {% endif %}
-            <div class="class-bar-fill" style="width: {{ width }}%;"></div>
+            <div class="empty-state-lite">No class data available.</div>
+            {% endfor %}
         </div>
-    </div>
-    {% else %}
-    <div class="empty-state-lite">No class data available.</div>
-    {% endfor %}
-</div>
     </section>
 
 </div>
