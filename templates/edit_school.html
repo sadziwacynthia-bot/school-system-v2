@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Edit School{% endblock %}
+
+{% block content %}
+
+<div style="padding:25px; background:#f4f6f9; min-height:100vh;">
+    <div style="background:white; padding:25px; border-radius:14px; max-width:500px;">
+
+        <h2>Edit School</h2>
+
+        <form method="POST">
+            <label>School Name</label>
+            <input type="text"
+                   name="school_name"
+                   value="{{ school.school_name }}"
+                   required
+                   style="width:100%; padding:10px; margin-bottom:15px;">
+
+            <button type="submit" class="btn btn-primary">Update</button>
+            <a href="{{ url_for('schools') }}" class="btn btn-secondary">Cancel</a>
+        </form>
+
+    </div>
+</div>
+
+{% endblock %}

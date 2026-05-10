@@ -4968,6 +4968,39 @@ def activate_user(user_id):
 )
     return redirect(url_for("users"))
 
+@app.route("/edit_school/<int:school_id>", methods=["GET", "POST"])
+@login_required
+@roles_required("super_admin")
+def edit_school(school_id):
+    school = fetch_one("SELECT * FROM schools WHERE id = ?", (school_id,))
+
+    if not school:
+        flash("School not found.", "danger")
+        return redirect(url_for("schools"))
+
+    if request.method == "POST":
+        new_name = request.form.get("school_name", "").strip()
+
+        if not new_name:
+            flash("School name is required.", "danger")
+            return redirect(url_for("edit_school", school_id=school_id))
+
+        execute_commit(
+            "UPDATE schools SET school_name = ? WHERE id = ?",
+            (new_name, school_id)
+        )
+
+        log_audit(
+            "Renamed school",
+            "schools",
+            school_id,
+            f"Renamed school to {new_name}"
+        )
+
+        flash("School name updated successfully.", "success")
+        return redirect(url_for("schools"))
+
+    return render_template("edit_school.html", school=school)
 
 @app.route("/deactivate_student/<int:student_id>", methods=["POST"])
 @login_required
