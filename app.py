@@ -5614,104 +5614,104 @@ def run_school_control_migration():
 
 
 def run_cashbook_migration():
-    """Create/repair the cashbook table.
-
-    This supports the current cashbook design used by:
-    - /cashbook
-    - /add_cashbook_entry
-    - /cashbook_reports
-    - automatic fee payment income entries
-    """
     conn = get_db()
     cursor = conn.cursor()
 
     try:
         if is_postgres():
+
+            # ➤ Add new columns safely
+            cursor.execute("ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS entry_type VARCHAR(50)")
+            cursor.execute("ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS category VARCHAR(100)")
+            cursor.execute("ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50)")
+            cursor.execute("ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS reference_number TEXT")
+            cursor.execute("ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS created_by TEXT")
+
+            # ➤ Try to migrate old data safely
+            try:
+                cursor.execute("""
+                    UPDATE cashbook
+                    SET entry_type = type
+                    WHERE entry_type IS NULL AND type IS NOT NULL
+                """)
+            except Exception:
+                conn.rollback()
+
+            try:
+                cursor.execute("""
+                    UPDATE cashbook
+                    SET created_by = recorded_by
+                    WHERE created_by IS NULL AND recorded_by IS NOT NULL
+                """)
+            except Exception:
+                conn.rollback()
+
+            # ➤ Set safe defaults
             cursor.execute("""
-                CREATE TABLE IF NOT EXISTS cashbook (
-                    id SERIAL PRIMARY KEY,
-                    school_id INTEGER,
-                    entry_date VARCHAR(50),
-                    entry_type VARCHAR(20),
-                    category VARCHAR(100),
-                    description TEXT,
-                    amount NUMERIC(12,2),
-                    payment_method VARCHAR(50),
-                    reference_number VARCHAR(100),
-                    created_by VARCHAR(255)
-                )
+                UPDATE cashbook
+                SET category = 'General'
+                WHERE category IS NULL OR category = ''
             """)
 
-            statements = [
-                "ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS school_id INTEGER",
-                "ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS entry_date VARCHAR(50)",
-                "ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS entry_type VARCHAR(20)",
-                "ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS category VARCHAR(100)",
-                "ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS description TEXT",
-                "ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS amount NUMERIC(12,2)",
-                "ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50)",
-                "ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS reference_number VARCHAR(100)",
-                "ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS created_by VARCHAR(255)",
-            ]
-            for stmt in statements:
-                cursor.execute(stmt)
+            cursor.execute("""
+                UPDATE cashbook
+                SET payment_method = ''
+                WHERE payment_method IS NULL
+            """)
 
-            # If an older table used date/type/recorded_by, copy those values into the new columns when possible.
-            cursor.execute("UPDATE cashbook SET entry_type = type WHERE entry_type IS NULL AND type IS NOT NULL")
-            cursor.execute("UPDATE cashbook SET created_by = recorded_by WHERE created_by IS NULL AND recorded_by IS NOT NULL")
-            cursor.execute("UPDATE cashbook SET category = 'General' WHERE category IS NULL OR category = ''")
-            cursor.execute("UPDATE cashbook SET payment_method = '' WHERE payment_method IS NULL")
-            cursor.execute("UPDATE cashbook SET reference_number = '' WHERE reference_number IS NULL")
+            cursor.execute("""
+                UPDATE cashbook
+                SET reference_number = ''
+                WHERE reference_number IS NULL
+            """)
 
         else:
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS cashbook (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    school_id INTEGER,
-                    entry_date TEXT,
-                    entry_type TEXT,
-                    category TEXT,
-                    description TEXT,
-                    amount REAL,
-                    payment_method TEXT,
-                    reference_number TEXT,
-                    created_by TEXT
-                )
-            """)
+            # SQLITE VERSION
 
-            sqlite_statements = [
-                "ALTER TABLE cashbook ADD COLUMN school_id INTEGER",
-                "ALTER TABLE cashbook ADD COLUMN entry_date TEXT",
-                "ALTER TABLE cashbook ADD COLUMN entry_type TEXT",
-                "ALTER TABLE cashbook ADD COLUMN category TEXT",
-                "ALTER TABLE cashbook ADD COLUMN payment_method TEXT",
-                "ALTER TABLE cashbook ADD COLUMN reference_number TEXT",
-                "ALTER TABLE cashbook ADD COLUMN created_by TEXT",
-            ]
-            for stmt in sqlite_statements:
+            def safe_add(column_sql):
                 try:
-                    cursor.execute(stmt)
+                    cursor.execute(column_sql)
                 except Exception:
                     pass
 
-            # If an older table used date/type/recorded_by, copy those values into the new columns when possible.
+            safe_add("ALTER TABLE cashbook ADD COLUMN entry_type TEXT")
+            safe_add("ALTER TABLE cashbook ADD COLUMN category TEXT")
+            safe_add("ALTER TABLE cashbook ADD COLUMN payment_method TEXT")
+            safe_add("ALTER TABLE cashbook ADD COLUMN reference_number TEXT")
+            safe_add("ALTER TABLE cashbook ADD COLUMN created_by TEXT")
+
+            # Try migrating old fields
             try:
-                cursor.execute("UPDATE cashbook SET entry_date = date WHERE entry_date IS NULL AND date IS NOT NULL")
+                cursor.execute("""
+                    UPDATE cashbook
+                    SET entry_type = type
+                    WHERE entry_type IS NULL AND type IS NOT NULL
+                """)
             except Exception:
                 pass
+
             try:
-                cursor.execute("UPDATE cashbook SET entry_type = type WHERE entry_type IS NULL AND type IS NOT NULL")
+                cursor.execute("""
+                    UPDATE cashbook
+                    SET created_by = recorded_by
+                    WHERE created_by IS NULL AND recorded_by IS NOT NULL
+                """)
             except Exception:
                 pass
-            try:
-                cursor.execute("UPDATE cashbook SET created_by = recorded_by WHERE created_by IS NULL AND recorded_by IS NOT NULL")
-            except Exception:
-                pass
-            cursor.execute("UPDATE cashbook SET category = 'General' WHERE category IS NULL OR category = ''")
-            cursor.execute("UPDATE cashbook SET payment_method = '' WHERE payment_method IS NULL")
-            cursor.execute("UPDATE cashbook SET reference_number = '' WHERE reference_number IS NULL")
+
+            cursor.execute("""
+                UPDATE cashbook
+                SET category = 'General'
+                WHERE category IS NULL OR category = ''
+            """)
 
         conn.commit()
+        print("Cashbook migration completed")
+
+    except Exception as e:
+        conn.rollback()
+        print("CASHBOOK MIGRATION ERROR:", str(e))
+
     finally:
         conn.close()
 
