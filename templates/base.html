@@ -18,6 +18,13 @@
         </div>
 
         <nav class="sidebar-menu">
+            <div class="top-bar">
+    <h2>{{ session.get('school_name', 'School System') }}</h2>
+<img src="{{ school.logo_url }}" alt="School Logo">
+    <div>
+        {{ session.get('full_name') }} ({{ session.get('role') }})
+    </div>
+</div>
 
             {% set role = session.get('role') %}
 

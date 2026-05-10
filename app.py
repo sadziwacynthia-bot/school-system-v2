@@ -898,27 +898,44 @@ def login():
         password = request.form.get("password", "").strip()
 
         user = fetch_one("SELECT * FROM users WHERE username = ?", (username,))
-        if user and int(row_get(user, "is_active", 1) or 1) != 1:
+
+        if not user:
+            flash("Invalid login details.", "danger")
+            return redirect(url_for("login"))
+
+        if int(row_get(user, "is_active", 1) or 1) != 1:
             flash("This account has been deactivated. Please contact the school administrator.", "danger")
             return redirect(url_for("login"))
-        
-        if user and check_password_hash(user["password"], password):
-            session["user_id"] = user["id"]
-            session["school_id"] = user["school_id"]
-            session["role"] = user["role"]
-            session["full_name"] = user["full_name"]
 
-            if user["role"] == "parent":
-                return redirect(url_for("parent_dashboard"))
-            elif user["role"] == "teacher":
-                return redirect(url_for("teacher_dashboard"))
-            else:
-                return redirect(url_for("dashboard"))
+        if not check_password_hash(user["password"], password):
+            flash("Invalid login details.", "danger")
+            return redirect(url_for("login"))
 
-        flash("Invalid login details.", "danger")
+        session.clear()
+        session["user_id"] = user["id"]
+        session["school_id"] = user["school_id"]
+        session["role"] = user["role"]
+        session["full_name"] = user["full_name"]
+        session["username"] = user["username"]
+
+        school_name = "EduTrack"
+        if user["role"] == "super_admin":
+            school_name = "EduTrack Super Admin"
+        elif user["school_id"]:
+            school = fetch_one("SELECT school_name FROM schools WHERE id = ?", (user["school_id"],))
+            if school:
+                school_name = school["school_name"]
+
+        session["school_name"] = school_name
+
+        if user["role"] == "parent":
+            return redirect(url_for("parent_dashboard"))
+        elif user["role"] == "teacher":
+            return redirect(url_for("teacher_dashboard"))
+        else:
+            return redirect(url_for("dashboard"))
 
     return render_template("login.html")
-
 
 @app.route("/logout")
 def logout():
