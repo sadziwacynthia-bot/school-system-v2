@@ -19,6 +19,13 @@
 
         <nav class="sidebar-menu">
             <div class="top-bar">
+               {% if session.get("logo_url") %}
+    <img src="{{ url_for('static', filename=session.get('logo_url')) }}"
+         alt="School Logo"
+         style="height:40px; width:auto;">
+{% endif %}
+
+<span>{{ session.get("school_name", "EduTrack") }}</span> 
     <h2>{{ session.get('school_name', 'School System') }}</h2>
 
     <div>

@@ -13,7 +13,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-
+from werkzeug.utils import secure_filename
 
 UPLOAD_FOLDER = os.path.join("static", "uploads", "resources")
 ALLOWED_RESOURCE_EXTENSIONS = {"pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "png", "jpg", "jpeg"}
@@ -22,6 +22,14 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 def allowed_resource_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_RESOURCE_EXTENSIONS
+
+LOGO_UPLOAD_FOLDER = os.path.join("static", "uploads", "logos")
+ALLOWED_LOGO_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
+
+os.makedirs(LOGO_UPLOAD_FOLDER, exist_ok=True)
+
+def allowed_logo_file(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_LOGO_EXTENSIONS
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-only-change-this")
@@ -4979,25 +4987,44 @@ def edit_school(school_id):
         return redirect(url_for("schools"))
 
     if request.method == "POST":
-        new_name = request.form.get("school_name", "").strip()
+        school_name = request.form.get("school_name", "").strip()
+        school_code = request.form.get("school_code", "").strip()
 
-        if not new_name:
+        if not school_name:
             flash("School name is required.", "danger")
             return redirect(url_for("edit_school", school_id=school_id))
 
-        execute_commit(
-            "UPDATE schools SET school_name = ? WHERE id = ?",
-            (new_name, school_id)
-        )
+        logo_url = row_get(school, "logo_url", "")
+
+        logo_file = request.files.get("logo_file")
+        if logo_file and logo_file.filename:
+            if not allowed_logo_file(logo_file.filename):
+                flash("Logo must be PNG, JPG, JPEG, or WEBP.", "danger")
+                return redirect(url_for("edit_school", school_id=school_id))
+
+            original_name = secure_filename(logo_file.filename)
+            ext = original_name.rsplit(".", 1)[1].lower()
+            saved_name = f"school_logo_{school_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.{ext}"
+
+            logo_path = os.path.join(LOGO_UPLOAD_FOLDER, saved_name)
+            logo_file.save(logo_path)
+
+            logo_url = f"uploads/logos/{saved_name}"
+
+        execute_commit("""
+            UPDATE schools
+            SET school_name = ?, school_code = ?, logo_url = ?
+            WHERE id = ?
+        """, (school_name, school_code, logo_url, school_id))
 
         log_audit(
-            "Renamed school",
+            "Updated school branding",
             "schools",
             school_id,
-            f"Renamed school to {new_name}"
+            f"Updated school name/logo for {school_name}"
         )
 
-        flash("School name updated successfully.", "success")
+        flash("School branding updated successfully.", "success")
         return redirect(url_for("schools"))
 
     return render_template("edit_school.html", school=school)
@@ -5541,6 +5568,22 @@ def run_school_settings_migration():
     finally:
         conn.close()
 
+def run_school_logo_migration():
+    conn = get_db()
+    cursor = conn.cursor()
+
+    try:
+        if is_postgres():
+            cursor.execute("ALTER TABLE schools ADD COLUMN IF NOT EXISTS logo_url TEXT")
+        else:
+            try:
+                cursor.execute("ALTER TABLE schools ADD COLUMN logo_url TEXT")
+            except Exception:
+                pass
+
+        conn.commit()
+    finally:
+        conn.close()
 
 def run_school_control_migration():
     conn = get_db()
@@ -5799,6 +5842,9 @@ def setup_app():
 
             run_audit_migration()
             print("Audit migration completed")
+
+            run_school_logo_migration()
+            print("School logo migration completed")
 
             create_year_end_tables()
             print("Year-end promotion tables ready")
