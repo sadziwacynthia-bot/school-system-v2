@@ -2,139 +2,140 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}EduTrack{% endblock %}</title>
-
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #f4f6f9;
-        }
-
-        /* 🔵 BLUE HEADER */
-        .topbar {
-            background: linear-gradient(135deg, #1e3a8a, #2563eb);
-            color: white;
-            padding: 14px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .brand {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .brand img {
-            height: 42px;
-            width: 42px;
-            object-fit: contain;
-            background: white;
-            border-radius: 10px;
-            padding: 4px;
-        }
-
-        .sidebar {
-            width: 220px;
-            background: white;
-            height: 100vh;
-            position: fixed;
-            top: 60px;
-            left: 0;
-            border-right: 1px solid #ddd;
-            padding-top: 10px;
-        }
-
-        .sidebar a {
-            display: block;
-            padding: 12px 18px;
-            text-decoration: none;
-            color: #111827;
-            font-weight: 500;
-        }
-
-        .sidebar a:hover {
-            background: #e5e7eb;
-        }
-
-        .content {
-            margin-left: 220px;
-            padding: 20px;
-        }
-
-        .user-info {
-            font-size: 14px;
-        }
-
-        .logout {
-            color: #fca5a5;
-            text-decoration: none;
-            font-weight: bold;
-        }
-    </style>
 </head>
 
 <body>
+<div class="main-layout">
 
-<!-- 🔵 TOPBAR -->
-<div class="topbar">
+    {% if session.get('user_id') %}
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            {% if session.get("logo_url") %}
+                <img src="{{ url_for('static', filename=session.get('logo_url')) }}"
+                     alt="School Logo"
+                     style="height:55px; width:55px; object-fit:contain; background:white; border-radius:12px; padding:6px; margin-bottom:10px;">
+            {% endif %}
 
-    <div class="brand">
-        {% if session.get("logo_url") %}
-            <img src="{{ url_for('static', filename=session.get('logo_url')) }}">
-        {% else %}
-            <div style="height:42px; width:42px; background:white; border-radius:10px; display:flex; align-items:center; justify-content:center;">
-                🏫
+            <h2>{{ session.get("school_name", "EduTrack") }}</h2>
+            <p>Smart School System</p>
+        </div>
+
+        <nav class="sidebar-menu">
+            {% set role = session.get('role') %}
+
+            {% if role in ['super_admin', 'school_admin', 'director', 'admin'] %}
+                <div class="menu-section-title">School Management</div>
+
+                <a href="{{ url_for('dashboard') }}" class="nav-link">Dashboard</a>
+                <a href="{{ url_for('students') }}" class="nav-link">Students</a>
+                <a href="{{ url_for('classes') }}" class="nav-link">Classes</a>
+                <a href="{{ url_for('teachers') }}" class="nav-link">Teachers</a>
+                <a href="{{ url_for('fees') }}" class="nav-link">Fees</a>
+                <a href="{{ url_for('results') }}" class="nav-link">Results</a>
+                <a href="{{ url_for('attendance') }}" class="nav-link">Attendance</a>
+                <a href="{{ url_for('assignments') }}" class="nav-link">Assignments</a>
+                <a href="{{ url_for('teacher_resources') }}" class="nav-link">Resources</a>
+                <a href="{{ url_for('users') }}" class="nav-link">Users</a>
+
+                <div class="menu-section-title">Subjects & Timetable</div>
+
+                <a href="{{ url_for('subjects') }}" class="nav-link">Subjects</a>
+                <a href="{{ url_for('add_subject') }}" class="nav-link">Add Subject</a>
+                <a href="{{ url_for('assign_teacher') }}" class="nav-link">Assign Subject</a>
+                <a href="{{ url_for('assign_class_teacher') }}" class="nav-link">Class Teacher</a>
+                <a href="{{ url_for('timetable') }}" class="nav-link">Timetable</a>
+                <a href="{{ url_for('add_timetable') }}" class="nav-link">Add Timetable Entry</a>
+                <a href="{{ url_for('timetable_settings') }}" class="nav-link">Timetable Settings</a>
+
+                <div class="menu-section-title">Finance</div>
+
+                <a href="{{ url_for('cashbook') }}" class="nav-link">Cash Book</a>
+                <a href="{{ url_for('add_cashbook_entry') }}" class="nav-link">Add Cash Entry</a>
+                <a href="{{ url_for('cashbook_reports') }}" class="nav-link">Cashbook Reports</a>
+                <a href="{{ url_for('fee_reminders') }}" class="nav-link">Fee Reminders</a>
+
+                <div class="menu-section-title">Reports & Control</div>
+
+                <a href="{{ url_for('audit_logs') }}" class="nav-link">Audit Trail</a>
+                <a href="{{ url_for('year_end_promotion') }}" class="nav-link">Year-End Promotion</a>
+            {% endif %}
+
+            {% if role == 'super_admin' %}
+                <div class="menu-section-title">Platform Control</div>
+
+                <a href="{{ url_for('schools') }}" class="nav-link">Schools</a>
+                <a href="{{ url_for('add_school') }}" class="nav-link">Add School</a>
+                <a href="{{ url_for('add_school_admin') }}" class="nav-link">Add School Admin</a>
+                <a href="{{ url_for('billing_dashboard') }}" class="nav-link">Billing Dashboard</a>
+            {% endif %}
+
+            {% if role == 'teacher' %}
+                <div class="menu-section-title">Teacher Portal</div>
+
+                <a href="{{ url_for('teacher_dashboard') }}" class="nav-link">Dashboard</a>
+                <a href="{{ url_for('students') }}" class="nav-link">Students</a>
+                <a href="{{ url_for('attendance') }}" class="nav-link">Attendance</a>
+                <a href="{{ url_for('results') }}" class="nav-link">Results</a>
+                <a href="{{ url_for('assignments') }}" class="nav-link">Assignments</a>
+                <a href="{{ url_for('timetable') }}" class="nav-link">Timetable</a>
+                <a href="{{ url_for('teacher_resources') }}" class="nav-link">Resources</a>
+                <a href="{{ url_for('upload_resource') }}" class="nav-link">Upload Resource</a>
+            {% endif %}
+
+            {% if role == 'parent' %}
+                <div class="menu-section-title">Parent Portal</div>
+
+                <a href="{{ url_for('parent_dashboard') }}" class="nav-link">Dashboard</a>
+                <a href="{{ url_for('parent_fees') }}" class="nav-link">Fees</a>
+                <a href="{{ url_for('parent_results') }}" class="nav-link">Results</a>
+                <a href="{{ url_for('parent_attendance') }}" class="nav-link">Attendance</a>
+                <a href="{{ url_for('parent_assignments') }}" class="nav-link">Assignments</a>
+                <a href="{{ url_for('teacher_resources') }}" class="nav-link">Resources</a>
+            {% endif %}
+        </nav>
+    </aside>
+    {% endif %}
+
+    <div class="content-area">
+
+        {% if session.get('user_id') %}
+        <header class="topbar">
+            <div>
+                <h1 class="topbar-title">{{ session.get("school_name", "EduTrack") }}</h1>
+                <p class="topbar-subtitle">Smart School Management System</p>
             </div>
+
+            <div class="topbar-actions">
+                <span class="role-badge">
+                    {{ session.get('role', 'user')|replace('_', ' ')|title }}
+                </span>
+                <span class="role-badge">
+                    {{ session.get('full_name') }}
+                </span>
+                <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
+            </div>
+        </header>
         {% endif %}
 
-        <strong>{{ session.get("school_name", "EduTrack") }}</strong>
+        <main class="page-content">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </main>
+
     </div>
 
-    <div class="user-info">
-        {{ session.get("full_name") }} ({{ session.get("role") }})
-        |
-        <a href="{{ url_for('logout') }}" class="logout">Logout</a>
-    </div>
-
 </div>
-
-<!-- SIDEBAR -->
-<div class="sidebar">
-
-    <a href="{{ url_for('dashboard') }}">🏠 Dashboard</a>
-    <a href="{{ url_for('students') }}">👥 Students</a>
-    <a href="{{ url_for('classes') }}">🏫 Classes</a>
-    <a href="{{ url_for('teachers') }}">🧑‍🏫 Teachers</a>
-    <a href="{{ url_for('attendance') }}">🗓️ Attendance</a>
-    <a href="{{ url_for('fees') }}">💰 Fees</a>
-    <a href="{{ url_for('results') }}">📘 Results</a>
-
-    <a href="{{ url_for('teacher_resources') }}">📁 Resources</a>
-
-    {% if session.get('role') in ['teacher','school_admin','super_admin'] %}
-        <a href="{{ url_for('upload_resource') }}">⬆️ Upload Resource</a>
-    {% endif %}
-
-    {% if session.get('role') in ['school_admin','super_admin'] %}
-        <a href="{{ url_for('notices') }}">📢 Notices</a>
-        <a href="{{ url_for('assign_teacher') }}">🧑‍🏫 Assign Teacher</a>
-    {% endif %}
-
-    {% if session.get('role') == 'super_admin' %}
-        <a href="{{ url_for('schools') }}">🏫 Schools</a>
-    {% endif %}
-
-</div>
-
-<!-- MAIN CONTENT -->
-<div class="content">
-    {% block content %}{% endblock %}
-</div>
-
 </body>
 </html>
