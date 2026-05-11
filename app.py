@@ -920,28 +920,37 @@ def login():
             return redirect(url_for("login"))
 
         session.clear()
+
         session["user_id"] = user["id"]
         session["school_id"] = user["school_id"]
         session["role"] = user["role"]
         session["full_name"] = user["full_name"]
         session["username"] = user["username"]
 
-        school_name = "EduTrack"
-        if user["role"] == "super_admin":
-            school_name = "EduTrack Super Admin"
-        elif user["school_id"]:
-            school = fetch_one("SELECT school_name FROM schools WHERE id = ?", (user["school_id"],))
-            if school:
-                school_name = school["school_name"]
+        # Branding for all roles
+        session["school_name"] = "EduTrack"
+        session["logo_url"] = ""
 
-        session["school_name"] = school_name
+        if user["role"] == "super_admin":
+            session["school_name"] = "EduTrack Super Admin"
+        elif user["school_id"]:
+            school = fetch_one("""
+                SELECT school_name, logo_url
+                FROM schools
+                WHERE id = ?
+            """, (user["school_id"],))
+
+            if school:
+                session["school_name"] = school["school_name"]
+                session["logo_url"] = row_get(school, "logo_url", "") or ""
 
         if user["role"] == "parent":
             return redirect(url_for("parent_dashboard"))
-        elif user["role"] == "teacher":
+
+        if user["role"] == "teacher":
             return redirect(url_for("teacher_dashboard"))
-        else:
-            return redirect(url_for("dashboard"))
+
+        return redirect(url_for("dashboard"))
 
     return render_template("login.html")
 
