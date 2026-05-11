@@ -13,10 +13,11 @@
             background: #f4f6f9;
         }
 
+        /* 🔵 BLUE HEADER */
         .topbar {
-            background: #1e3a8a;
+            background: linear-gradient(135deg, #1e3a8a, #2563eb);
             color: white;
-            padding: 12px 20px;
+            padding: 14px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -29,11 +30,11 @@
         }
 
         .brand img {
-            height: 40px;
-            width: 40px;
+            height: 42px;
+            width: 42px;
             object-fit: contain;
-            border-radius: 8px;
             background: white;
+            border-radius: 10px;
             padding: 4px;
         }
 
@@ -45,7 +46,7 @@
             top: 60px;
             left: 0;
             border-right: 1px solid #ddd;
-            padding-top: 15px;
+            padding-top: 10px;
         }
 
         .sidebar a {
@@ -70,7 +71,7 @@
         }
 
         .logout {
-            color: #f87171;
+            color: #fca5a5;
             text-decoration: none;
             font-weight: bold;
         }
@@ -79,12 +80,16 @@
 
 <body>
 
-<!-- TOPBAR -->
+<!-- 🔵 TOPBAR -->
 <div class="topbar">
 
     <div class="brand">
         {% if session.get("logo_url") %}
             <img src="{{ url_for('static', filename=session.get('logo_url')) }}">
+        {% else %}
+            <div style="height:42px; width:42px; background:white; border-radius:10px; display:flex; align-items:center; justify-content:center;">
+                🏫
+            </div>
         {% endif %}
 
         <strong>{{ session.get("school_name", "EduTrack") }}</strong>
