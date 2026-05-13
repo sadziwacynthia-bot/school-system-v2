@@ -1,193 +1,252 @@
 {% extends "base.html" %}
-{% block title %}Fees{% endblock %}
-{% block page_heading %}Fees{% endblock %}
-
 {% block content %}
-<div class="page-header">
+
+<div class="fees-page">
+
+  <div class="page-header">
     <div>
-        <h2 class="page-title">Fees Management</h2>
-        <p class="page-subtitle">Track billing, payments, balances, and follow up on outstanding fees</p>
+      <p class="eyebrow">Finance</p>
+      <h1>Fees</h1>
+      <p class="muted">Manage student fees, payments, and balances.</p>
     </div>
-    <div class="action-group">
-        <a href="{{ url_for('add_fee') }}" class="btn btn-primary">+ Add Fee</a>
-        <a href="{{ url_for('export_fees_csv') }}" class="btn btn-secondary">
-    Export Fees
+
+    <div class="header-actions">
+      <a href="{{ url_for('add_fee') }}" class="btn primary">+ Add Fee</a>
+    </div>
+  </div>
+
+  <!-- SEARCH -->
+  <form method="GET" action="{{ url_for('fees') }}" class="search-bar">
+    <input type="text" name="search" placeholder="Search student, class..." value="{{ search or '' }}">
+    <button type="submit">Search</button>
+  </form>
+
+  <!-- TABLE -->
+  <div class="table-card">
+    <table>
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>Class</th>
+          <th>Total</th>
+          <th>Paid</th>
+          <th>Balance</th>
+          <th>Status</th>
+          <th>Due Date</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for f in fee_records %}
+        <tr>
+          <td>
+            <strong>{{ f.first_name }} {{ f.last_name }}</strong><br>
+            <small>{{ f.student_number }}</small>
+          </td>
+
+          <td>{{ f.class_name }}</td>
+
+          <td>${{ "%.2f"|format(f.amount or 0) }}</td>
+
+          <td class="paid">
+            ${{ "%.2f"|format(f.paid_amount or 0) }}
+          </td>
+
+          <td class="balance">
+            ${{ "%.2f"|format(f.balance or 0) }}
+          </td>
+
+          <td>
+            {% if f.status == "Paid" %}
+              <span class="badge paid">Paid</span>
+            {% elif f.status == "Partially Paid" %}
+              <span class="badge partial">Partial</span>
+            {% else %}
+              <span class="badge pending">Pending</span>
+            {% endif %}
+          </td>
+
+          <td>{{ f.due_date or "-" }}</td>
+
+          <!-- ✅ ACTIONS (FIXED PROPERLY HERE) -->
+          <td class="actions">
+            <a href="{{ url_for('fee_statement', student_id=f.student_id) }}" class="btn small">
+              Statement
+            </a>
+
+            <a href="{{ url_for('update_fee', fee_id=f.id) }}" class="btn small primary">
+  Pay
 </a>
-    </div>
+          </td>
+        </tr>
+
+        {% else %}
+        <tr>
+          <td colspan="8" class="empty">
+            No fee records found.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
 </div>
 
-<div class="dashboard-stat-grid">
-    <div class="metric-card metric-card-blue">
-        <div class="metric-top">
-            <span class="metric-label">Total Billed</span>
-            <span class="metric-icon">📄</span>
-        </div>
-        <div class="metric-value">${{ "%.2f"|format(total_billed or 0) }}</div>
-        <div class="metric-note">Total amount billed</div>
-    </div>
+<style>
+.fees-page {
+  max-width: 1100px;
+  margin: auto;
+  padding: 16px;
+}
 
-    <div class="metric-card metric-card-emerald">
-        <div class="metric-top">
-            <span class="metric-label">Total Paid</span>
-            <span class="metric-icon">💵</span>
-        </div>
-        <div class="metric-value">${{ "%.2f"|format(total_paid or 0) }}</div>
-        <div class="metric-note">Payments received</div>
-    </div>
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
 
-    <div class="metric-card metric-card-rose">
-        <div class="metric-top">
-            <span class="metric-label">Outstanding</span>
-            <span class="metric-icon">⚠️</span>
-        </div>
-        <div class="metric-value">${{ "%.2f"|format(total_balance or 0) }}</div>
-        <div class="metric-note">Remaining unpaid balance</div>
-    </div>
+.eyebrow {
+  font-size: 11px;
+  color: #2563eb;
+  font-weight: 800;
+  text-transform: uppercase;
+}
 
-    <div class="metric-card metric-card-amber">
-        <div class="metric-top">
-            <span class="metric-label">Records</span>
-            <span class="metric-icon">💳</span>
-        </div>
-        <div class="metric-value">{{ total_records }}</div>
-        <div class="metric-note">Total fee records</div>
-    </div>
-</div>
+.page-header h1 {
+  margin: 4px 0;
+  font-size: 24px;
+}
 
-<div class="dashboard-layout">
-    <section class="dashboard-panel premium-surface">
-        <div class="panel-header-row">
-            <div>
-                <p class="panel-kicker">Filters</p>
-                <h3>Search and Narrow Results</h3>
-            </div>
-        </div>
+.muted {
+  font-size: 13px;
+  color: #64748b;
+}
 
-        <form method="GET" class="fees-filter-grid">
-            <input type="text" name="search" placeholder="Search by name or student number" value="{{ search or '' }}">
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
 
-            <select name="class_name">
-                <option value="">All Classes</option>
-                {% for c in class_options %}
-                <option value="{{ c }}" {% if class_filter == c %}selected{% endif %}>{{ c }}</option>
-                {% endfor %}
-            </select>
+.btn {
+  padding: 8px 12px;
+  font-size: 13px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  background: white;
+  text-decoration: none;
+}
 
-            <select name="term_name">
-                <option value="">All Terms</option>
-                <option value="Term 1" {% if term_filter == 'Term 1' %}selected{% endif %}>Term 1</option>
-                <option value="Term 2" {% if term_filter == 'Term 2' %}selected{% endif %}>Term 2</option>
-                <option value="Term 3" {% if term_filter == 'Term 3' %}selected{% endif %}>Term 3</option>
-            </select>
+.btn.primary {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
 
-            <select name="status">
-                <option value="">All Status</option>
-                <option value="Paid" {% if status_filter == 'Paid' %}selected{% endif %}>Paid</option>
-                <option value="Partially Paid" {% if status_filter == 'Partially Paid' %}selected{% endif %}>Partially Paid</option>
-                <option value="Pending" {% if status_filter == 'Pending' %}selected{% endif %}>Pending</option>
-            </select>
+.btn.small {
+  padding: 6px 8px;
+  font-size: 12px;
+}
 
-            <div class="action-group">
-                <button type="submit" class="btn btn-primary">Apply Filters</button>
-                <a href="{{ url_for('fees') }}" class="btn btn-secondary">Reset</a>
-            </div>
-        </form>
-    </section>
+.search-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
 
-    <section class="dashboard-panel premium-surface">
-        <div class="panel-header-row">
-            <div>
-                <p class="panel-kicker">Status Summary</p>
-                <h3>Fee Status Breakdown</h3>
-            </div>
-        </div>
+.search-bar input {
+  flex: 1;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
 
-        <div class="status-tiles">
-            <div class="status-tile">
-                <span class="status-dot status-dot-green"></span>
-                <div>
-                    <p>Paid</p>
-                    <strong>{{ paid_count }}</strong>
-                </div>
-            </div>
+.search-bar button {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #2563eb;
+  color: white;
+  border: none;
+}
 
-            <div class="status-tile">
-                <span class="status-dot status-dot-yellow"></span>
-                <div>
-                    <p>Partially Paid</p>
-                    <strong>{{ partial_count }}</strong>
-                </div>
-            </div>
+.table-card {
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  overflow-x: auto;
+}
 
-            <div class="status-tile">
-                <span class="status-dot status-dot-red"></span>
-                <div>
-                    <p>Pending</p>
-                    <strong>{{ pending_count }}</strong>
-                </div>
-            </div>
-        </div>
-    </section>
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
 
-    <section class="dashboard-panel premium-surface dashboard-panel-wide">
-        <div class="panel-header-row">
-            <div>
-                <p class="panel-kicker">Fee Records</p>
-                <h3>Student Fees</h3>
-            </div>
-        </div>
+th {
+  background: #f8fafc;
+  font-size: 12px;
+  text-align: left;
+  padding: 10px;
+}
 
-        <div class="payments-table-wrap">
-            <table class="dashboard-mini-table">
-                <thead>
-                    <tr>
-                        <th>Student Number</th>
-                        <th>Student Name</th>
-                        <th>Class</th>
-                        <th>Term</th>
-                        <th>Total Fee</th>
-                        <th>Paid</th>
-                        <th>Balance</th>
-                        <th>Status</th>
-                        <th>Due Date</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for fee in fee_records %}
-                    <tr>
-                        <td>{{ fee.student_number or '-' }}</td>
-                        <td>{{ fee.first_name }} {{ fee.last_name }}</td>
-                        <td>{{ fee.class_name or '-' }}</td>
-                        <td>{{ fee.term_name or '-' }}</td>
-                        <td>${{ "%.2f"|format(fee.amount or 0) }}</td>
-                        <td>${{ "%.2f"|format(fee.paid_amount or 0) }}</td>
-                        <td>${{ "%.2f"|format(fee.balance or 0) }}</td>
-                        <td>
-                            {% if fee.status == 'Paid' %}
-                                <span class="status-badge status-active">Paid</span>
-                            {% elif fee.status == 'Partially Paid' %}
-                                <span class="status-badge status-pending">Partially Paid</span>
-                            {% else %}
-                                <span class="status-badge status-inactive">Pending</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ fee.due_date or '-' }}</td>
-                        <td>
-                            <div class="action-group">
-                                <a href="{{ url_for('update_fee', fee_id=fee.id) }}" class="btn btn-primary btn-sm">Update</a>
-                                <a href="{{ url_for('send_fee_reminder', student_id=fee.student_id) }}" class="btn btn-secondary btn-sm">Reminder</a>
-                            </div>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="10">No fee records found.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </section>
-</div>
+td {
+  padding: 10px;
+  border-top: 1px solid #eee;
+  font-size: 13px;
+}
+
+.paid {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.balance {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.badge {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+}
+
+.badge.paid {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.badge.partial {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.badge.pending {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.actions {
+  display: flex;
+  gap: 6px;
+}
+
+.empty {
+  text-align: center;
+  color: #64748b;
+}
+
+@media (max-width: 800px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .search-bar {
+    flex-direction: column;
+  }
+}
+</style>
+
 {% endblock %}

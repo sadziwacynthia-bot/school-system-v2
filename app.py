@@ -2497,7 +2497,67 @@ def fee_analytics():
         top_balances=top_balances,
         class_summary=class_summary
     )
+@app.route("/fee_statement/<int:student_id>")
+@login_required
+@roles_required("school_admin", "super_admin", "parent")
+def fee_statement(student_id):
+    school_id = session.get("school_id")
+    role = session.get("role")
+    user_id = session.get("user_id")
 
+    if role == "parent":
+        student = fetch_one("""
+            SELECT s.*
+            FROM students s
+            JOIN guardians g ON s.id = g.student_id
+            WHERE s.id = ?
+              AND g.parent_user_id = ?
+              AND s.school_id = ?
+        """, (student_id, user_id, school_id))
+    elif role == "super_admin":
+        student = fetch_one("SELECT * FROM students WHERE id = ?", (student_id,))
+    else:
+        student = fetch_one("""
+            SELECT * FROM students
+            WHERE id = ? AND school_id = ?
+        """, (student_id, school_id))
+
+    if not student:
+        flash("Student not found or access denied.", "danger")
+        return redirect(url_for("fees"))
+
+    fee_records = fetch_all("""
+        SELECT *
+        FROM fees
+        WHERE student_id = ?
+        ORDER BY term_name, due_date
+    """, (student_id,))
+
+    payments = fetch_all("""
+        SELECT fp.*, f.term_name
+        FROM fee_payments fp
+        JOIN fees f ON fp.fee_id = f.id
+        WHERE f.student_id = ?
+        ORDER BY fp.payment_date DESC, fp.id DESC
+    """, (student_id,))
+
+    totals = fetch_one("""
+        SELECT
+            COALESCE(SUM(amount), 0) AS total_billed,
+            COALESCE(SUM(paid_amount), 0) AS total_paid,
+            COALESCE(SUM(balance), 0) AS total_balance
+        FROM fees
+        WHERE student_id = ?
+    """, (student_id,))
+
+    return render_template(
+        "fee_statement.html",
+        student=student,
+        fee_records=fee_records,
+        payments=payments,
+        totals=totals,
+        today=datetime.now().strftime("%Y-%m-%d")
+    )
 # =========================================================
 # RESULTS
 # =========================================================
