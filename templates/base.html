@@ -103,21 +103,28 @@
 
         {% if session.get('user_id') %}
         <header class="topbar">
-            <div>
-                <h1 class="topbar-title">{{ session.get("school_name", "EduTrack") }}</h1>
-                <p class="topbar-subtitle">Smart School Management System</p>
-            </div>
 
-            <div class="topbar-actions">
-                <span class="role-badge">
-                    {{ session.get('role', 'user')|replace('_', ' ')|title }}
-                </span>
-                <span class="role-badge">
-                    {{ session.get('full_name') }}
-                </span>
-                <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
-            </div>
-        </header>
+    <div class="topbar-left">
+        <h1 class="topbar-title">{{ session.get("school_name", "EduTrack") }}</h1>
+        <p class="topbar-subtitle">Smart School Management System</p>
+    </div>
+
+    <!-- 🔍 GLOBAL SEARCH -->
+    <form action="{{ url_for('global_search') }}" method="GET" class="topbar-search">
+        <input type="text" name="q" placeholder="Search students, teachers..." required>
+    </form>
+
+    <div class="topbar-actions">
+        <span class="role-badge">
+            {{ session.get('role', 'user')|replace('_', ' ')|title }}
+        </span>
+        <span class="role-badge">
+            {{ session.get('full_name') }}
+        </span>
+        <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
+    </div>
+
+</header>
         {% endif %}
 
         <main class="page-content">

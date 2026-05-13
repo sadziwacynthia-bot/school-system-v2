@@ -2157,3 +2157,53 @@ table tr:nth-child(even) {
     color: #9ca3af;
     margin-top: 6px;
 }
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 20px;
+}
+
+.topbar-left {
+    min-width: 200px;
+}
+
+.topbar-title {
+    margin: 0;
+    font-size: 18px;
+}
+
+.topbar-subtitle {
+    margin: 0;
+    font-size: 12px;
+    color: #64748b;
+}
+
+.topbar-search {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+}
+
+.topbar-search input {
+    width: 100%;
+    max-width: 400px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid #dbe3ef;
+    font-size: 13px;
+}
+
+.topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.role-badge {
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: #f1f5f9;
+}

@@ -3570,6 +3570,81 @@ def add_subject():
 
     return render_template("add_subject.html", schools=schools)
 
+@app.route("/search")
+@login_required
+@roles_required("school_admin", "super_admin", "teacher")
+def global_search():
+    q = request.args.get("q", "").strip()
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    students = []
+    teachers = []
+
+    if q:
+        like = f"%{q}%"
+
+        if role == "super_admin":
+            students = fetch_all("""
+                SELECT *
+                FROM students
+                WHERE first_name LIKE ?
+                   OR last_name LIKE ?
+                   OR student_number LIKE ?
+                   OR class_name LIKE ?
+                   OR guardian1_name LIKE ?
+                   OR guardian1_phone LIKE ?
+                ORDER BY class_name, first_name, last_name
+                LIMIT 30
+            """, (like, like, like, like, like, like))
+
+            teachers = fetch_all("""
+                SELECT *
+                FROM teachers
+                WHERE full_name LIKE ?
+                   OR phone LIKE ?
+                   OR email LIKE ?
+                ORDER BY full_name
+                LIMIT 20
+            """, (like, like, like))
+
+        else:
+            students = fetch_all("""
+                SELECT *
+                FROM students
+                WHERE school_id = ?
+                  AND (
+                    first_name LIKE ?
+                    OR last_name LIKE ?
+                    OR student_number LIKE ?
+                    OR class_name LIKE ?
+                    OR guardian1_name LIKE ?
+                    OR guardian1_phone LIKE ?
+                  )
+                ORDER BY class_name, first_name, last_name
+                LIMIT 30
+            """, (school_id, like, like, like, like, like, like))
+
+            teachers = fetch_all("""
+                SELECT *
+                FROM teachers
+                WHERE school_id = ?
+                  AND (
+                    full_name LIKE ?
+                    OR phone LIKE ?
+                    OR email LIKE ?
+                  )
+                ORDER BY full_name
+                LIMIT 20
+            """, (school_id, like, like, like))
+
+    return render_template(
+        "global_search.html",
+        q=q,
+        students=students,
+        teachers=teachers
+    )
+
 @app.route("/add_timetable", methods=["GET", "POST"])
 @login_required
 @roles_required("school_admin", "super_admin")
