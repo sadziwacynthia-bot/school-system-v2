@@ -2429,6 +2429,74 @@ Thank you.
         })
 
     return render_template("fee_reminders.html", reminders=reminder_list)
+@app.route("/fee_analytics")
+@login_required
+@roles_required("school_admin", "super_admin", "director", "admin")
+def fee_analytics():
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    where = ""
+    params = []
+
+    if role != "super_admin":
+        where = "WHERE f.school_id = ?"
+        params.append(school_id)
+
+    summary = fetch_one(f"""
+        SELECT 
+            COALESCE(SUM(f.amount),0) AS total_fees,
+            COALESCE(SUM(f.paid_amount),0) AS total_paid,
+            COALESCE(SUM(f.balance),0) AS total_balance
+        FROM fees f
+        {where}
+    """, tuple(params))
+
+    status_counts = fetch_one(f"""
+        SELECT 
+            SUM(CASE WHEN f.status = 'Paid' THEN 1 ELSE 0 END) AS paid,
+            SUM(CASE WHEN f.status = 'Partially Paid' THEN 1 ELSE 0 END) AS partial,
+            SUM(CASE WHEN f.status = 'Pending' THEN 1 ELSE 0 END) AS pending
+        FROM fees f
+        {where}
+    """, tuple(params))
+
+    top_balances = fetch_all(f"""
+        SELECT s.first_name, s.last_name, s.class_name, f.balance
+        FROM fees f
+        JOIN students s ON f.student_id = s.id
+        {where}
+        AND f.balance > 0
+        ORDER BY f.balance DESC
+        LIMIT 10
+    """, tuple(params)) if where else fetch_all("""
+        SELECT s.first_name, s.last_name, s.class_name, f.balance
+        FROM fees f
+        JOIN students s ON f.student_id = s.id
+        WHERE f.balance > 0
+        ORDER BY f.balance DESC
+        LIMIT 10
+    """)
+
+    class_summary = fetch_all(f"""
+        SELECT s.class_name,
+               COALESCE(SUM(f.amount),0) AS total_fees,
+               COALESCE(SUM(f.paid_amount),0) AS total_paid,
+               COALESCE(SUM(f.balance),0) AS total_balance
+        FROM fees f
+        JOIN students s ON f.student_id = s.id
+        {where}
+        GROUP BY s.class_name
+        ORDER BY s.class_name
+    """, tuple(params))
+
+    return render_template(
+        "fee_analytics.html",
+        summary=summary,
+        status_counts=status_counts,
+        top_balances=top_balances,
+        class_summary=class_summary
+    )
 
 # =========================================================
 # RESULTS
