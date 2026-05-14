@@ -2837,6 +2837,12 @@ def save_attendance():
 
     return redirect(url_for("attendance", class_name=class_name))
 
+@app.route("/debug_audit")
+@login_required
+@roles_required("super_admin")
+def debug_audit():
+    rows = fetch_all("SELECT * FROM audit_logs ORDER BY id DESC LIMIT 10")
+    return "<pre>" + str(rows) + "</pre>"
 
 @app.route("/attendance_records")
 @login_required
@@ -5676,7 +5682,7 @@ def log_audit(action, table_name=None, record_id=None, details=None):
             details
         ))
     except Exception as e:
-        print("Audit log error:", e)
+        print("AUDIT LOG ERROR:", str(e), flush=True)
 
 
 def run_timetable_foundation_migrations():
