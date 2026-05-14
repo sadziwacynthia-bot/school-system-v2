@@ -1,156 +1,247 @@
 {% extends "base.html" %}
-{% block title %}Teacher Dashboard{% endblock %}
-{% block page_heading %}Teacher Portal{% endblock %}
-
 {% block content %}
-<div class="dashboard-hero">
+
+<div class="teacher-page">
+  <div class="page-header">
     <div>
-        <p class="dashboard-eyebrow">Teacher Portal</p>
-        <h2 class="dashboard-hero-title">
-            Welcome{% if teacher %}, {{ teacher.full_name }}{% endif %}
-        </h2>
-        <p class="dashboard-hero-text">
-            Manage your classes, subjects, attendance, assignments, results, and timetable.
-        </p>
+      <p class="eyebrow">Teacher Portal</p>
+      <h1>Teacher Dashboard</h1>
+      <p class="muted">View your assigned classes, subjects, timetable, and attendance tools.</p>
     </div>
+  </div>
 
-    <div class="dashboard-hero-actions">
-        <a href="{{ url_for('attendance') }}" class="btn btn-primary">Take Attendance</a>
-        <a href="{{ url_for('enter_result') }}" class="btn btn-secondary">Enter Results</a>
-        <a href="{{ url_for('add_assignment') }}" class="btn btn-secondary">Add Assignment</a>
+  {% if teacher %}
+  <div class="teacher-card">
+    <h2>{{ teacher.full_name }}</h2>
+    <p>{{ teacher.teacher_id or "Teacher" }}</p>
+    <p>{{ teacher.email or "" }}</p>
+  </div>
+  {% endif %}
+
+  <div class="section">
+    <h2>My Classes</h2>
+
+    <div class="class-grid">
+      {% for class_name in assigned_classes %}
+      <div class="class-card">
+        <h3>{{ class_name }}</h3>
+
+        <div class="actions">
+          <a href="{{ url_for('attendance', class_name=class_name) }}" class="btn primary">
+            Take Attendance
+          </a>
+
+          <a href="{{ url_for('class_students', class_name=class_name) }}" class="btn">
+            View Class
+          </a>
+
+          <a href="{{ url_for('timetable', class_name=class_name) }}" class="btn">
+            Timetable
+          </a>
+        </div>
+      </div>
+      {% else %}
+      <div class="empty">
+        No classes assigned yet. Ask the school admin to assign you to a class or subject.
+      </div>
+      {% endfor %}
     </div>
+  </div>
+
+  <div class="section">
+    <h2>My Subjects</h2>
+
+    <div class="pill-row">
+      {% for subject in assigned_subjects %}
+        <span class="pill">{{ subject }}</span>
+      {% else %}
+        <span class="empty-text">No subjects assigned yet.</span>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>My Timetable</h2>
+
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th>Day</th>
+            <th>Time</th>
+            <th>Class</th>
+            <th>Subject</th>
+            <th>Room</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in timetable_rows %}
+          <tr>
+            <td>{{ t.day_of_week }}</td>
+            <td>{{ t.start_time }} - {{ t.end_time }}</td>
+            <td>{{ t.class_name }}</td>
+            <td>{{ t.subject }}</td>
+            <td>{{ t.room or "-" }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="5" class="empty-cell">No timetable entries yet.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>
 
-<div class="dashboard-stat-grid">
-    <div class="metric-card metric-card-blue">
-        <div class="metric-top">
-            <span class="metric-label">Assigned Classes</span>
-            <span class="metric-icon">🏫</span>
-        </div>
-        <div class="metric-value">{{ assigned_classes|length }}</div>
-        <div class="metric-note">Classes you teach</div>
-    </div>
+<style>
+.teacher-page {
+  max-width: 1100px;
+  margin: auto;
+  padding: 16px;
+}
 
-    <div class="metric-card metric-card-emerald">
-        <div class="metric-top">
-            <span class="metric-label">Subjects</span>
-            <span class="metric-icon">📘</span>
-        </div>
-        <div class="metric-value">{{ assigned_subjects|length }}</div>
-        <div class="metric-note">Subjects assigned</div>
-    </div>
+.page-header {
+  margin-bottom: 16px;
+}
 
-    <div class="metric-card metric-card-amber">
-        <div class="metric-top">
-            <span class="metric-label">Timetable Entries</span>
-            <span class="metric-icon">📅</span>
-        </div>
-        <div class="metric-value">{{ timetable_rows|length }}</div>
-        <div class="metric-note">Scheduled lessons</div>
-    </div>
-</div>
+.eyebrow {
+  font-size: 11px;
+  color: #2563eb;
+  font-weight: 800;
+  text-transform: uppercase;
+  margin: 0;
+}
 
-<div class="dashboard-layout">
-    <section class="dashboard-panel premium-surface">
-        <div class="panel-header-row">
-            <div>
-                <p class="panel-kicker">Teaching Load</p>
-                <h3>My Classes & Subjects</h3>
-            </div>
-        </div>
+.page-header h1 {
+  font-size: 24px;
+  margin: 4px 0;
+  color: #0f172a;
+}
 
-        <div class="activity-list">
-            {% for item in assignments %}
-            <div class="activity-item">
-                <div class="activity-avatar">📘</div>
-                <div class="activity-content">
-                    <strong>{{ item.subject }}</strong>
-                    <span>{{ item.class_name }}</span>
-                </div>
-                <div class="activity-meta">Assigned</div>
-            </div>
-            {% else %}
-            <div class="empty-state-lite">No classes assigned yet.</div>
-            {% endfor %}
-        </div>
-    </section>
+.muted {
+  color: #64748b;
+  font-size: 13px;
+  margin: 0;
+}
 
-    <section class="dashboard-panel premium-surface">
-        <div class="panel-header-row">
-            <div>
-                <p class="panel-kicker">Shortcuts</p>
-                <h3>Quick Actions</h3>
-            </div>
-        </div>
+.teacher-card,
+.section,
+.class-card,
+.table-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px;
+}
 
-        <div class="dashboard-shortcuts">
-            <a href="{{ url_for('attendance') }}" class="shortcut-card">
-                <span class="shortcut-icon">🗓️</span>
-                <span>Attendance</span>
-            </a>
+.teacher-card {
+  margin-bottom: 14px;
+}
 
-            <a href="{{ url_for('enter_result') }}" class="shortcut-card">
-                <span class="shortcut-icon">📝</span>
-                <span>Enter Results</span>
-            </a>
+.teacher-card h2 {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
 
-            <a href="{{ url_for('add_assignment') }}" class="shortcut-card">
-                <span class="shortcut-icon">📚</span>
-                <span>Add Assignment</span>
-            </a>
+.teacher-card p {
+  margin: 3px 0;
+  color: #64748b;
+  font-size: 13px;
+}
 
-            <a href="{{ url_for('timetable') }}" class="shortcut-card">
-                <span class="shortcut-icon">📅</span>
-                <span>Timetable</span>
-            </a>
-            <a href="{{ url_for('upload_resource') }}" class="shortcut-card">
-    <span class="shortcut-icon">⬆️</span>
-    <span>Upload Resource</span>
-</a>
+.section {
+  margin-bottom: 14px;
+}
 
-<a href="{{ url_for('teacher_resources') }}" class="shortcut-card">
-    <span class="shortcut-icon">📁</span>
-    <span>My Resources</span>
-</a>
-        </div>
-    </section>
+.section h2 {
+  font-size: 17px;
+  margin: 0 0 12px;
+}
 
-    <section class="dashboard-panel premium-surface dashboard-panel-wide">
-        <div class="panel-header-row">
-            <div>
-                <p class="panel-kicker">Schedule</p>
-                <h3>My Timetable</h3>
-            </div>
-        </div>
+.class-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
 
-        <div class="payments-table-wrap">
-            <table class="dashboard-mini-table">
-                <thead>
-                    <tr>
-                        <th>Day</th>
-                        <th>Class</th>
-                        <th>Subject</th>
-                        <th>Time</th>
-                        <th>Room</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for row in timetable_rows %}
-                    <tr>
-                        <td>{{ row.day_of_week }}</td>
-                        <td>{{ row.class_name }}</td>
-                        <td>{{ row.subject }}</td>
-                        <td>{{ row.start_time }} - {{ row.end_time }}</td>
-                        <td>{{ row.room or '-' }}</td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="5">No timetable entries yet.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </section>
-</div>
+.class-card h3 {
+  margin: 0 0 10px;
+  font-size: 17px;
+}
+
+.actions {
+  display: grid;
+  gap: 8px;
+}
+
+.btn {
+  text-align: center;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #dbe3ef;
+  text-decoration: none;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.btn.primary {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+.pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pill {
+  background: #f1f5f9;
+  color: #334155;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th {
+  text-align: left;
+  background: #f8fafc;
+  padding: 9px;
+  font-size: 12px;
+}
+
+td {
+  padding: 9px;
+  border-top: 1px solid #e2e8f0;
+  font-size: 13px;
+}
+
+.empty,
+.empty-cell,
+.empty-text {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.empty-cell {
+  text-align: center;
+  padding: 18px;
+}
+
+@media (max-width: 900px) {
+  .class-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+
 {% endblock %}
