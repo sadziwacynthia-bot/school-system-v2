@@ -2000,7 +2000,12 @@ def assign_teacher():
             INSERT INTO teacher_assignments (school_id, teacher_id, class_name, subject)
             VALUES (?, ?, ?, ?)
         """, (selected_school_id, teacher_id, class_name, subject))
-
+        log_audit(
+            "Assigned teacher",
+            "teacher_assignments",
+            None,
+            f"Assigned teacher ID {teacher_id} to {class_name} for {subject}"
+)
         flash("Teacher assigned successfully.", "success")
         return redirect(url_for("assign_teacher", school_id=selected_school_id))
 
@@ -2637,7 +2642,12 @@ def save_result():
         """,
         (school_id, student_id, class_name, subject, term, marks, grade),
     )
-
+    log_audit(
+        "Added result",
+        "results",
+        None,
+        f"Added result for student ID {student_id}, {subject}, {term}, marks {marks}"
+)
     flash("Result saved successfully.", "success")
     return redirect(url_for("results"))
 
@@ -2828,6 +2838,13 @@ def save_attendance():
             )
 
         conn.commit()
+
+        log_audit(
+            "Saved attendance",
+            "attendance",
+            None,
+            f"Saved attendance for {class_name} on {date}"
+)
         flash("Attendance saved successfully.", "success")
     except Exception as e:
         conn.rollback()
@@ -3698,7 +3715,12 @@ def add_subject():
                 is_practical, requires_double_period, requires_four_block, requires_two_block
             )
         )
-
+        log_audit(
+                "Added subject",
+                "subjects",
+                None,
+                f"Added subject: {subject_name}"
+)
         flash("Subject added successfully.", "success")
         return redirect(url_for("subjects"))
 
@@ -3870,7 +3892,12 @@ def add_timetable():
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, (school_id, class_name, subject, teacher_id, day_of_week, start_time, end_time, room))
-
+        log_audit(
+            "Added timetable entry",
+            "timetables",
+            None,
+            f"Added {subject} for {class_name} on {day_of_week} from {start_time} to {end_time}"
+)
         flash("Timetable entry added successfully.", "success")
         return redirect(url_for("timetable", class_name=class_name))
 
@@ -3966,7 +3993,12 @@ def assign_class_teacher():
             SET class_teacher_id = ?
             WHERE id = ?
         """, (teacher_id, class_id))
-
+        log_audit(
+            "Assigned class teacher",
+            "school_classes",
+            class_id,
+            f"Assigned teacher ID {teacher_id} as class teacher"
+)
         flash("Class teacher assigned successfully.", "success")
         return redirect(url_for("assign_class_teacher"))
 
