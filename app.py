@@ -6342,11 +6342,11 @@ def activate_school(school_id):
     flash("School activated successfully.", "success")
     return redirect(url_for("schools"))
 
-create_notices_table()
-create_assessments_table()
-add_class_teacher_column()
-setup_app()
-
 if __name__ == "__main__":
+    create_notices_table()
+    create_assessments_table()
+    add_class_teacher_column()
+    setup_app()
+
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, debug=False)
