@@ -2066,8 +2066,10 @@ def teacher_dashboard():
     user_id = session.get("user_id")
 
     teacher = fetch_one("""
-        SELECT * FROM teachers
-        WHERE user_id = ? AND school_id = ?
+        SELECT *
+        FROM teachers
+        WHERE user_id = ?
+          AND school_id = ?
         LIMIT 1
     """, (user_id, school_id))
 
@@ -2075,24 +2077,49 @@ def teacher_dashboard():
     timetable_rows = []
     assigned_classes = []
     assigned_subjects = []
+    attendance_classes = []
 
     if teacher:
+        teacher_id = teacher["id"]
+
+        # Classes/subjects teacher teaches
         assignments_list = fetch_all("""
             SELECT *
             FROM teacher_assignments
-            WHERE teacher_id = ? AND school_id = ?
+            WHERE teacher_id = ?
+              AND school_id = ?
             ORDER BY class_name, subject
-        """, (teacher["id"], school_id))
+        """, (teacher_id, school_id))
 
+        assigned_classes = sorted(list(set([
+            a["class_name"] for a in assignments_list if a["class_name"]
+        ])))
+
+        assigned_subjects = sorted(list(set([
+            a["subject"] for a in assignments_list if a["subject"]
+        ])))
+
+        # ONLY official class-teacher classes for attendance
+        class_teacher_rows = fetch_all("""
+            SELECT class_name
+            FROM school_classes
+            WHERE class_teacher_id = ?
+              AND school_id = ?
+            ORDER BY class_name
+        """, (teacher_id, school_id))
+
+        attendance_classes = [
+            row["class_name"] for row in class_teacher_rows if row["class_name"]
+        ]
+
+        # Timetable can still show all lessons teacher teaches
         timetable_rows = fetch_all("""
             SELECT *
             FROM timetables
-            WHERE teacher_id = ? AND school_id = ?
+            WHERE teacher_id = ?
+              AND school_id = ?
             ORDER BY day_of_week, start_time
-        """, (teacher["id"], school_id))
-
-        assigned_classes = sorted(list(set([a["class_name"] for a in assignments_list])))
-        assigned_subjects = sorted(list(set([a["subject"] for a in assignments_list])))
+        """, (teacher_id, school_id))
 
     return render_template(
         "teacher_dashboard.html",
@@ -2100,7 +2127,8 @@ def teacher_dashboard():
         assignments=assignments_list,
         timetable_rows=timetable_rows,
         assigned_classes=assigned_classes,
-        assigned_subjects=assigned_subjects
+        assigned_subjects=assigned_subjects,
+        attendance_classes=attendance_classes
     )
 
 # =========================================================
@@ -2714,30 +2742,17 @@ def attendance():
                 today=datetime.now().strftime("%Y-%m-%d")
             )
 
-        # 1. Classes where teacher is the main class teacher
+        # Only classes where this teacher is the official class teacher
         class_teacher_rows = fetch_all("""
             SELECT class_name
             FROM school_classes
             WHERE class_teacher_id = ?
-              AND school_id = ?
+            AND school_id = ?
             ORDER BY class_name
         """, (teacher["id"], school_id))
 
-        # 2. Classes where teacher is assigned as subject teacher
-        subject_teacher_rows = fetch_all("""
-            SELECT DISTINCT class_name
-            FROM teacher_assignments
-            WHERE teacher_id = ?
-              AND school_id = ?
-            ORDER BY class_name
-        """, (teacher["id"], school_id))
+        class_options = [row["class_name"] for row in class_teacher_rows]
 
-        class_options = sorted(list(set(
-            [row["class_name"] for row in class_teacher_rows] +
-            [row["class_name"] for row in subject_teacher_rows]
-        )))
-
-        # Auto-select if teacher only has one class
         if not selected_class and len(class_options) == 1:
             selected_class = class_options[0]
 
@@ -2746,11 +2761,12 @@ def attendance():
                 SELECT *
                 FROM students
                 WHERE school_id = ?
-                  AND class_name = ?
-                  AND COALESCE(current_status, 'Active') = 'Active'
+                AND class_name = ?
+                AND COALESCE(current_status, 'Active') = 'Active'
                 ORDER BY first_name, last_name
             """, (school_id, selected_class))
-
+        else:
+            students_list = []
     # =====================================================
     # SUPER ADMIN VIEW
     # =====================================================
