@@ -1390,7 +1390,7 @@ def export_cashbook_csv():
 
 @app.route("/students")
 @login_required
-@roles_required("super_admin", "school_admin", "teacher")
+@roles_required("super_admin", "school_admin",)
 def students():
     search = request.args.get("search", "").strip()
     school_id = session.get("school_id")

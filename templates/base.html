@@ -30,7 +30,11 @@
                 <div class="menu-section-title">School Management</div>
 
                 <a href="{{ url_for('dashboard') }}" class="nav-link">Dashboard</a>
-                <a href="{{ url_for('students') }}" class="nav-link">Students</a>
+                {% if session.get("role") in ["school_admin", "super_admin"] %}
+<a href="{{ url_for('students') }}">
+  Students
+</a>
+{% endif %}
                 <a href="{{ url_for('classes') }}" class="nav-link">Classes</a>
                 <a href="{{ url_for('teachers') }}" class="nav-link">Teachers</a>
                 <a href="{{ url_for('fees') }}" class="nav-link">Fees</a>
