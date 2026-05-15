@@ -2156,45 +2156,37 @@ def edit_teacher(teacher_id):
 @login_required
 @roles_required("school_admin", "super_admin")
 def update_teacher(teacher_id):
-
     school_id = session.get("school_id")
+    role = session.get("role")
 
     full_name = request.form.get("full_name", "").strip()
     email = request.form.get("email", "").strip()
     phone = request.form.get("phone", "").strip()
-    gender = request.form.get("gender", "").strip()
-    status = request.form.get("status", "Active").strip()
 
-    teacher = fetch_one("""
-        SELECT *
-        FROM teachers
-        WHERE id = ?
-          AND school_id = ?
-    """, (teacher_id, school_id))
+    if role == "super_admin":
+        teacher = fetch_one("SELECT * FROM teachers WHERE id = ?", (teacher_id,))
+    else:
+        teacher = fetch_one(
+            "SELECT * FROM teachers WHERE id = ? AND school_id = ?",
+            (teacher_id, school_id)
+        )
 
     if not teacher:
         flash("Teacher not found.", "danger")
         return redirect(url_for("teachers"))
 
-    execute_commit("""
-        UPDATE teachers
-        SET
-            full_name = ?,
-            email = ?,
-            phone = ?,
-            gender = ?,
-            status = ?
-        WHERE id = ?
-          AND school_id = ?
-    """, (
-        full_name,
-        email,
-        phone,
-        gender,
-        status,
-        teacher_id,
-        school_id
-    ))
+    if role == "super_admin":
+        execute_commit("""
+            UPDATE teachers
+            SET full_name = ?, email = ?, phone = ?
+            WHERE id = ?
+        """, (full_name, email, phone, teacher_id))
+    else:
+        execute_commit("""
+            UPDATE teachers
+            SET full_name = ?, email = ?, phone = ?
+            WHERE id = ? AND school_id = ?
+        """, (full_name, email, phone, teacher_id, school_id))
 
     log_audit(
         "Updated teacher",
@@ -2204,7 +2196,6 @@ def update_teacher(teacher_id):
     )
 
     flash("Teacher updated successfully.", "success")
-
     return redirect(url_for("teachers"))
 # =========================================================
 # FEES
