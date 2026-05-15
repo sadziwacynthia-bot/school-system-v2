@@ -5509,40 +5509,6 @@ def run_users_migration():
         conn.commit()
     finally:
         conn.close()
-@app.route("/deactivate_teacher/<int:teacher_id>", methods=["POST"])
-@login_required
-@roles_required("school_admin", "super_admin")
-def deactivate_teacher(teacher_id):
-    school_id = session.get("school_id")
-    role = session.get("role")
-
-    if role == "super_admin":
-        teacher = fetch_one("SELECT * FROM teachers WHERE id = ?", (teacher_id,))
-    else:
-        teacher = fetch_one(
-            "SELECT * FROM teachers WHERE id = ? AND school_id = ?",
-            (teacher_id, school_id)
-        )
-
-    if not teacher:
-        flash("Teacher not found or access denied.", "danger")
-        return redirect(url_for("teachers"))
-
-    if not teacher["user_id"]:
-        flash("This teacher is not linked to a user account.", "danger")
-        return redirect(url_for("teachers"))
-
-    execute_commit("UPDATE users SET is_active = ? WHERE id = ?", (0, teacher["user_id"]))
-
-    log_audit(
-        "Deactivated teacher",
-        "teachers",
-        teacher_id,
-        f"Deactivated teacher {teacher['full_name']}"
-    )
-
-    flash("Teacher deactivated successfully.", "success")
-    return redirect(url_for("teachers"))
 
 
 @app.route("/activate_teacher/<int:teacher_id>", methods=["POST"])
