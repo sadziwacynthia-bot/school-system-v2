@@ -5511,41 +5511,6 @@ def run_users_migration():
         conn.close()
 
 
-@app.route("/activate_teacher/<int:teacher_id>", methods=["POST"])
-@login_required
-@roles_required("school_admin", "super_admin")
-def activate_teacher(teacher_id):
-    school_id = session.get("school_id")
-    role = session.get("role")
-
-    if role == "super_admin":
-        teacher = fetch_one("SELECT * FROM teachers WHERE id = ?", (teacher_id,))
-    else:
-        teacher = fetch_one(
-            "SELECT * FROM teachers WHERE id = ? AND school_id = ?",
-            (teacher_id, school_id)
-        )
-
-    if not teacher:
-        flash("Teacher not found or access denied.", "danger")
-        return redirect(url_for("teachers"))
-
-    if not teacher["user_id"]:
-        flash("This teacher is not linked to a user account.", "danger")
-        return redirect(url_for("teachers"))
-
-    execute_commit("UPDATE users SET is_active = ? WHERE id = ?", (1, teacher["user_id"]))
-
-    log_audit(
-        "Activated teacher",
-        "teachers",
-        teacher_id,
-        f"Activated teacher {teacher['full_name']}"
-    )
-
-    flash("Teacher activated successfully.", "success")
-    return redirect(url_for("teachers"))
-
 @app.route("/upload_resource", methods=["GET", "POST"])
 @login_required
 @roles_required("teacher", "school_admin", "super_admin")
