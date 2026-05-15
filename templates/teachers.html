@@ -10,13 +10,10 @@
       <p class="muted">Manage teachers, assignments, and class responsibilities.</p>
     </div>
 
-    <a href="{{ url_for('teacher_registration') }}" class="btn primary">
-      + Add Teacher
-    </a>
+    <a href="{{ url_for('teacher_registration') }}" class="btn primary">+ Add Teacher</a>
   </div>
 
   <div class="stats-grid">
-
     <div class="stat-card">
       <span>Total Teachers</span>
       <h2>{{ teachers|length }}</h2>
@@ -24,53 +21,37 @@
 
     <div class="stat-card">
       <span>Active</span>
-      <h2>
-        {{ teachers | selectattr("status", "equalto", "Active") | list | length }}
-      </h2>
+      <h2>{{ teachers | rejectattr("is_active", "equalto", 0) | list | length }}</h2>
     </div>
 
     <div class="stat-card">
       <span>Inactive</span>
-      <h2>
-        {{ teachers | selectattr("status", "equalto", "Inactive") | list | length }}
-      </h2>
+      <h2>{{ teachers | selectattr("is_active", "equalto", 0) | list | length }}</h2>
     </div>
-
   </div>
 
   <div class="table-card">
-
     <div class="table-header">
       <h2>Teacher List</h2>
-
       <form method="GET" class="search-form">
-        <input
-          type="text"
-          name="search"
-          placeholder="Search teacher..."
-          value="{{ request.args.get('search', '') }}"
-        >
+        <input type="text" name="search" placeholder="Search teacher..." value="{{ request.args.get('search', '') }}">
       </form>
     </div>
 
     <table>
-
       <thead>
         <tr>
           <th>Teacher</th>
           <th>Teacher ID</th>
           <th>Phone</th>
           <th>Status</th>
-          <th>Attendance Class</th>
           <th>Actions</th>
         </tr>
       </thead>
 
       <tbody>
-
         {% for t in teachers %}
         <tr>
-
           <td>
             <div class="teacher-info">
               <strong>{{ t.full_name }}</strong>
@@ -79,11 +60,10 @@
           </td>
 
           <td>{{ t.teacher_id or "-" }}</td>
-
           <td>{{ t.phone or "-" }}</td>
 
           <td>
-            {% if t.status == "Inactive" %}
+            {% if t.is_active == 0 %}
               <span class="badge inactive">Inactive</span>
             {% else %}
               <span class="badge active">Active</span>
@@ -91,80 +71,31 @@
           </td>
 
           <td>
-            {{ t.attendance_class or "-" }}
-          </td>
-
-          <td>
-
             <div class="actions">
+              <a href="{{ url_for('edit_teacher', teacher_id=t.id) }}" class="btn small">Edit</a>
+              <a href="{{ url_for('assign_teacher') }}" class="btn small">Assign Subject</a>
+              <a href="{{ url_for('assign_class_teacher') }}" class="btn small">Assign Class</a>
 
-              <a href="{{ url_for('edit_teacher', teacher_id=t.id) }}" class="btn small">
-                Edit
-              </a>
-
-              <a href="{{ url_for('assign_teacher') }}" class="btn small">
-                Assign Subject
-              </a>
-
-              <a href="{{ url_for('assign_class_teacher') }}" class="btn small">
-                Assign Class
-              </a>
               {% if t.is_active == 0 %}
-
-<form method="POST"
-      action="{{ url_for('activate_teacher', teacher_id=t.id) }}">
-
-    <button type="submit" class="btn small success">
-        Activate
-    </button>
-
-</form>
-
-{% else %}
-
-<form method="POST"
-      action="{{ url_for('deactivate_teacher', teacher_id=t.id) }}"
-      onsubmit="return confirm('Deactivate this teacher?')">
-
-    <button type="submit" class="btn small danger">
-        Deactivate
-    </button>
-
-</form>
-
-{% endif %}
-
-{% else %}
-
-<form method="POST"
-      action="{{ url_for('deactivate_teacher', teacher_id=t.id) }}"
-      onsubmit="return confirm('Deactivate this teacher?')">
-
-    <button type="submit" class="btn small danger">
-        Deactivate
-    </button>
-</form>
-
-{% endif %}
-
+              <form method="POST" action="{{ url_for('activate_teacher', teacher_id=t.id) }}">
+                <button type="submit" class="btn small success">Activate</button>
+              </form>
+              {% else %}
+              <form method="POST" action="{{ url_for('deactivate_teacher', teacher_id=t.id) }}"
+                    onsubmit="return confirm('Deactivate this teacher?')">
+                <button type="submit" class="btn small danger">Deactivate</button>
+              </form>
+              {% endif %}
             </div>
-
           </td>
-
         </tr>
-
         {% else %}
         <tr>
-          <td colspan="6" class="empty">
-            No teachers found.
-          </td>
+          <td colspan="5" class="empty">No teachers found.</td>
         </tr>
         {% endfor %}
-
       </tbody>
-
     </table>
-
   </div>
 
 </div>
@@ -216,6 +147,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
 }
 
 .btn.primary {
@@ -229,6 +161,18 @@
   font-size: 12px;
 }
 
+.btn.success {
+  background: #16a34a;
+  color: white;
+  border-color: #16a34a;
+}
+
+.btn.danger {
+  background: #dc2626;
+  color: white;
+  border-color: #dc2626;
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -236,10 +180,14 @@
   margin-bottom: 18px;
 }
 
-.stat-card {
+.stat-card,
+.table-card {
   background: white;
   border-radius: 14px;
   border: 1px solid #e2e8f0;
+}
+
+.stat-card {
   padding: 16px;
 }
 
@@ -255,9 +203,6 @@
 }
 
 .table-card {
-  background: white;
-  border-radius: 14px;
-  border: 1px solid #e2e8f0;
   overflow: hidden;
 }
 
@@ -339,6 +284,10 @@ td {
   flex-wrap: wrap;
 }
 
+.actions form {
+  margin: 0;
+}
+
 .empty {
   text-align: center;
   color: #64748b;
@@ -346,7 +295,6 @@ td {
 }
 
 @media (max-width: 900px) {
-
   .stats-grid {
     grid-template-columns: 1fr;
   }
@@ -365,17 +313,6 @@ td {
     display: block;
     overflow-x: auto;
   }
-}
-.btn.success {
-    background: #16a34a;
-    color: white;
-    border-color: #16a34a;
-}
-
-.btn.danger {
-    background: #dc2626;
-    color: white;
-    border-color: #dc2626;
 }
 </style>
 
