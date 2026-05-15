@@ -2197,6 +2197,78 @@ def update_teacher(teacher_id):
 
     flash("Teacher updated successfully.", "success")
     return redirect(url_for("teachers"))
+@app.route("/deactivate_teacher/<int:teacher_id>", methods=["POST"])
+@login_required
+@roles_required("school_admin", "super_admin")
+def deactivate_teacher(teacher_id):
+
+    school_id = session.get("school_id")
+
+    teacher = fetch_one("""
+        SELECT *
+        FROM teachers
+        WHERE id = ?
+          AND school_id = ?
+    """, (teacher_id, school_id))
+
+    if not teacher:
+        flash("Teacher not found.", "danger")
+        return redirect(url_for("teachers"))
+
+    if teacher.get("user_id"):
+
+        execute_commit("""
+            UPDATE users
+            SET is_active = 0
+            WHERE id = ?
+        """, (teacher["user_id"],))
+
+    log_audit(
+        "Deactivated teacher",
+        "teachers",
+        teacher_id,
+        f"Deactivated teacher {teacher['full_name']}"
+    )
+
+    flash("Teacher deactivated successfully.", "success")
+
+    return redirect(url_for("teachers"))
+@app.route("/activate_teacher/<int:teacher_id>", methods=["POST"])
+@login_required
+@roles_required("school_admin", "super_admin")
+def activate_teacher(teacher_id):
+
+    school_id = session.get("school_id")
+
+    teacher = fetch_one("""
+        SELECT *
+        FROM teachers
+        WHERE id = ?
+          AND school_id = ?
+    """, (teacher_id, school_id))
+
+    if not teacher:
+        flash("Teacher not found.", "danger")
+        return redirect(url_for("teachers"))
+
+    if teacher.get("user_id"):
+
+        execute_commit("""
+            UPDATE users
+            SET is_active = 1
+            WHERE id = ?
+        """, (teacher["user_id"],))
+
+    log_audit(
+        "Activated teacher",
+        "teachers",
+        teacher_id,
+        f"Activated teacher {teacher['full_name']}"
+    )
+
+    flash("Teacher activated successfully.", "success")
+
+    return redirect(url_for("teachers"))
 # =========================================================
 # FEES
 # =========================================================

@@ -109,6 +109,43 @@
               <a href="{{ url_for('assign_class_teacher') }}" class="btn small">
                 Assign Class
               </a>
+              {% if t.is_active == 0 %}
+
+<form method="POST"
+      action="{{ url_for('activate_teacher', teacher_id=t.id) }}">
+
+    <button type="submit" class="btn small success">
+        Activate
+    </button>
+
+</form>
+
+{% else %}
+
+<form method="POST"
+      action="{{ url_for('deactivate_teacher', teacher_id=t.id) }}"
+      onsubmit="return confirm('Deactivate this teacher?')">
+
+    <button type="submit" class="btn small danger">
+        Deactivate
+    </button>
+
+</form>
+
+{% endif %}
+
+{% else %}
+
+<form method="POST"
+      action="{{ url_for('deactivate_teacher', teacher_id=t.id) }}"
+      onsubmit="return confirm('Deactivate this teacher?')">
+
+    <button type="submit" class="btn small danger">
+        Deactivate
+    </button>
+</form>
+
+{% endif %}
 
             </div>
 
@@ -328,6 +365,17 @@ td {
     display: block;
     overflow-x: auto;
   }
+}
+.btn.success {
+    background: #16a34a;
+    color: white;
+    border-color: #16a34a;
+}
+
+.btn.danger {
+    background: #dc2626;
+    color: white;
+    border-color: #dc2626;
 }
 </style>
 
