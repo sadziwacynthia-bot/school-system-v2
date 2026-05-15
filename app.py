@@ -2130,7 +2130,82 @@ def teacher_dashboard():
         assigned_subjects=assigned_subjects,
         attendance_classes=attendance_classes
     )
+@app.route("/edit_teacher/<int:teacher_id>")
+@login_required
+@roles_required("school_admin", "super_admin")
+def edit_teacher(teacher_id):
 
+    school_id = session.get("school_id")
+
+    teacher = fetch_one("""
+        SELECT *
+        FROM teachers
+        WHERE id = ?
+          AND school_id = ?
+    """, (teacher_id, school_id))
+
+    if not teacher:
+        flash("Teacher not found.", "danger")
+        return redirect(url_for("teachers"))
+
+    return render_template(
+        "edit_teacher.html",
+        teacher=teacher
+    )
+@app.route("/update_teacher/<int:teacher_id>", methods=["POST"])
+@login_required
+@roles_required("school_admin", "super_admin")
+def update_teacher(teacher_id):
+
+    school_id = session.get("school_id")
+
+    full_name = request.form.get("full_name", "").strip()
+    email = request.form.get("email", "").strip()
+    phone = request.form.get("phone", "").strip()
+    gender = request.form.get("gender", "").strip()
+    status = request.form.get("status", "Active").strip()
+
+    teacher = fetch_one("""
+        SELECT *
+        FROM teachers
+        WHERE id = ?
+          AND school_id = ?
+    """, (teacher_id, school_id))
+
+    if not teacher:
+        flash("Teacher not found.", "danger")
+        return redirect(url_for("teachers"))
+
+    execute_commit("""
+        UPDATE teachers
+        SET
+            full_name = ?,
+            email = ?,
+            phone = ?,
+            gender = ?,
+            status = ?
+        WHERE id = ?
+          AND school_id = ?
+    """, (
+        full_name,
+        email,
+        phone,
+        gender,
+        status,
+        teacher_id,
+        school_id
+    ))
+
+    log_audit(
+        "Updated teacher",
+        "teachers",
+        teacher_id,
+        f"Updated teacher {full_name}"
+    )
+
+    flash("Teacher updated successfully.", "success")
+
+    return redirect(url_for("teachers"))
 # =========================================================
 # FEES
 # =========================================================
