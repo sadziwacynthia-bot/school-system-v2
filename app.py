@@ -4472,6 +4472,84 @@ def cashbook_reports():
         total_expense=total_expense,
         net_balance=net_balance
     )
+@app.route("/edit_cashbook_entry/<int:entry_id>")
+@login_required
+@roles_required("school_admin", "super_admin")
+def edit_cashbook_entry(entry_id):
+
+    school_id = session.get("school_id")
+
+    entry = fetch_one("""
+        SELECT *
+        FROM cashbook
+        WHERE id = ?
+          AND school_id = ?
+    """, (entry_id, school_id))
+
+    if not entry:
+        flash("Cashbook entry not found.", "danger")
+        return redirect(url_for("cashbook"))
+
+    return render_template(
+        "edit_cashbook_entry.html",
+        entry=entry
+    )
+@app.route("/update_cashbook_entry/<int:entry_id>", methods=["POST"])
+@login_required
+@roles_required("school_admin", "super_admin")
+def update_cashbook_entry(entry_id):
+
+    school_id = session.get("school_id")
+
+    entry = fetch_one("""
+        SELECT *
+        FROM cashbook
+        WHERE id = ?
+          AND school_id = ?
+    """, (entry_id, school_id))
+
+    if not entry:
+        flash("Cashbook entry not found.", "danger")
+        return redirect(url_for("cashbook"))
+
+    description = request.form.get("description", "").strip()
+    category = request.form.get("category", "").strip()
+    payment_method = request.form.get("payment_method", "").strip()
+    reference_number = request.form.get("reference_number", "").strip()
+
+    amount = float(request.form.get("amount") or 0)
+
+    execute_commit("""
+        UPDATE cashbook
+        SET
+            description = ?,
+            category = ?,
+            payment_method = ?,
+            reference_number = ?,
+            amount = ?
+        WHERE id = ?
+          AND school_id = ?
+    """, (
+        description,
+        category,
+        payment_method,
+        reference_number,
+        amount,
+        entry_id,
+        school_id
+    ))
+
+    log_audit(
+        "Updated cashbook entry",
+        "cashbook",
+        entry_id,
+        f"Updated cashbook entry: {description}"
+    )
+
+    flash("Cashbook entry updated successfully.", "success")
+
+    return redirect(url_for("cashbook"))
+
 @app.route("/classes")
 @login_required
 @roles_required("school_admin", "super_admin", "teacher")
