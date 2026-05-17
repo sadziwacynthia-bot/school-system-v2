@@ -1,194 +1,234 @@
 {% extends "base.html" %}
-
 {% block content %}
 
-<style>
-    .cashbook-form-page {
-        padding: 25px;
-        background: #f4f6f9;
-        min-height: 100vh;
-    }
+<div class="form-page">
 
-    .cashbook-form-card {
-        max-width: 750px;
-        background: white;
-        padding: 25px;
-        border-radius: 14px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-    }
-
-    .cashbook-form-card h1 {
-        margin: 0;
-        color: #1f2937;
-    }
-
-    .cashbook-form-card p {
-        color: #6b7280;
-        margin-bottom: 22px;
-    }
-
-    .form-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 16px;
-    }
-
-    .form-group {
-        margin-bottom: 16px;
-    }
-
-    .form-group.full {
-        grid-column: 1 / -1;
-    }
-
-    .form-group label {
-        display: block;
-        margin-bottom: 6px;
-        font-weight: 600;
-        color: #374151;
-    }
-
-    .form-group input,
-    .form-group select,
-    .form-group textarea {
-        width: 100%;
-        padding: 12px;
-        border: 1px solid #d1d5db;
-        border-radius: 8px;
-        font-size: 14px;
-    }
-
-    textarea {
-        min-height: 90px;
-        resize: vertical;
-    }
-
-    .form-actions {
-        display: flex;
-        gap: 10px;
-        margin-top: 20px;
-    }
-
-    .btn-save,
-    .btn-cancel {
-        padding: 11px 16px;
-        border-radius: 8px;
-        border: none;
-        text-decoration: none;
-        font-weight: 600;
-        cursor: pointer;
-    }
-
-    .btn-save {
-        background: #16a34a;
-        color: white;
-    }
-
-    .btn-cancel {
-        background: #374151;
-        color: white;
-    }
-
-    @media (max-width: 800px) {
-        .form-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-</style>
-
-<div class="cashbook-form-page">
-
-    <div class="cashbook-form-card">
-        <h1>Add Cashbook Entry</h1>
-        <p>Record manual income or expense. Fee payments are added automatically from the fees section.</p>
-
-        <form method="POST">
-
-            <div class="form-grid">
-
-                {% if session.get('role') == 'super_admin' %}
-                <div class="form-group full">
-                    <label>School</label>
-                    <select name="school_id" required>
-                        <option value="">Select School</option>
-                        {% for school in schools %}
-                            <option value="{{ school.id }}">{{ school.school_name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                {% endif %}
-
-                <div class="form-group">
-                    <label>Date</label>
-                    <input type="date" name="entry_date" required>
-                </div>
-
-                <div class="form-group">
-                    <label>Type</label>
-                    <select name="entry_type" required>
-                        <option value="">Select Type</option>
-                        <option value="income">Income</option>
-                        <option value="expense">Expense</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Category</label>
-                    <select name="category" required>
-                        <option value="">Select Category</option>
-
-                        <option value="Donations">Donations</option>
-                        <option value="Uniform Sales">Uniform Sales</option>
-                        <option value="Other Income">Other Income</option>
-
-                        <option value="Salaries">Salaries</option>
-                        <option value="Stationery">Stationery</option>
-                        <option value="Transport">Transport</option>
-                        <option value="Utilities">Utilities</option>
-                        <option value="Repairs">Repairs</option>
-                        <option value="Food">Food</option>
-                        <option value="Rent">Rent</option>
-                        <option value="Other Expense">Other Expense</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Amount</label>
-                    <input type="number" name="amount" step="0.01" min="0" placeholder="0.00" required>
-                </div>
-
-                <div class="form-group">
-                    <label>Payment Method</label>
-                    <select name="payment_method">
-                        <option value="">Select Method</option>
-                        <option value="Cash">Cash</option>
-                        <option value="Bank Transfer">Bank Transfer</option>
-                        <option value="Mobile Money">Mobile Money</option>
-                        <option value="Card">Card</option>
-                        <option value="Cheque">Cheque</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Reference Number</label>
-                    <input type="text" name="reference_number" placeholder="Receipt, invoice, transaction ID">
-                </div>
-
-                <div class="form-group full">
-                    <label>Description</label>
-                    <textarea name="description" placeholder="Example: Bought stationery for Form 1 classes..." required></textarea>
-                </div>
-
-            </div>
-
-            <div class="form-actions">
-                <button type="submit" class="btn-save">Save Entry</button>
-                <a href="{{ url_for('cashbook_reports') }}" class="btn-cancel">Cancel</a>
-            </div>
-
-        </form>
+  <div class="page-header">
+    <div>
+      <p class="eyebrow">Finance</p>
+      <h1>Add Cashbook Entry</h1>
+      <p class="muted">Record income or expenses for the school.</p>
     </div>
 
+    <a href="{{ url_for('cashbook') }}" class="btn">
+      Back to Cashbook
+    </a>
+  </div>
+
+  <div class="form-card">
+
+    <form method="POST" action="{{ url_for('add_cashbook_entry') }}">
+
+      <div class="form-grid">
+
+        <div class="form-group">
+          <label>Entry Date</label>
+          <input type="date" name="entry_date" required>
+        </div>
+
+        <div class="form-group">
+          <label>Entry Type</label>
+          <select name="entry_type" required>
+            <option value="">Select Type</option>
+            <option value="income">Income</option>
+            <option value="expense">Expense</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Category</label>
+          <select name="category" required>
+            <option value="">Select Category</option>
+
+            <optgroup label="Income">
+              <option value="School Fees">School Fees</option>
+              <option value="Donations">Donations</option>
+              <option value="Uniform Sales">Uniform Sales</option>
+              <option value="Transport Fees">Transport Fees</option>
+              <option value="Other Income">Other Income</option>
+            </optgroup>
+
+            <optgroup label="Expenses">
+              <option value="Salaries">Salaries</option>
+              <option value="Transport">Transport</option>
+              <option value="Electricity">Electricity</option>
+              <option value="Water">Water</option>
+              <option value="Repairs">Repairs</option>
+              <option value="Stationery">Stationery</option>
+              <option value="Other Expense">Other Expense</option>
+            </optgroup>
+
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Amount</label>
+          <input type="number"
+                 step="0.01"
+                 name="amount"
+                 placeholder="0.00"
+                 required>
+        </div>
+
+        <div class="form-group full-width">
+          <label>Description</label>
+          <textarea name="description"
+                    rows="4"
+                    placeholder="Enter transaction details..."
+                    required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Payment Method</label>
+          <select name="payment_method">
+            <option value="">Select Method</option>
+            <option value="Cash">Cash</option>
+            <option value="Bank Transfer">Bank Transfer</option>
+            <option value="Ecocash">Ecocash</option>
+            <option value="Swipe">Swipe</option>
+            <option value="Cheque">Cheque</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Reference Number</label>
+          <input type="text"
+                 name="reference_number"
+                 placeholder="Optional reference">
+        </div>
+
+      </div>
+
+      <div class="submit-row">
+        <button type="submit" class="btn primary">
+          Save Entry
+        </button>
+      </div>
+
+    </form>
+
+  </div>
+
 </div>
+
+<style>
+.form-page {
+  max-width: 1000px;
+  margin: auto;
+  padding: 16px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+  gap: 12px;
+}
+
+.eyebrow {
+  font-size: 11px;
+  color: #2563eb;
+  font-weight: 800;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.page-header h1 {
+  margin: 4px 0;
+  font-size: 26px;
+  color: #0f172a;
+}
+
+.muted {
+  color: #64748b;
+  font-size: 13px;
+  margin: 0;
+}
+
+.form-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 20px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.full-width {
+  grid-column: 1 / -1;
+}
+
+.form-group label {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: #334155;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.form-group textarea {
+  min-height: 100px;
+}
+
+.submit-row {
+  margin-top: 20px;
+}
+
+.btn {
+  text-decoration: none;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid #dbe3ef;
+  background: white;
+  color: #0f172a;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.btn.primary {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+@media (max-width: 700px) {
+
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .full-width {
+    grid-column: auto;
+  }
+}
+</style>
 
 {% endblock %}
