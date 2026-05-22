@@ -167,7 +167,525 @@
                 <span class="shortcut-icon">🎓</span>
                 <span>Year End</span>
             </a>
+            <a href="{{ url_for('applications') }}" class="card-link">
+    Applications
+</a>
+        </div>{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+
+<div class="dashboard-page">
+
+  <div class="dashboard-hero">
+    <div class="hero-left">
+      {% if session.get("logo_url") %}
+      <img src="{{ url_for('static', filename=session.get('logo_url')) }}" alt="School Logo" class="hero-logo">
+      {% else %}
+      <div class="hero-logo-placeholder">🏫</div>
+      {% endif %}
+
+      <div>
+        <p class="eyebrow">{{ session.get("school_name", "EduTrack") }}</p>
+        <h1>Welcome back{% if session.get('full_name') %}, {{ session.get('full_name') }}{% endif %}</h1>
+        <p class="muted">Overview of students, teachers, fees, admissions, and school activity.</p>
+      </div>
+    </div>
+
+    <div class="hero-actions">
+      <a href="{{ url_for('add_student') }}" class="btn primary">+ Add Student</a>
+      <a href="{{ url_for('add_application') }}" class="btn">+ Application</a>
+      <a href="{{ url_for('add_fee') }}" class="btn">Add Fee</a>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    {% if session.get('role') == 'super_admin' %}
+    <div class="stat-card">
+      <span>Schools</span>
+      <h2>{{ total_schools|default(0) }}</h2>
+      <p>Registered schools</p>
+    </div>
+    {% endif %}
+
+    <div class="stat-card">
+      <span>Students</span>
+      <h2>{{ total_students|default(0) }}</h2>
+      <p>Total learners</p>
+    </div>
+
+    <div class="stat-card">
+      <span>Teachers</span>
+      <h2>{{ total_teachers|default(0) }}</h2>
+      <p>Teaching staff</p>
+    </div>
+
+    <div class="stat-card danger">
+      <span>Outstanding Fees</span>
+      <h2>${{ "%.2f"|format(total_balance|default(0)) }}</h2>
+      <p>Unpaid balance</p>
+    </div>
+  </div>
+
+  <div class="dashboard-grid">
+
+    <section class="panel wide">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Quick Access</p>
+          <h2>Main Modules</h2>
         </div>
+      </div>
+
+      <div class="shortcut-grid">
+        <a href="{{ url_for('students') }}" class="shortcut-card">
+          <span>👥</span>
+          <strong>Students</strong>
+        </a>
+
+        <a href="{{ url_for('applications') }}" class="shortcut-card">
+          <span>📝</span>
+          <strong>Applications</strong>
+        </a>
+
+        <a href="{{ url_for('classes') }}" class="shortcut-card">
+          <span>🏫</span>
+          <strong>Classes</strong>
+        </a>
+
+        <a href="{{ url_for('teachers') }}" class="shortcut-card">
+          <span>🧑‍🏫</span>
+          <strong>Teachers</strong>
+        </a>
+
+        <a href="{{ url_for('attendance') }}" class="shortcut-card">
+          <span>🗓️</span>
+          <strong>Attendance</strong>
+        </a>
+
+        <a href="{{ url_for('fees') }}" class="shortcut-card">
+          <span>💰</span>
+          <strong>Fees</strong>
+        </a>
+
+        <a href="{{ url_for('results') }}" class="shortcut-card">
+          <span>📘</span>
+          <strong>Results</strong>
+        </a>
+
+        <a href="{{ url_for('teacher_resources') }}" class="shortcut-card">
+          <span>📁</span>
+          <strong>Resources</strong>
+        </a>
+      </div>
+    </section>
+
+    <section class="panel">
+      <p class="eyebrow">Admin Tools</p>
+      <h2>Management</h2>
+
+      <div class="shortcut-grid small">
+        <a href="{{ url_for('notices') }}" class="shortcut-card">
+          <span>📢</span>
+          <strong>Notices</strong>
+        </a>
+
+        <a href="{{ url_for('assign_teacher') }}" class="shortcut-card">
+          <span>🧑‍🏫</span>
+          <strong>Assign</strong>
+        </a>
+
+        <a href="{{ url_for('assign_class_teacher') }}" class="shortcut-card">
+          <span>🏫</span>
+          <strong>Class Teacher</strong>
+        </a>
+
+        <a href="{{ url_for('year_end_promotion') }}" class="shortcut-card">
+          <span>🎓</span>
+          <strong>Year End</strong>
+        </a>
+
+        <a href="{{ url_for('fee_reminders') }}" class="shortcut-card">
+          <span>📲</span>
+          <strong>Reminders</strong>
+        </a>
+
+        <a href="{{ url_for('audit_logs') }}" class="shortcut-card">
+          <span>🧾</span>
+          <strong>Audit</strong>
+        </a>
+      </div>
+    </section>
+
+    <section class="panel">
+      <p class="eyebrow">Finance</p>
+      <h2>Fee Status</h2>
+
+      <div class="status-list">
+        <div class="status-item">
+          <span class="dot green"></span>
+          <p>Paid</p>
+          <strong>{{ paid_count|default(0) }}</strong>
+        </div>
+
+        <div class="status-item">
+          <span class="dot yellow"></span>
+          <p>Partial</p>
+          <strong>{{ partial_count|default(0) }}</strong>
+        </div>
+
+        <div class="status-item">
+          <span class="dot red"></span>
+          <p>Pending</p>
+          <strong>{{ pending_count|default(0) }}</strong>
+        </div>
+      </div>
+
+      <div class="finance-actions">
+        <a href="{{ url_for('fee_analytics') }}" class="btn">Fee Analytics</a>
+        <a href="{{ url_for('cashbook') }}" class="btn">Cashbook</a>
+      </div>
+    </section>
+
+    <section class="panel wide">
+      <p class="eyebrow">Classes</p>
+      <h2>Students by Class</h2>
+
+      <div class="class-stack">
+        {% for item in students_by_class|default([]) %}
+        <div class="class-row">
+          <div class="class-row-text">
+            <span>{{ item.class_name or 'Unassigned' }}</span>
+            <strong>{{ item.total or 0 }}</strong>
+          </div>
+
+          {% if total_students|default(0) > 0 and item.total %}
+            {% set width = ((item.total or 0) / (total_students|default(1))) * 100 %}
+          {% else %}
+            {% set width = 0 %}
+          {% endif %}
+
+          <div class="bar-track">
+            <div class="bar-fill" style="width: {{ width|round(0) }}%;"></div>
+          </div>
+        </div>
+        {% else %}
+        <div class="empty">No class data available.</div>
+        {% endfor %}
+      </div>
+    </section>
+
+  </div>
+
+</div>
+
+<style>
+.dashboard-page {
+  max-width: 1250px;
+  margin: auto;
+  padding: 16px;
+}
+
+.dashboard-hero {
+  background: linear-gradient(135deg, #2563eb, #0f172a);
+  color: white;
+  border-radius: 18px;
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.hero-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.hero-logo,
+.hero-logo-placeholder {
+  width: 68px;
+  height: 68px;
+  border-radius: 16px;
+  background: white;
+  object-fit: contain;
+  padding: 8px;
+}
+
+.hero-logo-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  margin: 0;
+  color: #2563eb;
+}
+
+.dashboard-hero .eyebrow,
+.dashboard-hero .muted {
+  color: #dbeafe;
+}
+
+.dashboard-hero h1 {
+  margin: 4px 0;
+  font-size: 25px;
+}
+
+.muted {
+  color: #64748b;
+  font-size: 13px;
+  margin: 0;
+}
+
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  text-decoration: none;
+  border-radius: 10px;
+  padding: 9px 13px;
+  border: 1px solid #dbe3ef;
+  background: white;
+  color: #0f172a;
+  font-weight: 700;
+  font-size: 13px;
+  display: inline-flex;
+  justify-content: center;
+}
+
+.btn.primary {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+.dashboard-hero .btn {
+  border: none;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.stat-card,
+.panel {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+}
+
+.stat-card {
+  padding: 16px;
+}
+
+.stat-card span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.stat-card h2 {
+  margin: 6px 0 0;
+  font-size: 28px;
+  color: #0f172a;
+}
+
+.stat-card p {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.stat-card.danger h2 {
+  color: #dc2626;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 14px;
+}
+
+.panel {
+  padding: 16px;
+}
+
+.panel.wide {
+  grid-column: span 1;
+}
+
+.panel h2 {
+  margin: 4px 0 14px;
+  font-size: 18px;
+  color: #0f172a;
+}
+
+.shortcut-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.shortcut-grid.small {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.shortcut-card {
+  text-decoration: none;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px;
+  color: #0f172a;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: 0.2s ease;
+}
+
+.shortcut-card:hover {
+  transform: translateY(-2px);
+  background: #eef2ff;
+}
+
+.shortcut-card span {
+  font-size: 22px;
+}
+
+.shortcut-card strong {
+  font-size: 13px;
+}
+
+.status-list {
+  display: grid;
+  gap: 10px;
+}
+
+.status-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  background: #f8fafc;
+  padding: 10px;
+  border-radius: 12px;
+}
+
+.status-item p {
+  margin: 0;
+  color: #475569;
+  font-size: 13px;
+}
+
+.status-item strong {
+  color: #0f172a;
+}
+
+.dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+}
+
+.dot.green {
+  background: #16a34a;
+}
+
+.dot.yellow {
+  background: #f59e0b;
+}
+
+.dot.red {
+  background: #dc2626;
+}
+
+.finance-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.class-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.class-row-text {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #334155;
+  margin-bottom: 6px;
+}
+
+.bar-track {
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  background: #2563eb;
+  border-radius: 999px;
+}
+
+.empty {
+  color: #64748b;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+}
+
+@media (max-width: 950px) {
+  .dashboard-hero,
+  .hero-left,
+  .dashboard-grid {
+    display: block;
+  }
+
+  .hero-actions {
+    margin-top: 14px;
+  }
+
+  .shortcut-grid,
+  .shortcut-grid.small {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .panel {
+    margin-bottom: 14px;
+  }
+}
+
+@media (max-width: 600px) {
+  .shortcut-grid,
+  .shortcut-grid.small {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+
+{% endblock %}
     </section>
 
     <section class="dashboard-panel premium-surface">

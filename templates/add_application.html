@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="form-page">
+
+  <div class="page-header">
+    <div>
+      <p class="eyebrow">Admissions</p>
+      <h1>Add Application</h1>
+      <p class="muted">Register a student application for the next school year.</p>
+    </div>
+
+    <a href="{{ url_for('applications') }}" class="btn">
+      Back
+    </a>
+  </div>
+
+  <div class="form-card">
+
+    <form method="POST">
+
+      <div class="form-grid">
+
+        {% if session.get("role") == "super_admin" %}
+        <div class="form-group">
+          <label>School</label>
+          <select name="school_id" required>
+            <option value="">Select School</option>
+            {% for school in schools %}
+            <option value="{{ school.id }}">{{ school.school_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+
+        <div class="form-group">
+          <label>First Name</label>
+          <input type="text" name="first_name" required>
+        </div>
+
+        <div class="form-group">
+          <label>Last Name</label>
+          <input type="text" name="last_name" required>
+        </div>
+
+        <div class="form-group">
+          <label>Gender</label>
+          <select name="gender">
+            <option value="">Select Gender</option>
+            <option>Male</option>
+            <option>Female</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Date of Birth</label>
+          <input type="date" name="date_of_birth">
+        </div>
+
+        <div class="form-group">
+          <label>Guardian Name</label>
+          <input type="text" name="guardian_name">
+        </div>
+
+        <div class="form-group">
+          <label>Guardian Phone</label>
+          <input type="text" name="guardian_phone">
+        </div>
+
+        <div class="form-group">
+          <label>Guardian Email</label>
+          <input type="email" name="guardian_email">
+        </div>
+
+        <div class="form-group">
+          <label>Applied Class</label>
+          <select name="applied_class" required>
+            <option value="">Select Class</option>
+            {% for c in class_options %}
+            <option value="{{ c }}">{{ c }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Applied Year</label>
+          <input type="number" name="applied_year" value="{{ current_year + 1 }}" required>
+        </div>
+
+        <div class="form-group full-width">
+          <label>Notes</label>
+          <textarea name="notes" rows="4"></textarea>
+        </div>
+
+      </div>
+
+      <div class="submit-row">
+        <button type="submit" class="btn primary">
+          Save Application
+        </button>
+      </div>
+
+    </form>
+
+  </div>
+
+</div>
+
+<style>
+.form-page {
+  max-width: 1000px;
+  margin: auto;
+  padding: 16px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.eyebrow {
+  font-size: 11px;
+  color: #2563eb;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.page-header h1 {
+  margin: 4px 0;
+  color: #0f172a;
+}
+
+.muted {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.form-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 20px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.full-width {
+  grid-column: 1 / -1;
+}
+
+.form-group label {
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+}
+
+.submit-row {
+  margin-top: 20px;
+}
+
+.btn {
+  text-decoration: none;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid #dbe3ef;
+  background: white;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.btn.primary {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+@media (max-width: 700px) {
+
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .full-width {
+    grid-column: auto;
+  }
+}
+</style>
+
+{% endblock %}
