@@ -1,202 +1,58 @@
 {% extends "base.html" %}
 {% block title %}Dashboard{% endblock %}
-{% block page_heading %}Dashboard{% endblock %}
 
 {% block content %}
-
-<div class="dashboard-hero">
-    <div style="display:flex; align-items:center; gap:18px;">
-        {% if session.get("logo_url") %}
-            <img src="{{ url_for('static', filename=session.get('logo_url')) }}"
-                 alt="School Logo"
-                 style="height:70px; width:70px; object-fit:contain; background:white; border-radius:14px; padding:8px;">
-        {% else %}
-            <div style="height:70px; width:70px; background:white; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:34px;">
-                🏫
-            </div>
-        {% endif %}
-
-        <div>
-            <p class="dashboard-eyebrow">{{ session.get("school_name", "EduTrack") }}</p>
-            <h2 class="dashboard-hero-title">
-                Welcome back{% if session.get('full_name') %}, {{ session.get('full_name') }}{% endif %}
-            </h2>
-            <p class="dashboard-hero-text">
-                A clean overview of your school activity, learners, teachers, and fees.
-            </p>
-        </div>
-    </div>
-
-    <div class="dashboard-hero-actions">
-        <a href="{{ url_for('add_student') }}" class="btn btn-primary">+ Add Student</a>
-        <a href="{{ url_for('add_fee') }}" class="btn btn-secondary">Add Fee</a>
-        <a href="{{ url_for('add_notice') }}" class="btn btn-secondary">Post Notice</a>
-    </div>
-</div>
-
-<div class="dashboard-stat-grid">
-
-    {% if session.get('role') == 'super_admin' %}
-    <div class="metric-card metric-card-indigo">
-        <div class="metric-top">
-            <span class="metric-label">Schools</span>
-            <span class="metric-icon">🏫</span>
-        </div>
-        <div class="metric-value">{{ total_schools|default(0) }}</div>
-        <div class="metric-note">Registered schools</div>
-    </div>
-    {% endif %}
-
-    <div class="metric-card metric-card-blue">
-        <div class="metric-top">
-            <span class="metric-label">Students</span>
-            <span class="metric-icon">🎓</span>
-        </div>
-        <div class="metric-value">{{ total_students|default(0) }}</div>
-        <div class="metric-note">Total learners</div>
-    </div>
-
-    <div class="metric-card metric-card-emerald">
-        <div class="metric-top">
-            <span class="metric-label">Teachers</span>
-            <span class="metric-icon">👩‍🏫</span>
-        </div>
-        <div class="metric-value">{{ total_teachers|default(0) }}</div>
-        <div class="metric-note">Teaching staff</div>
-    </div>
-
-    <div class="metric-card metric-card-rose">
-        <div class="metric-top">
-            <span class="metric-label">Outstanding Fees</span>
-            <span class="metric-icon">⚠️</span>
-        </div>
-        <div class="metric-value">${{ "%.2f"|format(total_balance|default(0)) }}</div>
-        <div class="metric-note">Unpaid balance</div>
-    </div>
-
-</div>
-
-<div class="dashboard-layout">
-
-    <section class="dashboard-panel premium-surface dashboard-panel-wide">
-        <div class="panel-header-row">
-            <div>
-                <p class="panel-kicker">Quick Access</p>
-                <h3>Main Modules</h3>
-            </div>
-        </div>
-
-        <div class="dashboard-shortcuts">
-            <a href="{{ url_for('students') }}" class="shortcut-card">
-                <span class="shortcut-icon">👥</span>
-                <span>Students</span>
-            </a>
-
-            <a href="{{ url_for('classes') }}" class="shortcut-card">
-                <span class="shortcut-icon">🏫</span>
-                <span>Classes</span>
-            </a>
-
-            <a href="{{ url_for('teachers') }}" class="shortcut-card">
-                <span class="shortcut-icon">🧑‍🏫</span>
-                <span>Teachers</span>
-            </a>
-
-            <a href="{{ url_for('attendance') }}" class="shortcut-card">
-                <span class="shortcut-icon">🗓️</span>
-                <span>Attendance</span>
-            </a>
-
-            <a href="{{ url_for('fees') }}" class="shortcut-card">
-                <span class="shortcut-icon">💰</span>
-                <span>Fees</span>
-            </a>
-
-            <a href="{{ url_for('results') }}" class="shortcut-card">
-                <span class="shortcut-icon">📘</span>
-                <span>Results</span>
-            </a>
-
-            <a href="{{ url_for('teacher_resources') }}" class="shortcut-card">
-                <span class="shortcut-icon">📁</span>
-                <span>Resources</span>
-            </a>
-        </div>
-    </section>
-
-    <section class="dashboard-panel premium-surface">
-        <div class="panel-header-row">
-            <div>
-                <p class="panel-kicker">Admin Tools</p>
-                <h3>Management</h3>
-            </div>
-        </div>
-
-        <div class="dashboard-shortcuts">
-            <a href="{{ url_for('notices') }}" class="shortcut-card">
-                <span class="shortcut-icon">📢</span>
-                <span>Notices</span>
-            </a>
-
-            <a href="{{ url_for('add_assessment') }}" class="shortcut-card">
-                <span class="shortcut-icon">📊</span>
-                <span>Assessment</span>
-            </a>
-
-            <a href="{{ url_for('upload_resource') }}" class="shortcut-card">
-                <span class="shortcut-icon">⬆️</span>
-                <span>Upload Resource</span>
-            </a>
-
-            <a href="{{ url_for('assign_teacher') }}" class="shortcut-card">
-                <span class="shortcut-icon">🧑‍🏫</span>
-                <span>Assign Teacher</span>
-            </a>
-
-            <a href="{{ url_for('assign_class_teacher') }}" class="shortcut-card">
-                <span class="shortcut-icon">🏫</span>
-                <span>Class Teacher</span>
-            </a>
-
-            <a href="{{ url_for('fee_reminders') }}" class="shortcut-card">
-                <span class="shortcut-icon">📲</span>
-                <span>Reminders</span>
-            </a>
-
-            <a href="{{ url_for('year_end_promotion') }}" class="shortcut-card">
-                <span class="shortcut-icon">🎓</span>
-                <span>Year End</span>
-            </a>
-            <a href="{{ url_for('applications') }}" class="card-link">
-    Applications
-</a>
-        </div>{% extends "base.html" %}
 
 <div class="dashboard-page">
 
   <div class="dashboard-hero">
+
     <div class="hero-left">
+
       {% if session.get("logo_url") %}
-      <img src="{{ url_for('static', filename=session.get('logo_url')) }}" alt="School Logo" class="hero-logo">
+      <img src="{{ url_for('static', filename=session.get('logo_url')) }}"
+           alt="School Logo"
+           class="hero-logo">
       {% else %}
       <div class="hero-logo-placeholder">🏫</div>
       {% endif %}
 
       <div>
-        <p class="eyebrow">{{ session.get("school_name", "EduTrack") }}</p>
-        <h1>Welcome back{% if session.get('full_name') %}, {{ session.get('full_name') }}{% endif %}</h1>
-        <p class="muted">Overview of students, teachers, fees, admissions, and school activity.</p>
+        <p class="eyebrow">
+          {{ session.get("school_name", "EduTrack") }}
+        </p>
+
+        <h1>
+          Welcome back{% if session.get('full_name') %}, {{ session.get('full_name') }}{% endif %}
+        </h1>
+
+        <p class="muted">
+          Overview of students, teachers, fees, admissions, and school activity.
+        </p>
       </div>
+
     </div>
 
     <div class="hero-actions">
-      <a href="{{ url_for('add_student') }}" class="btn primary">+ Add Student</a>
-      <a href="{{ url_for('add_application') }}" class="btn">+ Application</a>
-      <a href="{{ url_for('add_fee') }}" class="btn">Add Fee</a>
+
+      <a href="{{ url_for('add_student') }}" class="btn primary">
+        + Add Student
+      </a>
+
+      <a href="{{ url_for('add_application') }}" class="btn">
+        + Application
+      </a>
+
+      <a href="{{ url_for('add_fee') }}" class="btn">
+        Add Fee
+      </a>
+
     </div>
+
   </div>
 
   <div class="stats-grid">
+
     {% if session.get('role') == 'super_admin' %}
     <div class="stat-card">
       <span>Schools</span>
@@ -222,11 +78,13 @@
       <h2>${{ "%.2f"|format(total_balance|default(0)) }}</h2>
       <p>Unpaid balance</p>
     </div>
+
   </div>
 
   <div class="dashboard-grid">
 
     <section class="panel wide">
+
       <div class="panel-header">
         <div>
           <p class="eyebrow">Quick Access</p>
@@ -235,6 +93,7 @@
       </div>
 
       <div class="shortcut-grid">
+
         <a href="{{ url_for('students') }}" class="shortcut-card">
           <span>👥</span>
           <strong>Students</strong>
@@ -274,14 +133,18 @@
           <span>📁</span>
           <strong>Resources</strong>
         </a>
+
       </div>
+
     </section>
 
     <section class="panel">
+
       <p class="eyebrow">Admin Tools</p>
       <h2>Management</h2>
 
       <div class="shortcut-grid small">
+
         <a href="{{ url_for('notices') }}" class="shortcut-card">
           <span>📢</span>
           <strong>Notices</strong>
@@ -311,14 +174,18 @@
           <span>🧾</span>
           <strong>Audit</strong>
         </a>
+
       </div>
+
     </section>
 
     <section class="panel">
+
       <p class="eyebrow">Finance</p>
       <h2>Fee Status</h2>
 
       <div class="status-list">
+
         <div class="status-item">
           <span class="dot green"></span>
           <p>Paid</p>
@@ -336,421 +203,12 @@
           <p>Pending</p>
           <strong>{{ pending_count|default(0) }}</strong>
         </div>
+
       </div>
 
-      <div class="finance-actions">
-        <a href="{{ url_for('fee_analytics') }}" class="btn">Fee Analytics</a>
-        <a href="{{ url_for('cashbook') }}" class="btn">Cashbook</a>
-      </div>
-    </section>
-
-    <section class="panel wide">
-      <p class="eyebrow">Classes</p>
-      <h2>Students by Class</h2>
-
-      <div class="class-stack">
-        {% for item in students_by_class|default([]) %}
-        <div class="class-row">
-          <div class="class-row-text">
-            <span>{{ item.class_name or 'Unassigned' }}</span>
-            <strong>{{ item.total or 0 }}</strong>
-          </div>
-
-          {% if total_students|default(0) > 0 and item.total %}
-            {% set width = ((item.total or 0) / (total_students|default(1))) * 100 %}
-          {% else %}
-            {% set width = 0 %}
-          {% endif %}
-
-          <div class="bar-track">
-            <div class="bar-fill" style="width: {{ width|round(0) }}%;"></div>
-          </div>
-        </div>
-        {% else %}
-        <div class="empty">No class data available.</div>
-        {% endfor %}
-      </div>
     </section>
 
   </div>
-
-</div>
-
-<style>
-.dashboard-page {
-  max-width: 1250px;
-  margin: auto;
-  padding: 16px;
-}
-
-.dashboard-hero {
-  background: linear-gradient(135deg, #2563eb, #0f172a);
-  color: white;
-  border-radius: 18px;
-  padding: 20px;
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.hero-left {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.hero-logo,
-.hero-logo-placeholder {
-  width: 68px;
-  height: 68px;
-  border-radius: 16px;
-  background: white;
-  object-fit: contain;
-  padding: 8px;
-}
-
-.hero-logo-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 32px;
-}
-
-.eyebrow {
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-  margin: 0;
-  color: #2563eb;
-}
-
-.dashboard-hero .eyebrow,
-.dashboard-hero .muted {
-  color: #dbeafe;
-}
-
-.dashboard-hero h1 {
-  margin: 4px 0;
-  font-size: 25px;
-}
-
-.muted {
-  color: #64748b;
-  font-size: 13px;
-  margin: 0;
-}
-
-.hero-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.btn {
-  text-decoration: none;
-  border-radius: 10px;
-  padding: 9px 13px;
-  border: 1px solid #dbe3ef;
-  background: white;
-  color: #0f172a;
-  font-weight: 700;
-  font-size: 13px;
-  display: inline-flex;
-  justify-content: center;
-}
-
-.btn.primary {
-  background: #2563eb;
-  color: white;
-  border-color: #2563eb;
-}
-
-.dashboard-hero .btn {
-  border: none;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  gap: 14px;
-  margin-bottom: 16px;
-}
-
-.stat-card,
-.panel {
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
-}
-
-.stat-card {
-  padding: 16px;
-}
-
-.stat-card span {
-  color: #64748b;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.stat-card h2 {
-  margin: 6px 0 0;
-  font-size: 28px;
-  color: #0f172a;
-}
-
-.stat-card p {
-  margin: 4px 0 0;
-  color: #64748b;
-  font-size: 12px;
-}
-
-.stat-card.danger h2 {
-  color: #dc2626;
-}
-
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: 1.4fr 1fr;
-  gap: 14px;
-}
-
-.panel {
-  padding: 16px;
-}
-
-.panel.wide {
-  grid-column: span 1;
-}
-
-.panel h2 {
-  margin: 4px 0 14px;
-  font-size: 18px;
-  color: #0f172a;
-}
-
-.shortcut-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-}
-
-.shortcut-grid.small {
-  grid-template-columns: repeat(2, 1fr);
-}
-
-.shortcut-card {
-  text-decoration: none;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 14px;
-  color: #0f172a;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  transition: 0.2s ease;
-}
-
-.shortcut-card:hover {
-  transform: translateY(-2px);
-  background: #eef2ff;
-}
-
-.shortcut-card span {
-  font-size: 22px;
-}
-
-.shortcut-card strong {
-  font-size: 13px;
-}
-
-.status-list {
-  display: grid;
-  gap: 10px;
-}
-
-.status-item {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 10px;
-  background: #f8fafc;
-  padding: 10px;
-  border-radius: 12px;
-}
-
-.status-item p {
-  margin: 0;
-  color: #475569;
-  font-size: 13px;
-}
-
-.status-item strong {
-  color: #0f172a;
-}
-
-.dot {
-  width: 11px;
-  height: 11px;
-  border-radius: 999px;
-}
-
-.dot.green {
-  background: #16a34a;
-}
-
-.dot.yellow {
-  background: #f59e0b;
-}
-
-.dot.red {
-  background: #dc2626;
-}
-
-.finance-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 14px;
-  flex-wrap: wrap;
-}
-
-.class-stack {
-  display: grid;
-  gap: 12px;
-}
-
-.class-row-text {
-  display: flex;
-  justify-content: space-between;
-  font-size: 13px;
-  color: #334155;
-  margin-bottom: 6px;
-}
-
-.bar-track {
-  height: 8px;
-  background: #e2e8f0;
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.bar-fill {
-  height: 100%;
-  background: #2563eb;
-  border-radius: 999px;
-}
-
-.empty {
-  color: #64748b;
-  background: #f8fafc;
-  border: 1px dashed #cbd5e1;
-  border-radius: 12px;
-  padding: 16px;
-  text-align: center;
-}
-
-@media (max-width: 950px) {
-  .dashboard-hero,
-  .hero-left,
-  .dashboard-grid {
-    display: block;
-  }
-
-  .hero-actions {
-    margin-top: 14px;
-  }
-
-  .shortcut-grid,
-  .shortcut-grid.small {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .panel {
-    margin-bottom: 14px;
-  }
-}
-
-@media (max-width: 600px) {
-  .shortcut-grid,
-  .shortcut-grid.small {
-    grid-template-columns: 1fr;
-  }
-}
-</style>
-
-
-    </section>
-
-    <section class="dashboard-panel premium-surface">
-        <div class="panel-header-row">
-            <div>
-                <p class="panel-kicker">Finance</p>
-                <h3>Fee Status</h3>
-            </div>
-        </div>
-
-        <div class="status-tiles">
-            <div class="status-tile">
-                <span class="status-dot status-dot-green"></span>
-                <div>
-                    <p>Paid</p>
-                    <strong>{{ paid_count|default(0) }}</strong>
-                </div>
-            </div>
-
-            <div class="status-tile">
-                <span class="status-dot status-dot-yellow"></span>
-                <div>
-                    <p>Partial</p>
-                    <strong>{{ partial_count|default(0) }}</strong>
-                </div>
-            </div>
-
-            <div class="status-tile">
-                <span class="status-dot status-dot-red"></span>
-                <div>
-                    <p>Pending</p>
-                    <strong>{{ pending_count|default(0) }}</strong>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="dashboard-panel premium-surface">
-        <div class="panel-header-row">
-            <div>
-                <p class="panel-kicker">Classes</p>
-                <h3>Students by Class</h3>
-            </div>
-        </div>
-
-        <div class="class-stack">
-            {% for item in students_by_class|default([]) %}
-            <div class="class-row">
-                <div class="class-row-text">
-                    <span>{{ item.class_name or 'Unassigned' }}</span>
-                    <strong>{{ item.total or 0 }}</strong>
-                </div>
-
-                <div class="class-bar-track">
-                    {% if total_students|default(0) > 0 and item.total %}
-                        {% set width = ((item.total or 0) / (total_students|default(1))) * 100 %}
-                    {% else %}
-                        {% set width = 0 %}
-                    {% endif %}
-
-                    <div class="class-bar-fill" style="width: {{ width|round(0) }}%;"></div>
-                </div>
-            </div>
-            {% else %}
-            <div class="empty-state-lite">No class data available.</div>
-            {% endfor %}
-        </div>
-    </section>
 
 </div>
 
