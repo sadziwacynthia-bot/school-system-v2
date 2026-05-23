@@ -71,6 +71,12 @@
         <a href="{{ url_for('fees') }}" class="shortcut-card"><span>💰</span><strong>Fees</strong></a>
         <a href="{{ url_for('results') }}" class="shortcut-card"><span>📘</span><strong>Results</strong></a>
         <a href="{{ url_for('teacher_resources') }}" class="shortcut-card"><span>📁</span><strong>Resources</strong></a>
+        {% if session.get("role") == "super_admin" %}
+<a href="{{ url_for('import_students') }}" class="shortcut-card">
+    <span>📥</span>
+    <strong>Import Students</strong>
+</a>
+{% endif %}
       </div>
     </section>
 
