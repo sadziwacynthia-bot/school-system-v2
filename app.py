@@ -6539,6 +6539,9 @@ def setup_app():
 
             run_waiting_list_migration()
             print("Waiting list migration completed")
+
+            run_waiting_list_migration()
+            print("Waiting list migration completed")
             
             run_audit_migration()
             print("Audit migration completed")
