@@ -1183,6 +1183,13 @@ def audit_logs():
         start_date=start_date,
         end_date=end_date
     )
+@app.route("/fix_waiting_list_table")
+@login_required
+@roles_required("super_admin")
+def fix_waiting_list_table():
+    run_waiting_list_migration()
+    flash("Waiting list table created successfully.", "success")
+    return redirect(url_for("applications"))
 
 @app.route("/fix_audit_table")
 @login_required
