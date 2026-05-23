@@ -13,7 +13,6 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from werkzeug.utils import secure_filename
 
 UPLOAD_FOLDER = os.path.join("static", "uploads", "resources")
 ALLOWED_RESOURCE_EXTENSIONS = {"pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "png", "jpg", "jpeg"}
@@ -22,11 +21,46 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 def allowed_resource_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_RESOURCE_EXTENSIONS
+APPLICATION_UPLOAD_FOLDER = os.path.join("static", "uploads", "applications")
 
+ALLOWED_APPLICATION_EXTENSIONS = {
+    "pdf", "doc", "docx",
+    "png", "jpg", "jpeg"
+}
+
+os.makedirs(APPLICATION_UPLOAD_FOLDER, exist_ok=True)
+
+
+def allowed_application_file(filename):
+    return (
+        "." in filename and
+        filename.rsplit(".", 1)[1].lower() in ALLOWED_APPLICATION_EXTENSIONS
+    )
 LOGO_UPLOAD_FOLDER = os.path.join("static", "uploads", "logos")
 ALLOWED_LOGO_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
 
 os.makedirs(LOGO_UPLOAD_FOLDER, exist_ok=True)
+
+def save_application_file(file, school_id, label):
+    if not file or not file.filename:
+        return ""
+
+    if not allowed_application_file(file.filename):
+        return ""
+
+    original_name = secure_filename(file.filename)
+    ext = original_name.rsplit(".", 1)[1].lower()
+
+    saved_name = (
+        f"application_{school_id}_{label}_"
+        f"{datetime.now().strftime('%Y%m%d%H%M%S')}_"
+        f"{random.randint(1000, 9999)}.{ext}"
+    )
+
+    file_path = os.path.join(APPLICATION_UPLOAD_FOLDER, saved_name)
+    file.save(file_path)
+
+    return f"uploads/applications/{saved_name}"
 
 def allowed_logo_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_LOGO_EXTENSIONS
@@ -5788,12 +5822,21 @@ def applications():
 @login_required
 @roles_required("school_admin", "super_admin")
 def add_application():
+
     school_id = session.get("school_id")
     role = session.get("role")
 
-    schools = fetch_all("SELECT * FROM schools ORDER BY school_name") if role == "super_admin" else []
+    schools = []
+
+    if role == "super_admin":
+        schools = fetch_all("""
+            SELECT *
+            FROM schools
+            ORDER BY school_name
+        """)
 
     if request.method == "POST":
+
         if role == "super_admin":
             school_id = request.form.get("school_id")
 
@@ -5801,38 +5844,104 @@ def add_application():
         last_name = request.form.get("last_name", "").strip()
         gender = request.form.get("gender", "").strip()
         date_of_birth = request.form.get("date_of_birth", "").strip()
+
         guardian_name = request.form.get("guardian_name", "").strip()
         guardian_phone = request.form.get("guardian_phone", "").strip()
         guardian_email = request.form.get("guardian_email", "").strip()
+
         applied_class = request.form.get("applied_class", "").strip()
         applied_year = request.form.get("applied_year", "").strip()
+
         notes = request.form.get("notes", "").strip()
 
-        if not school_id or not first_name or not last_name or not applied_class or not applied_year:
-            flash("School, student name, applied class, and year are required.", "danger")
+        if not school_id:
+            flash("School is required.", "danger")
             return redirect(url_for("add_application"))
+
+        if not first_name or not last_name:
+            flash("Student name is required.", "danger")
+            return redirect(url_for("add_application"))
+
+        if not applied_class:
+            flash("Applied class is required.", "danger")
+            return redirect(url_for("add_application"))
+
+        if not applied_year:
+            flash("Applied year is required.", "danger")
+            return redirect(url_for("add_application"))
+
+        # =========================
+        # FILE UPLOADS
+        # =========================
+
+        birth_certificate_file = save_application_file(
+            request.files.get("birth_certificate_file"),
+            school_id,
+            "birth_certificate"
+        )
+
+        latest_results_file = save_application_file(
+            request.files.get("latest_results_file"),
+            school_id,
+            "latest_results"
+        )
+
+        other_document_file = save_application_file(
+            request.files.get("other_document_file"),
+            school_id,
+            "other_document"
+        )
+
+        # =========================
+        # SAVE APPLICATION
+        # =========================
 
         execute_commit("""
             INSERT INTO waiting_list (
-                school_id, first_name, last_name, gender, date_of_birth,
-                guardian_name, guardian_phone, guardian_email,
-                applied_class, applied_year, status, notes
+                school_id,
+                first_name,
+                last_name,
+                gender,
+                date_of_birth,
+                guardian_name,
+                guardian_phone,
+                guardian_email,
+                applied_class,
+                applied_year,
+                status,
+                notes,
+                birth_certificate_file,
+                latest_results_file,
+                other_document_file
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            school_id, first_name, last_name, gender, date_of_birth,
-            guardian_name, guardian_phone, guardian_email,
-            applied_class, applied_year, "Pending", notes
+            school_id,
+            first_name,
+            last_name,
+            gender,
+            date_of_birth,
+            guardian_name,
+            guardian_phone,
+            guardian_email,
+            applied_class,
+            applied_year,
+            "Pending",
+            notes,
+            birth_certificate_file,
+            latest_results_file,
+            other_document_file
         ))
 
         log_audit(
             "Added application",
             "waiting_list",
             None,
-            f"Added application for {first_name} {last_name} into {applied_class}"
+            f"Added application for {first_name} {last_name}"
         )
 
-        flash("Application added successfully.", "success")
+        flash("Application submitted successfully.", "success")
+
         return redirect(url_for("applications"))
 
     return render_template(
@@ -6641,9 +6750,17 @@ def run_waiting_list_migration():
                     applied_year VARCHAR(20),
                     status VARCHAR(50) DEFAULT 'Pending',
                     notes TEXT,
+                    birth_certificate_file TEXT,
+                    latest_results_file TEXT,
+                    other_document_file TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+
+            cursor.execute("ALTER TABLE waiting_list ADD COLUMN IF NOT EXISTS birth_certificate_file TEXT")
+            cursor.execute("ALTER TABLE waiting_list ADD COLUMN IF NOT EXISTS latest_results_file TEXT")
+            cursor.execute("ALTER TABLE waiting_list ADD COLUMN IF NOT EXISTS other_document_file TEXT")
+
         else:
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS waiting_list (
@@ -6660,13 +6777,29 @@ def run_waiting_list_migration():
                     applied_year TEXT,
                     status TEXT DEFAULT 'Pending',
                     notes TEXT,
+                    birth_certificate_file TEXT,
+                    latest_results_file TEXT,
+                    other_document_file TEXT,
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP
                 )
             """)
 
+            for stmt in [
+                "ALTER TABLE waiting_list ADD COLUMN birth_certificate_file TEXT",
+                "ALTER TABLE waiting_list ADD COLUMN latest_results_file TEXT",
+                "ALTER TABLE waiting_list ADD COLUMN other_document_file TEXT",
+            ]:
+                try:
+                    cursor.execute(stmt)
+                except Exception:
+                    pass
+
         conn.commit()
+        print("Waiting list migration completed")
+
     finally:
         conn.close()
+
 def create_teacher_resources_table():
     conn = get_db()
     cursor = conn.cursor()

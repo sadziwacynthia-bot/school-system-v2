@@ -17,7 +17,7 @@
 
   <div class="form-card">
 
-    <form method="POST">
+    <form method="POST" enctype="multipart/form-data">
 
       <div class="form-grid">
 
@@ -86,7 +86,20 @@
           <label>Applied Year</label>
           <input type="number" name="applied_year" value="{{ current_year + 1 }}" required>
         </div>
+<div class="form-group">
+  <label>Birth Certificate</label>
+  <input type="file" name="birth_certificate_file" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx">
+</div>
 
+<div class="form-group">
+  <label>Latest Results / Report</label>
+  <input type="file" name="latest_results_file" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx">
+</div>
+
+<div class="form-group">
+  <label>Other Document</label>
+  <input type="file" name="other_document_file" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx">
+</div>
         <div class="form-group full-width">
           <label>Notes</label>
           <textarea name="notes" rows="4"></textarea>
