@@ -5476,6 +5476,130 @@ def import_teachers():
 
     return render_template("import_teachers.html", schools=schools)
 
+@app.route("/import_fees", methods=["GET", "POST"])
+@login_required
+@roles_required("super_admin")
+def import_fees():
+    schools = fetch_all("SELECT * FROM schools ORDER BY school_name")
+
+    if request.method == "POST":
+        school_id = request.form.get("school_id")
+        file = request.files.get("fee_file")
+
+        if not school_id or not file or not file.filename:
+            flash("School and Excel file are required.", "danger")
+            return redirect(url_for("import_fees"))
+
+        try:
+            df = pd.read_excel(file)
+
+            required_columns = [
+                "student_number",
+                "term_name",
+                "amount",
+                "paid_amount",
+                "due_date"
+            ]
+
+            missing = [c for c in required_columns if c not in df.columns]
+
+            if missing:
+                flash(f"Missing columns: {', '.join(missing)}", "danger")
+                return redirect(url_for("import_fees"))
+
+            imported = 0
+            skipped = 0
+
+            for _, row in df.iterrows():
+                student_number = str(row.get("student_number", "")).strip()
+                term_name = str(row.get("term_name", "")).strip()
+                due_date = str(row.get("due_date", "")).strip()
+
+                try:
+                    amount = float(row.get("amount", 0) or 0)
+                    paid_amount = float(row.get("paid_amount", 0) or 0)
+                except Exception:
+                    skipped += 1
+                    continue
+
+                if not student_number or not term_name or amount <= 0:
+                    skipped += 1
+                    continue
+
+                student = fetch_one("""
+                    SELECT *
+                    FROM students
+                    WHERE student_number = ?
+                      AND school_id = ?
+                """, (student_number, school_id))
+
+                if not student:
+                    skipped += 1
+                    continue
+
+                existing_fee = fetch_one("""
+                    SELECT id
+                    FROM fees
+                    WHERE school_id = ?
+                      AND student_id = ?
+                      AND term_name = ?
+                """, (school_id, student["id"], term_name))
+
+                if existing_fee:
+                    skipped += 1
+                    continue
+
+                balance = amount - paid_amount
+
+                if balance <= 0:
+                    balance = 0
+                    status = "Paid"
+                elif paid_amount > 0:
+                    status = "Partially Paid"
+                else:
+                    status = "Pending"
+
+                execute_commit("""
+                    INSERT INTO fees (
+                        school_id,
+                        student_id,
+                        term_name,
+                        amount,
+                        paid_amount,
+                        balance,
+                        status,
+                        due_date
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    school_id,
+                    student["id"],
+                    term_name,
+                    amount,
+                    paid_amount,
+                    balance,
+                    status,
+                    due_date
+                ))
+
+                imported += 1
+
+            log_audit(
+                "Bulk imported fees",
+                "fees",
+                None,
+                f"Imported {imported} fee records, skipped {skipped}"
+            )
+
+            flash(f"Fee import complete. Imported: {imported}, Skipped: {skipped}", "success")
+            return redirect(url_for("fees"))
+
+        except Exception as e:
+            flash(f"Import failed: {str(e)}", "danger")
+            return redirect(url_for("import_fees"))
+
+    return render_template("import_fees.html", schools=schools)
+
 @app.route("/reset_user_password/<int:user_id>", methods=["GET", "POST"])
 @login_required
 @roles_required("school_admin", "super_admin")

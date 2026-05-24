@@ -80,6 +80,11 @@
   <span>👨‍🏫</span>
   <strong>Import Teachers</strong>
 </a>
+{% if session.get("role") == "super_admin" %}
+<a href="{{ url_for('import_fees') }}" class="shortcut-card">
+  <span>💳</span>
+  <strong>Import Fees</strong>
+</a>
 {% endif %}
       </div>
     </section>
