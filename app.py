@@ -24,6 +24,8 @@ from utils.db import (
     execute_commit,
     insert_and_get_id
 )
+from utils.auth import login_required, roles_required
+
 UPLOAD_FOLDER = os.path.join("static", "uploads", "resources")
 ALLOWED_RESOURCE_EXTENSIONS = {"pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "png", "jpg", "jpeg"}
 
