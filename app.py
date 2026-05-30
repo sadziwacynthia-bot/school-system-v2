@@ -25,6 +25,7 @@ from utils.db import (
     insert_and_get_id
 )
 from utils.auth import login_required, roles_required
+from utils.audit import log_audit, run_audit_migration
 
 UPLOAD_FOLDER = os.path.join("static", "uploads", "resources")
 ALLOWED_RESOURCE_EXTENSIONS = {"pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "png", "jpg", "jpeg"}
@@ -718,48 +719,6 @@ def generate_teacher_id():
     return "TCH" + "".join(random.choices(string.digits, k=3))
 
 
-def login_required(f):
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        if "user_id" not in session:
-            flash("Please log in first.", "warning")
-            return redirect(url_for("login"))
-
-        school_id = session.get("school_id")
-        role = session.get("role")
-
-        if role != "super_admin" and school_id:
-            school = fetch_one("SELECT * FROM schools WHERE id = ?", (school_id,))
-            if school:
-                is_active = row_get(school, "is_active", 1)
-                subscription_status = row_get(school, "subscription_status", "active")
-
-                if int(is_active or 0) != 1 or subscription_status in ["suspended", "overdue"]:
-                    session.clear()
-                    return redirect(url_for("subscription_expired"))
-
-        return f(*args, **kwargs)
-    return wrapper
-
-def roles_required(*allowed_roles):
-    def decorator(f):
-        @wraps(f)
-        def wrapper(*args, **kwargs):
-            if "user_id" not in session:
-                flash("Please log in first.", "warning")
-                return redirect(url_for("login"))
-
-            role = session.get("role")
-            if role not in allowed_roles:
-                flash("You are not allowed to access that page.", "danger")
-                if role == "parent":
-                    return redirect(url_for("parent_dashboard"))
-                if role == "teacher":
-                    return redirect(url_for("teacher_dashboard"))
-                return redirect(url_for("dashboard"))
-            return f(*args, **kwargs)
-        return wrapper
-    return decorator
 
 
 def delete_by_scope(cursor, query, params):
@@ -6449,25 +6408,6 @@ def run_subjects_migration():
     finally:
         conn.close()
 
-def log_audit(action, table_name=None, record_id=None, details=None):
-    try:
-        execute_commit("""
-            INSERT INTO audit_logs (
-                school_id, user_id, username, role, action, table_name, record_id, details
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            session.get("school_id"),
-            session.get("user_id"),
-            session.get("username") or session.get("full_name"),
-            session.get("role"),
-            action,
-            table_name,
-            record_id,
-            details
-        ))
-    except Exception as e:
-        print("AUDIT LOG ERROR:", str(e), flush=True)
 
 
 def run_timetable_foundation_migrations():
@@ -6773,72 +6713,7 @@ def create_year_end_tables():
         conn.commit()
     finally:
         conn.close()
-
-def run_audit_migration():
-    conn = get_db()
-    cursor = conn.cursor()
-
-    try:
-
-        if is_postgres():
-
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS audit_logs (
-                    id SERIAL PRIMARY KEY,
-                    school_id INTEGER,
-                    user_id INTEGER,
-                    username VARCHAR(255),
-                    role VARCHAR(50),
-                    action TEXT,
-                    table_name VARCHAR(100),
-                    record_id INTEGER,
-                    details TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-
-            cursor.execute(
-                "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS school_id INTEGER"
-            )
-
-            cursor.execute(
-                "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS role VARCHAR(50)"
-            )
-
-        else:
-
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS audit_logs (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    school_id INTEGER,
-                    user_id INTEGER,
-                    username TEXT,
-                    role TEXT,
-                    action TEXT,
-                    table_name TEXT,
-                    record_id INTEGER,
-                    details TEXT,
-                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-
-            for stmt in [
-                "ALTER TABLE audit_logs ADD COLUMN school_id INTEGER",
-                "ALTER TABLE audit_logs ADD COLUMN role TEXT"
-            ]:
-                try:
-                    cursor.execute(stmt)
-                except Exception:
-                    pass
-
-        conn.commit()
-        print("Audit migration completed")
-
-    except Exception as e:
-        print("Audit migration error:", str(e))
-
-    finally:
-        conn.close()        
+     
 
 def setup_app():
     try:
@@ -6909,43 +6784,6 @@ def setup_app():
         print("SETUP ERROR:", e)
 
 
-def run_audit_migration():
-    conn = get_db()
-    cursor = conn.cursor()
-
-    try:
-        if is_postgres():
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS audit_logs (
-                    id SERIAL PRIMARY KEY,
-                    user_id INTEGER,
-                    username VARCHAR(255),
-                    role VARCHAR(50),
-                    action VARCHAR(255) NOT NULL,
-                    table_name VARCHAR(100),
-                    record_id INTEGER,
-                    details TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-        else:
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS audit_logs (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER,
-                    username TEXT,
-                    role TEXT,
-                    action TEXT NOT NULL,
-                    table_name TEXT,
-                    record_id INTEGER,
-                    details TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-
-        conn.commit()
-    finally:
-        conn.close()
 
 def run_waiting_list_migration():
     conn = get_db()
