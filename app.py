@@ -1178,8 +1178,8 @@ def audit_logs():
     params = []
 
     if role != "super_admin":
-        query += " AND school_id = ?"
-        params.append(school_id)
+        query += " AND role != ?"
+        params.append("super_admin")
 
     if search:
         query += """
