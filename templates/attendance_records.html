@@ -247,7 +247,30 @@
             <p>{{ attendance_percentage }}%</p>
         </div>
     </div>
+<div class="stats-grid">
+  <div class="stat-card">
+    <span>Total Records</span>
+    <h2>{{ total_records }}</h2>
+  </div>
 
+  <div class="stat-card">
+    <span>Present</span>
+    <h2>{{ present_count }}</h2>
+    <p>{{ attendance_percentage }}%</p>
+  </div>
+
+  <div class="stat-card">
+    <span>Absent</span>
+    <h2>{{ absent_count }}</h2>
+    <p>{{ absent_percentage }}%</p>
+  </div>
+
+  <div class="stat-card">
+    <span>Late</span>
+    <h2>{{ late_count }}</h2>
+    <p>{{ late_percentage }}%</p>
+  </div>
+</div>
     <div class="table-card">
         <table class="attendance-table">
             <thead>

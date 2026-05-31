@@ -2515,17 +2515,19 @@ def attendance_records():
         attendance_percentage = round((present_count / total_records) * 100, 1)
 
     return render_template(
-        "attendance_records.html",
-        attendance_records=attendance_list,
-        class_options=CLASS_OPTIONS,
-        selected_class=selected_class,
-        selected_date=selected_date,
-        total_records=total_records,
-        present_count=present_count,
-        absent_count=absent_count,
-        late_count=late_count,
-        attendance_percentage=attendance_percentage
-    )
+    "attendance_records.html",
+    attendance_records=attendance_list,
+    class_options=CLASS_OPTIONS,
+    selected_class=selected_class,
+    selected_date=selected_date,
+    total_records=total_records,
+    present_count=present_count,
+    absent_count=absent_count,
+    late_count=late_count,
+    attendance_percentage=attendance_percentage,
+    absent_percentage=absent_percentage,
+    late_percentage=late_percentage
+)
 
 # =========================================================
 # ASSIGNMENTS
