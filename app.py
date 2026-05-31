@@ -35,8 +35,10 @@ from utils.helpers import (
     get_next_class
 )
 from routes.students import register_student_routes
-from routes.applications import register_application_routes, run_waiting_list_migration
-
+from routes.applications import (
+    register_application_routes,
+    run_waiting_list_migration
+)
 UPLOAD_FOLDER = os.path.join("static", "uploads", "resources")
 ALLOWED_RESOURCE_EXTENSIONS = {"pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "png", "jpg", "jpeg"}
 
