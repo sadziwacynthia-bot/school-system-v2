@@ -2380,21 +2380,65 @@ def save_attendance():
     conn = get_db()
     cursor = conn.cursor()
 
+    saved_count = 0
+    updated_count = 0
+
     try:
         for student_id in student_ids:
             if role != "super_admin":
-                student = fetch_one("SELECT * FROM students WHERE id = ? AND school_id = ?", (student_id, school_id))
+                student = fetch_one(
+                    "SELECT * FROM students WHERE id = ? AND school_id = ?",
+                    (student_id, school_id)
+                )
+                if not student:
+                    continue
+            else:
+                student = fetch_one(
+                    "SELECT * FROM students WHERE id = ?",
+                    (student_id,)
+                )
                 if not student:
                     continue
 
+                school_id = student["school_id"]
+
             status = request.form.get(f"status_{student_id}")
-            cursor.execute(
-                convert_query("""
-                    INSERT INTO attendance (school_id, student_id, class_name, date, status)
-                    VALUES (?, ?, ?, ?, ?)
-                """),
-                (school_id, student_id, class_name, date, status),
-            )
+
+            existing = fetch_one("""
+                SELECT id
+                FROM attendance
+                WHERE student_id = ?
+                  AND class_name = ?
+                  AND date = ?
+            """, (student_id, class_name, date))
+
+            if existing:
+                cursor.execute(
+                    convert_query("""
+                        UPDATE attendance
+                        SET status = ?
+                        WHERE id = ?
+                    """),
+                    (status, existing["id"])
+                )
+                updated_count += 1
+            else:
+                cursor.execute(
+                    convert_query("""
+                        INSERT INTO attendance (
+                            school_id, student_id, class_name, date, status
+                        )
+                        VALUES (?, ?, ?, ?, ?)
+                    """),
+                    (
+                        school_id,
+                        student_id,
+                        class_name,
+                        date,
+                        status
+                    )
+                )
+                saved_count += 1
 
         conn.commit()
 
@@ -2402,17 +2446,24 @@ def save_attendance():
             "Saved attendance",
             "attendance",
             None,
-            f"Saved attendance for {class_name} on {date}"
-)
-        flash("Attendance saved successfully.", "success")
+            f"Saved attendance for {class_name} on {date}. New: {saved_count}, Updated: {updated_count}"
+        )
+
+        if saved_count > 0 and updated_count > 0:
+            flash(f"Attendance saved. New records: {saved_count}, updated records: {updated_count}.", "success")
+        elif updated_count > 0:
+            flash("Attendance was already marked for this class/date, so the records were updated instead of duplicated.", "success")
+        else:
+            flash("Attendance saved successfully.", "success")
+
     except Exception as e:
         conn.rollback()
         flash(f"Error saving attendance: {str(e)}", "danger")
+
     finally:
         conn.close()
 
     return redirect(url_for("attendance", class_name=class_name))
-
 @app.route("/debug_audit")
 @login_required
 @roles_required("super_admin")
