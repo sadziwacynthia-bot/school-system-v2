@@ -4895,6 +4895,228 @@ def import_fees():
             return redirect(url_for("import_fees"))
 
     return render_template("import_fees.html", schools=schools)
+@app.route("/import_fee_transactions", methods=["GET", "POST"])
+@login_required
+@roles_required("super_admin")
+def import_fee_transactions():
+    schools = fetch_all("SELECT * FROM schools ORDER BY school_name")
+
+    if request.method == "POST":
+        school_id = request.form.get("school_id")
+        file = request.files.get("transaction_file")
+
+        if not school_id or not file or not file.filename:
+            flash("School and Excel file are required.", "danger")
+            return redirect(url_for("import_fee_transactions"))
+
+        try:
+            df = pd.read_excel(file)
+
+            required_columns = [
+                "student_number",
+                "payment_date",
+                "details",
+                "receipt_number",
+                "amount",
+                "term_name"
+            ]
+
+            missing = [c for c in required_columns if c not in df.columns]
+            if missing:
+                flash(f"Missing columns: {', '.join(missing)}", "danger")
+                return redirect(url_for("import_fee_transactions"))
+
+            imported = 0
+            skipped = 0
+
+            conn = get_db()
+            cursor = conn.cursor()
+
+            try:
+                for _, row in df.iterrows():
+                    student_number = str(row.get("student_number", "")).strip()
+                    payment_date = str(row.get("payment_date", "")).strip()
+                    details = str(row.get("details", "")).strip()
+                    receipt_number = str(row.get("receipt_number", "")).strip()
+                    term_name = str(row.get("term_name", "Term 1")).strip() or "Term 1"
+
+                    try:
+                        amount_paid = float(row.get("amount", 0) or 0)
+                    except Exception:
+                        skipped += 1
+                        continue
+
+                    if not student_number or amount_paid <= 0:
+                        skipped += 1
+                        continue
+
+                    student = fetch_one("""
+                        SELECT *
+                        FROM students
+                        WHERE student_number = ?
+                          AND school_id = ?
+                    """, (student_number, school_id))
+
+                    if not student:
+                        skipped += 1
+                        continue
+
+                    # Skip duplicate receipts for the same school/student
+                    if receipt_number:
+                        duplicate = fetch_one("""
+                            SELECT fp.id
+                            FROM fee_payments fp
+                            JOIN fees f ON fp.fee_id = f.id
+                            WHERE f.school_id = ?
+                              AND f.student_id = ?
+                              AND fp.receipt_number = ?
+                        """, (school_id, student["id"], receipt_number))
+
+                        if duplicate:
+                            skipped += 1
+                            continue
+
+                    fee = fetch_one("""
+                        SELECT *
+                        FROM fees
+                        WHERE school_id = ?
+                          AND student_id = ?
+                          AND term_name = ?
+                    """, (school_id, student["id"], term_name))
+
+                    if not fee:
+                        cursor.execute(convert_query("""
+                            INSERT INTO fees (
+                                school_id,
+                                student_id,
+                                term_name,
+                                amount,
+                                paid_amount,
+                                balance,
+                                status,
+                                due_date
+                            )
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        """), (
+                            school_id,
+                            student["id"],
+                            term_name,
+                            0,
+                            0,
+                            0,
+                            "Pending",
+                            ""
+                        ))
+
+                        fee = fetch_one("""
+                            SELECT *
+                            FROM fees
+                            WHERE school_id = ?
+                              AND student_id = ?
+                              AND term_name = ?
+                        """, (school_id, student["id"], term_name))
+
+                    fee_id = fee["id"]
+
+                    cursor.execute(convert_query("""
+                        INSERT INTO fee_payments (
+                            school_id,
+                            fee_id,
+                            payment_date,
+                            amount_paid,
+                            receipt_number
+                        )
+                        VALUES (?, ?, ?, ?, ?)
+                    """), (
+                        school_id,
+                        fee_id,
+                        payment_date,
+                        amount_paid,
+                        receipt_number
+                    ))
+
+                    old_paid = float(fee["paid_amount"] or 0)
+                    old_amount = float(fee["amount"] or 0)
+
+                    new_paid = old_paid + amount_paid
+                    new_amount = max(old_amount, new_paid)
+                    new_balance = max(new_amount - new_paid, 0)
+
+                    if new_balance <= 0:
+                        status = "Paid"
+                    elif new_paid > 0:
+                        status = "Partially Paid"
+                    else:
+                        status = "Pending"
+
+                    cursor.execute(convert_query("""
+                        UPDATE fees
+                        SET amount = ?,
+                            paid_amount = ?,
+                            balance = ?,
+                            status = ?
+                        WHERE id = ?
+                    """), (
+                        new_amount,
+                        new_paid,
+                        new_balance,
+                        status,
+                        fee_id
+                    ))
+
+                    student_name = f"{student['first_name']} {student['last_name']}".strip()
+
+                    cursor.execute(convert_query("""
+                        INSERT INTO cashbook (
+                            school_id,
+                            entry_date,
+                            entry_type,
+                            category,
+                            description,
+                            amount,
+                            payment_method,
+                            reference_number,
+                            created_by
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """), (
+                        school_id,
+                        payment_date,
+                        "income",
+                        "School Fees",
+                        f"{details} payment from {student_name}",
+                        amount_paid,
+                        "Imported Payment",
+                        receipt_number,
+                        session.get("full_name", "System")
+                    ))
+
+                    imported += 1
+
+                conn.commit()
+
+            except Exception:
+                conn.rollback()
+                raise
+
+            finally:
+                conn.close()
+
+            log_audit(
+                "Imported fee transactions",
+                "fee_payments",
+                None,
+                f"Imported {imported} payment transactions, skipped {skipped}"
+            )
+
+            flash(f"Transaction import complete. Imported: {imported}, Skipped: {skipped}", "success")
+            return redirect(url_for("fees"))
+
+        except Exception as e:
+            flash(f"Import failed: {str(e)}", "danger")
+            return redirect(url_for("import_fee_transactions"))
+
+    return render_template("import_fee_transactions.html", schools=schools)
 
 @app.route("/reset_user_password/<int:user_id>", methods=["GET", "POST"])
 @login_required
