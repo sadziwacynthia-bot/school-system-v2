@@ -4895,6 +4895,7 @@ def import_fees():
             return redirect(url_for("import_fees"))
 
     return render_template("import_fees.html", schools=schools)
+
 @app.route("/import_fee_transactions", methods=["GET", "POST"])
 @login_required
 @roles_required("super_admin")
@@ -4961,7 +4962,6 @@ def import_fee_transactions():
                         skipped += 1
                         continue
 
-                    # Skip duplicate receipts for the same school/student
                     if receipt_number:
                         duplicate = fetch_one("""
                             SELECT fp.id
@@ -4984,39 +4984,65 @@ def import_fee_transactions():
                           AND term_name = ?
                     """, (school_id, student["id"], term_name))
 
-                    if not fee:
-                        cursor.execute(convert_query("""
-                            INSERT INTO fees (
+                    if fee:
+                        fee_id = fee["id"]
+                        old_paid = float(fee["paid_amount"] or 0)
+                        old_amount = float(fee["amount"] or 0)
+                    else:
+                        if is_postgres():
+                            cursor.execute(convert_query("""
+                                INSERT INTO fees (
+                                    school_id,
+                                    student_id,
+                                    term_name,
+                                    amount,
+                                    paid_amount,
+                                    balance,
+                                    status,
+                                    due_date
+                                )
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                                RETURNING id
+                            """), (
                                 school_id,
-                                student_id,
+                                student["id"],
                                 term_name,
-                                amount,
-                                paid_amount,
-                                balance,
-                                status,
-                                due_date
-                            )
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                        """), (
-                            school_id,
-                            student["id"],
-                            term_name,
-                            0,
-                            0,
-                            0,
-                            "Pending",
-                            ""
-                        ))
+                                0,
+                                0,
+                                0,
+                                "Pending",
+                                ""
+                            ))
 
-                        fee = fetch_one("""
-                            SELECT *
-                            FROM fees
-                            WHERE school_id = ?
-                              AND student_id = ?
-                              AND term_name = ?
-                        """, (school_id, student["id"], term_name))
+                            fee_id = cursor.fetchone()["id"]
+                        else:
+                            cursor.execute(convert_query("""
+                                INSERT INTO fees (
+                                    school_id,
+                                    student_id,
+                                    term_name,
+                                    amount,
+                                    paid_amount,
+                                    balance,
+                                    status,
+                                    due_date
+                                )
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                            """), (
+                                school_id,
+                                student["id"],
+                                term_name,
+                                0,
+                                0,
+                                0,
+                                "Pending",
+                                ""
+                            ))
 
-                    fee_id = fee["id"]
+                            fee_id = cursor.lastrowid
+
+                        old_paid = 0
+                        old_amount = 0
 
                     cursor.execute(convert_query("""
                         INSERT INTO fee_payments (
@@ -5034,9 +5060,6 @@ def import_fee_transactions():
                         amount_paid,
                         receipt_number
                     ))
-
-                    old_paid = float(fee["paid_amount"] or 0)
-                    old_amount = float(fee["amount"] or 0)
 
                     new_paid = old_paid + amount_paid
                     new_amount = max(old_amount, new_paid)
@@ -5109,7 +5132,10 @@ def import_fee_transactions():
                 f"Imported {imported} payment transactions, skipped {skipped}"
             )
 
-            flash(f"Transaction import complete. Imported: {imported}, Skipped: {skipped}", "success")
+            flash(
+                f"Transaction import complete. Imported: {imported}, Skipped: {skipped}",
+                "success"
+            )
             return redirect(url_for("fees"))
 
         except Exception as e:
