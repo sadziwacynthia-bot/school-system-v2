@@ -5144,6 +5144,222 @@ def import_fee_transactions():
 
     return render_template("import_fee_transactions.html", schools=schools)
 
+@app.route("/edit_fee/<int:fee_id>", methods=["GET", "POST"])
+@login_required
+@roles_required("school_admin", "super_admin")
+def edit_fee(fee_id):
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    if role == "super_admin":
+        fee = fetch_one("""
+            SELECT f.*, s.first_name, s.last_name, s.student_number, s.class_name
+            FROM fees f
+            JOIN students s ON f.student_id = s.id
+            WHERE f.id = ?
+        """, (fee_id,))
+    else:
+        fee = fetch_one("""
+            SELECT f.*, s.first_name, s.last_name, s.student_number, s.class_name
+            FROM fees f
+            JOIN students s ON f.student_id = s.id
+            WHERE f.id = ?
+              AND f.school_id = ?
+        """, (fee_id, school_id))
+
+    if not fee:
+        flash("Fee record not found or access denied.", "danger")
+        return redirect(url_for("fees"))
+
+    if request.method == "POST":
+        term_name = request.form.get("term_name", "").strip()
+        due_date = request.form.get("due_date", "").strip()
+
+        try:
+            amount = float(request.form.get("amount") or 0)
+            paid_amount = float(request.form.get("paid_amount") or 0)
+        except Exception:
+            flash("Amount and paid amount must be valid numbers.", "danger")
+            return redirect(url_for("edit_fee", fee_id=fee_id))
+
+        if amount < 0 or paid_amount < 0:
+            flash("Amounts cannot be negative.", "danger")
+            return redirect(url_for("edit_fee", fee_id=fee_id))
+
+        balance = amount - paid_amount
+
+        if balance <= 0:
+            balance = 0
+            status = "Paid"
+        elif paid_amount > 0:
+            status = "Partially Paid"
+        else:
+            status = "Pending"
+
+        execute_commit("""
+            UPDATE fees
+            SET term_name = ?,
+                amount = ?,
+                paid_amount = ?,
+                balance = ?,
+                status = ?,
+                due_date = ?
+            WHERE id = ?
+        """, (
+            term_name,
+            amount,
+            paid_amount,
+            balance,
+            status,
+            due_date,
+            fee_id
+        ))
+
+        log_audit(
+            "Edited fee record",
+            "fees",
+            fee_id,
+            f"Edited fee for {fee['first_name']} {fee['last_name']} - {term_name}"
+        )
+
+        flash("Fee record updated successfully.", "success")
+        return redirect(url_for("fees"))
+
+    return render_template("edit_fee.html", fee=fee)
+
+@app.route("/set_class_fees", methods=["GET", "POST"])
+@login_required
+@roles_required("school_admin", "super_admin")
+def set_class_fees():
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    schools = fetch_all("SELECT * FROM schools ORDER BY school_name") if role == "super_admin" else []
+
+    selected_school_id = request.args.get("school_id") or school_id
+
+    if request.method == "POST":
+        if role == "super_admin":
+            selected_school_id = request.form.get("school_id")
+
+        class_name = request.form.get("class_name", "").strip()
+        term_name = request.form.get("term_name", "").strip()
+        due_date = request.form.get("due_date", "").strip()
+
+        try:
+            amount = float(request.form.get("amount") or 0)
+        except Exception:
+            flash("Fee amount must be a valid number.", "danger")
+            return redirect(url_for("set_class_fees"))
+
+        if not selected_school_id or not class_name or not term_name or amount <= 0:
+            flash("School, class, term, and amount are required.", "danger")
+            return redirect(url_for("set_class_fees"))
+
+        students = fetch_all("""
+            SELECT *
+            FROM students
+            WHERE school_id = ?
+              AND class_name = ?
+              AND COALESCE(current_status, 'Active') = 'Active'
+            ORDER BY first_name, last_name
+        """, (selected_school_id, class_name))
+
+        created = 0
+        skipped = 0
+
+        for student in students:
+            discount_value = request.form.get(f"discount_{student['id']}", "0")
+
+            try:
+                discount = float(discount_value or 0)
+            except Exception:
+                discount = 0
+
+            final_amount = max(amount - discount, 0)
+
+            existing = fetch_one("""
+                SELECT id
+                FROM fees
+                WHERE school_id = ?
+                  AND student_id = ?
+                  AND term_name = ?
+            """, (selected_school_id, student["id"], term_name))
+
+            if existing:
+                skipped += 1
+                continue
+
+            status = "Pending"
+
+            execute_commit("""
+                INSERT INTO fees (
+                    school_id,
+                    student_id,
+                    term_name,
+                    amount,
+                    paid_amount,
+                    balance,
+                    status,
+                    due_date
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                selected_school_id,
+                student["id"],
+                term_name,
+                final_amount,
+                0,
+                final_amount,
+                status,
+                due_date
+            ))
+
+            created += 1
+
+        log_audit(
+            "Set class fees",
+            "fees",
+            None,
+            f"Set {term_name} fees for {class_name}. Created: {created}, Skipped: {skipped}"
+        )
+
+        flash(f"Class fees created. Created: {created}, Skipped existing: {skipped}", "success")
+        return redirect(url_for("fees"))
+
+    class_rows = []
+    students = []
+    selected_class = request.args.get("class_name", "").strip()
+
+    if selected_school_id:
+        class_rows = fetch_all("""
+            SELECT DISTINCT class_name
+            FROM students
+            WHERE school_id = ?
+              AND class_name IS NOT NULL
+              AND class_name != ''
+            ORDER BY class_name
+        """, (selected_school_id,))
+
+    if selected_school_id and selected_class:
+        students = fetch_all("""
+            SELECT *
+            FROM students
+            WHERE school_id = ?
+              AND class_name = ?
+              AND COALESCE(current_status, 'Active') = 'Active'
+            ORDER BY first_name, last_name
+        """, (selected_school_id, selected_class))
+
+    return render_template(
+        "set_class_fees.html",
+        schools=schools,
+        class_rows=class_rows,
+        students=students,
+        selected_school_id=str(selected_school_id) if selected_school_id else "",
+        selected_class=selected_class
+    )
+
 @app.route("/reset_user_password/<int:user_id>", methods=["GET", "POST"])
 @login_required
 @roles_required("school_admin", "super_admin")
