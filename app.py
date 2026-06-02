@@ -4895,7 +4895,6 @@ def import_fees():
             return redirect(url_for("import_fees"))
 
     return render_template("import_fees.html", schools=schools)
-
 @app.route("/import_fee_transactions", methods=["GET", "POST"])
 @login_required
 @roles_required("super_admin")
@@ -4951,38 +4950,41 @@ def import_fee_transactions():
                         skipped += 1
                         continue
 
-                    student = fetch_one("""
+                    cursor.execute(convert_query("""
                         SELECT *
                         FROM students
                         WHERE student_number = ?
                           AND school_id = ?
-                    """, (student_number, school_id))
+                    """), (student_number, school_id))
+                    student = cursor.fetchone()
 
                     if not student:
                         skipped += 1
                         continue
 
                     if receipt_number:
-                        duplicate = fetch_one("""
+                        cursor.execute(convert_query("""
                             SELECT fp.id
                             FROM fee_payments fp
                             JOIN fees f ON fp.fee_id = f.id
                             WHERE f.school_id = ?
                               AND f.student_id = ?
                               AND fp.receipt_number = ?
-                        """, (school_id, student["id"], receipt_number))
+                        """), (school_id, student["id"], receipt_number))
+                        duplicate = cursor.fetchone()
 
                         if duplicate:
                             skipped += 1
                             continue
 
-                    fee = fetch_one("""
+                    cursor.execute(convert_query("""
                         SELECT *
                         FROM fees
                         WHERE school_id = ?
                           AND student_id = ?
                           AND term_name = ?
-                    """, (school_id, student["id"], term_name))
+                    """), (school_id, student["id"], term_name))
+                    fee = cursor.fetchone()
 
                     if fee:
                         fee_id = fee["id"]
@@ -5013,7 +5015,6 @@ def import_fee_transactions():
                                 "Pending",
                                 ""
                             ))
-
                             fee_id = cursor.fetchone()["id"]
                         else:
                             cursor.execute(convert_query("""
@@ -5038,7 +5039,6 @@ def import_fee_transactions():
                                 "Pending",
                                 ""
                             ))
-
                             fee_id = cursor.lastrowid
 
                         old_paid = 0
