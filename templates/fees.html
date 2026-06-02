@@ -1,4 +1,6 @@
 {% extends "base.html" %}
+{% block title %}Fees{% endblock %}
+
 {% block content %}
 
 <div class="fees-page">
@@ -7,30 +9,27 @@
     <div>
       <p class="eyebrow">Finance</p>
       <h1>Fees</h1>
-      <p class="muted">Manage student fees, payments, and balances.</p>
+      <p class="muted">Manage student fees, payments, balances, and statements.</p>
     </div>
 
     <div class="header-actions">
       <a href="{{ url_for('add_fee') }}" class="btn primary">+ Add Fee</a>
-      <a href="{{ url_for('set_class_fees') }}" class="btn primary">
-  Set Class Fees
-</a>
+      <a href="{{ url_for('set_class_fees') }}" class="btn">Set Class Fees</a>
     </div>
   </div>
 
-  <!-- SEARCH -->
   <form method="GET" action="{{ url_for('fees') }}" class="search-bar">
-    <input type="text" name="search" placeholder="Search student, class..." value="{{ search or '' }}">
+    <input type="text" name="search" placeholder="Search student, class, student number..." value="{{ search or '' }}">
     <button type="submit">Search</button>
   </form>
 
-  <!-- TABLE -->
   <div class="table-card">
     <table>
       <thead>
         <tr>
           <th>Student</th>
           <th>Class</th>
+          <th>Term</th>
           <th>Total</th>
           <th>Paid</th>
           <th>Balance</th>
@@ -49,16 +48,10 @@
           </td>
 
           <td>{{ f.class_name }}</td>
-
+          <td>{{ f.term_name or "-" }}</td>
           <td>${{ "%.2f"|format(f.amount or 0) }}</td>
-
-          <td class="paid">
-            ${{ "%.2f"|format(f.paid_amount or 0) }}
-          </td>
-
-          <td class="balance">
-            ${{ "%.2f"|format(f.balance or 0) }}
-          </td>
+          <td class="paid">${{ "%.2f"|format(f.paid_amount or 0) }}</td>
+          <td class="balance">${{ "%.2f"|format(f.balance or 0) }}</td>
 
           <td>
             {% if f.status == "Paid" %}
@@ -72,26 +65,25 @@
 
           <td>{{ f.due_date or "-" }}</td>
 
-          <!-- ✅ ACTIONS (FIXED PROPERLY HERE) -->
-          <td class="actions">
-            <a href="{{ url_for('fee_statement', student_id=f.student_id) }}" class="btn small">
-              Statement
-            </a>
+          <td>
+            <div class="actions">
+              <a href="{{ url_for('fee_statement', student_id=f.student_id) }}" class="btn small">
+                Statement
+              </a>
 
-            <a href="{{ url_for('update_fee', fee_id=f.id) }}" class="btn small primary">
-  Pay
-</a>
-<a href="{{ url_for('edit_fee', fee_id=fee.id) }}" class="btn small">
-  Edit
-</a>
+              <a href="{{ url_for('update_fee', fee_id=f.id) }}" class="btn small primary">
+                Pay
+              </a>
+
+              <a href="{{ url_for('edit_fee', fee_id=f.id) }}" class="btn small warning">
+                Edit
+              </a>
+            </div>
           </td>
         </tr>
-
         {% else %}
         <tr>
-          <td colspan="8" class="empty">
-            No fee records found.
-          </td>
+          <td colspan="9" class="empty">No fee records found.</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -102,7 +94,7 @@
 
 <style>
 .fees-page {
-  max-width: 1100px;
+  max-width: 1200px;
   margin: auto;
   padding: 16px;
 }
@@ -111,22 +103,27 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
   margin-bottom: 14px;
 }
 
 .eyebrow {
+  margin: 0;
   font-size: 11px;
   color: #2563eb;
   font-weight: 800;
   text-transform: uppercase;
+  letter-spacing: .06em;
 }
 
 .page-header h1 {
   margin: 4px 0;
-  font-size: 24px;
+  font-size: 26px;
+  color: #0f172a;
 }
 
 .muted {
+  margin: 0;
   font-size: 13px;
   color: #64748b;
 }
@@ -134,15 +131,23 @@
 .header-actions {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .btn {
-  padding: 8px 12px;
-  font-size: 13px;
-  border-radius: 8px;
-  border: 1px solid #ddd;
-  background: white;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   text-decoration: none;
+  border-radius: 10px;
+  padding: 9px 13px;
+  border: 1px solid #dbe3ef;
+  background: white;
+  color: #0f172a;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 .btn.primary {
@@ -151,8 +156,14 @@
   border-color: #2563eb;
 }
 
+.btn.warning {
+  background: #fff7ed;
+  color: #9a3412;
+  border-color: #fed7aa;
+}
+
 .btn.small {
-  padding: 6px 8px;
+  padding: 6px 9px;
   font-size: 12px;
 }
 
@@ -164,58 +175,71 @@
 
 .search-bar input {
   flex: 1;
-  padding: 8px;
-  border-radius: 8px;
-  border: 1px solid #ccc;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
 }
 
 .search-bar button {
-  padding: 8px 12px;
-  border-radius: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
   background: #2563eb;
   color: white;
   border: none;
+  font-weight: 700;
 }
 
 .table-card {
   background: white;
-  border: 1px solid #eee;
-  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
   overflow-x: auto;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.05);
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
+  min-width: 980px;
 }
 
 th {
   background: #f8fafc;
   font-size: 12px;
   text-align: left;
-  padding: 10px;
+  padding: 12px 10px;
+  color: #334155;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 td {
-  padding: 10px;
-  border-top: 1px solid #eee;
+  padding: 12px 10px;
+  border-bottom: 1px solid #f1f5f9;
   font-size: 13px;
+  color: #0f172a;
+  vertical-align: middle;
+}
+
+td small {
+  color: #64748b;
 }
 
 .paid {
   color: #16a34a;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .balance {
   color: #dc2626;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .badge {
-  padding: 4px 8px;
-  border-radius: 6px;
+  display: inline-flex;
+  padding: 5px 9px;
+  border-radius: 999px;
   font-size: 11px;
+  font-weight: 800;
 }
 
 .badge.paid {
@@ -236,11 +260,13 @@ td {
 .actions {
   display: flex;
   gap: 6px;
+  flex-wrap: wrap;
 }
 
 .empty {
   text-align: center;
   color: #64748b;
+  padding: 24px;
 }
 
 @media (max-width: 800px) {
