@@ -79,7 +79,7 @@
               <th>Student Number</th>
               <th>Name</th>
               <th>Class</th>
-              <th>Discount</th>
+              <th>Student Fee Amount</th>
             </tr>
           </thead>
           <tbody>
@@ -89,8 +89,7 @@
               <td>{{ student.first_name }} {{ student.last_name }}</td>
               <td>{{ student.class_name }}</td>
               <td>
-                <input type="number" step="0.01" name="discount_{{
- student.id }}" value="0">
+                <input type="number" step="0.01" name="amount_{{ student.id }}" value="">
               </td>
             </tr>
             {% endfor %}
