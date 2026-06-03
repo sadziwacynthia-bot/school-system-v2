@@ -1843,8 +1843,13 @@ def update_fee(fee_id):
     school_id = session.get("school_id")
     role = session.get("role")
 
-    base_query = """
-        SELECT f.*, s.first_name, s.last_name, s.student_number, s.class_name
+    query = """
+        SELECT
+            f.*,
+            s.first_name,
+            s.last_name,
+            s.student_number,
+            s.class_name
         FROM fees f
         JOIN students s ON f.student_id = s.id
         WHERE f.id = ?
@@ -1852,93 +1857,153 @@ def update_fee(fee_id):
     params = [fee_id]
 
     if role != "super_admin":
-        base_query += " AND f.school_id = ?"
+        query += " AND f.school_id = ?"
         params.append(school_id)
 
-    fee = fetch_one(base_query, tuple(params))
+    fee = fetch_one(query, tuple(params))
+
     if not fee:
         flash("Fee record not found or access denied.", "danger")
         return redirect(url_for("fees"))
 
     if request.method == "POST":
+        payment_date = request.form.get("payment_date", "").strip()
+        receipt_number = request.form.get("receipt_number", "").strip()
+        details = request.form.get("details", "").strip()
+
         try:
-            additional_payment = float(request.form.get("additional_payment", 0) or 0)
-        except ValueError:
+            additional_payment = float(request.form.get("additional_payment") or 0)
+        except Exception:
             flash("Payment amount must be a valid number.", "danger")
             return redirect(url_for("update_fee", fee_id=fee_id))
 
-        payment_date = request.form.get("payment_date")
-        receipt_number = request.form.get("receipt_number", "").strip()
-
         if additional_payment <= 0:
-            flash("Additional payment must be greater than zero.", "danger")
+            flash("Payment amount must be greater than zero.", "danger")
             return redirect(url_for("update_fee", fee_id=fee_id))
 
-        new_paid_amount = float(fee["paid_amount"] or 0) + additional_payment
+        if not payment_date:
+            payment_date = datetime.now().strftime("%Y-%m-%d")
+
+        if not details:
+            details = "School Fees"
+
+        old_paid_amount = float(fee["paid_amount"] or 0)
         total_amount = float(fee["amount"] or 0)
+
+        new_paid_amount = old_paid_amount + additional_payment
         new_balance = max(total_amount - new_paid_amount, 0)
 
-        if new_balance == 0:
+        if new_balance <= 0:
             status = "Paid"
         elif new_paid_amount > 0:
             status = "Partially Paid"
         else:
             status = "Pending"
 
+        student_name = f"{fee['first_name']} {fee['last_name']}".strip()
+
         conn = get_db()
         cursor = conn.cursor()
 
         try:
-            cursor.execute(
-                convert_query("UPDATE fees SET paid_amount = ?, balance = ?, status = ? WHERE id = ?"),
-                (new_paid_amount, new_balance, status, fee_id),
-            )
+            cursor.execute(convert_query("""
+                UPDATE fees
+                SET paid_amount = ?,
+                    balance = ?,
+                    status = ?
+                WHERE id = ?
+            """), (
+                new_paid_amount,
+                new_balance,
+                status,
+                fee_id
+            ))
 
-            cursor.execute(
-                convert_query("""
-                    INSERT INTO fee_payments (school_id, fee_id, payment_date, amount_paid, receipt_number)
-                    VALUES (?, ?, ?, ?, ?)
-                """),
-                (fee["school_id"], fee_id, payment_date, additional_payment, receipt_number),
-            )
-
-            student_name = f"{fee['first_name']} {fee['last_name']}".strip()
-            cashbook_insert_income(
-                cursor,
+            cursor.execute(convert_query("""
+                INSERT INTO fee_payments (
+                    school_id,
+                    fee_id,
+                    payment_date,
+                    amount_paid,
+                    receipt_number,
+                    details
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+            """), (
                 fee["school_id"],
+                fee_id,
                 payment_date,
                 additional_payment,
                 receipt_number,
-                student_name,
-                fee["term_name"],
+                details
+            ))
+
+            cursor.execute(convert_query("""
+                INSERT INTO cashbook (
+                    school_id,
+                    entry_date,
+                    entry_type,
+                    category,
+                    description,
+                    amount,
+                    payment_method,
+                    reference_number,
+                    created_by
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """), (
+                fee["school_id"],
+                payment_date,
+                "income",
+                "School Fees",
+                f"{details} payment from {student_name}",
+                additional_payment,
+                "School Fee Payment",
+                receipt_number,
                 session.get("full_name", "System")
-            )
+            ))
 
             conn.commit()
+
             log_audit(
-    "Recorded fee payment",
-    "fees",
-    fee_id,
-    f"Added payment {additional_payment}, receipt {receipt_number}"
-)
-            flash("Fee payment updated successfully.", "success")
+                "Recorded fee payment",
+                "fees",
+                fee_id,
+                f"Added payment {additional_payment}, receipt {receipt_number}, details {details}"
+            )
+
+            flash("Payment recorded successfully.", "success")
+            return redirect(url_for("update_fee", fee_id=fee_id))
+
         except Exception as e:
             conn.rollback()
-            flash(f"Error updating fee payment: {str(e)}", "danger")
+            flash(f"Error recording payment: {str(e)}", "danger")
+            return redirect(url_for("update_fee", fee_id=fee_id))
+
         finally:
             conn.close()
 
-        return redirect(url_for("update_fee", fee_id=fee_id))
-
     if role == "super_admin":
-        payment_history = fetch_all("SELECT * FROM fee_payments WHERE fee_id = ? ORDER BY payment_date DESC, id DESC", (fee_id,))
+        payment_history = fetch_all("""
+            SELECT *
+            FROM fee_payments
+            WHERE fee_id = ?
+            ORDER BY payment_date DESC, id DESC
+        """, (fee_id,))
     else:
-        payment_history = fetch_all(
-            "SELECT * FROM fee_payments WHERE fee_id = ? AND school_id = ? ORDER BY payment_date DESC, id DESC",
-            (fee_id, school_id),
-        )
+        payment_history = fetch_all("""
+            SELECT *
+            FROM fee_payments
+            WHERE fee_id = ?
+              AND school_id = ?
+            ORDER BY payment_date DESC, id DESC
+        """, (fee_id, school_id))
 
-    return render_template("update_fee.html", fee=fee, payment_history=payment_history)
+    return render_template(
+        "update_fee.html",
+        fee=fee,
+        payment_history=payment_history
+    )
 
 @app.route("/fee_reminders")
 @login_required
@@ -6245,6 +6310,22 @@ def update_school_subscription_states():
                 (1, "active", school["id"])
             )
 
+def run_fee_payments_migration():
+    conn = get_db()
+    cursor = conn.cursor()
+
+    try:
+        if is_postgres():
+            cursor.execute("ALTER TABLE fee_payments ADD COLUMN IF NOT EXISTS details TEXT")
+        else:
+            try:
+                cursor.execute("ALTER TABLE fee_payments ADD COLUMN details TEXT")
+            except Exception:
+                pass
+
+        conn.commit()
+    finally:
+        conn.close()
 
 def create_year_end_tables():
     conn = get_db()
@@ -6321,6 +6402,9 @@ def setup_app():
 
             run_school_logo_migration()
             print("School logo migration completed")
+
+            run_fee_payments_migration()
+            print("Fee payments migration completed")
 
             create_year_end_tables()
             print("Year-end promotion tables ready")

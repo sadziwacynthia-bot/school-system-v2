@@ -1,179 +1,296 @@
 {% extends "base.html" %}
-{% block title %}Update Fee Payment{% endblock %}
-
 {% block content %}
+
+<div class="container">
+
+```
 <div class="page-header">
-    <h1>Update Fee Payment</h1>
-    <p>Add a new payment for this student.</p>
+    <h2>Update Fee Payment</h2>
+    <a href="{{ url_for('fees') }}" class="btn-secondary">← Back to Fees</a>
 </div>
 
-<div class="page-grid">
-    <div class="card-box">
-        <h2>Fee Information</h2>
-        <div class="student-info">
-            <p><strong>Student:</strong> {{ fee.first_name }} {{ fee.last_name }}</p>
-            <p><strong>Student Number:</strong> {{ fee.student_number }}</p>
-            <p><strong>Class:</strong> {{ fee.class_name }}</p>
-            <p><strong>Term:</strong> {{ fee.term_name or "Not set" }}</p>
-            <p><strong>Total Fee:</strong> ${{ fee.amount }}</p>
-            <p><strong>Already Paid:</strong> ${{ fee.paid_amount }}</p>
-            <p><strong>Balance:</strong> ${{ fee.balance }}</p>
-            <p><strong>Status:</strong> {{ fee.status }}</p>
+<!-- STUDENT SUMMARY -->
+
+<div class="card">
+    <h3>{{ fee.first_name }} {{ fee.last_name }}</h3>
+
+    <div class="summary-grid">
+        <div>
+            <label>Student Number</label>
+            <p>{{ fee.student_number }}</p>
+        </div>
+
+        <div>
+            <label>Class</label>
+            <p>{{ fee.class_name }}</p>
+        </div>
+
+        <div>
+            <label>Term</label>
+            <p>{{ fee.term_name }}</p>
+        </div>
+
+        <div>
+            <label>Status</label>
+            <p>
+                <span class="badge {{ fee.status|lower|replace(' ','-') }}">
+                    {{ fee.status }}
+                </span>
+            </p>
         </div>
     </div>
 
-    <div class="card-box">
-        <h2>Add Payment</h2>
-        <form method="POST" class="payment-form">
-            <div class="form-group">
-                <label for="additional_payment">Additional Payment</label>
-                <input type="number" step="0.01" min="0" name="additional_payment" id="additional_payment" required>
-            </div>
+    <div class="totals-grid">
 
-            <div class="form-group">
-                <label for="payment_date">Payment Date</label>
-                <input type="date" name="payment_date" id="payment_date" required>
-            </div>
+        <div class="total-box">
+            <small>Total Fee</small>
+            <h3>${{ "%.2f"|format(fee.amount or 0) }}</h3>
+        </div>
 
-            <div class="form-group">
-                <label for="receipt_number">Receipt Number</label>
-                <input type="text" name="receipt_number" id="receipt_number" placeholder="Enter receipt number">
-            </div>
+        <div class="total-box paid">
+            <small>Paid</small>
+            <h3>${{ "%.2f"|format(fee.paid_amount or 0) }}</h3>
+        </div>
 
-            <div class="form-actions">
-                <button type="submit" class="btn-primary">Save Payment</button>
-                <a href="{{ url_for('fees') }}" class="btn-secondary">Back to Fees</a>
-            </div>
-        </form>
+        <div class="total-box balance">
+            <small>Balance</small>
+            <h3>${{ "%.2f"|format(fee.balance or 0) }}</h3>
+        </div>
+
     </div>
 </div>
 
-<div class="card-box">
-    <h2>Payment History</h2>
+<!-- PAYMENT FORM -->
 
-    {% if payment_history %}
-    <div class="table-wrapper">
-        <table>
-            <thead>
-                <tr>
-                    <th>Payment Date</th>
-                    <th>Receipt Number</th>
-                    <th>Amount Paid</th>
-                    <th>Receipt</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for payment in payment_history %}
-                <tr>
-                    <td>{{ payment.payment_date or "-" }}</td>
-                    <td>{{ payment.receipt_number or "-" }}</td>
-                    <td>${{ payment.amount_paid }}</td>
-                    <td>
-    <a href="{{ url_for('print_fee_receipt', payment_id=payment.id) }}"
-       class="btn btn-secondary btn-sm"
-       target="_blank">
-        Print Receipt
-    </a>
-</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% else %}
-        <p>No payment history yet.</p>
-    {% endif %}
+<div class="card">
+
+    <h3>Add Payment</h3>
+
+    <form method="POST">
+
+        <div class="form-grid">
+
+            <div>
+                <label>Payment Date</label>
+                <input type="date"
+                       name="payment_date"
+                       value="{{ today }}">
+            </div>
+
+            <div>
+                <label>Receipt Number</label>
+                <input type="text"
+                       name="receipt_number"
+                       placeholder="Receipt Number">
+            </div>
+
+            <div>
+                <label>Amount Paid</label>
+                <input type="number"
+                       step="0.01"
+                       min="0"
+                       name="additional_payment"
+                       required>
+            </div>
+
+            <div>
+                <label>Description</label>
+                <input type="text"
+                       name="details"
+                       placeholder="School Fees, Registration, Levy, Exam Fee...">
+            </div>
+
+        </div>
+
+        <button type="submit" class="btn-primary">
+            Save Payment
+        </button>
+
+    </form>
+
+</div>
+
+<!-- PAYMENT HISTORY -->
+
+<div class="card">
+
+    <h3>Payment History</h3>
+
+    <table>
+
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Receipt</th>
+                <th>Description</th>
+                <th>Amount</th>
+                <th>Receipt</th>
+            </tr>
+        </thead>
+
+        <tbody>
+
+        {% for payment in payment_history %}
+
+            <tr>
+
+                <td>{{ payment.payment_date }}</td>
+
+                <td>{{ payment.receipt_number }}</td>
+
+                <td>
+                    {{ payment.details or "-" }}
+                </td>
+
+                <td>
+                    ${{ "%.2f"|format(payment.amount_paid or 0) }}
+                </td>
+
+                <td>
+                    <a href="{{ url_for('print_fee_receipt', payment_id=payment.id) }}"
+                       class="btn-small">
+                        Print
+                    </a>
+                </td>
+
+            </tr>
+
+        {% else %}
+
+            <tr>
+                <td colspan="5">
+                    No payments recorded.
+                </td>
+            </tr>
+
+        {% endfor %}
+
+        </tbody>
+
+    </table>
+
+</div>
+```
+
 </div>
 
 <style>
-.page-header {
-    margin-bottom: 24px;
+
+.container{
+    max-width:1100px;
+    margin:auto;
+    padding:20px;
 }
-.page-header h1 {
-    margin: 0;
-    color: #2563eb;
-    font-size: 30px;
+
+.page-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:20px;
 }
-.page-header p {
-    margin-top: 8px;
-    color: #6b7280;
+
+.card{
+    background:white;
+    border-radius:12px;
+    padding:20px;
+    margin-bottom:20px;
+    box-shadow:0 2px 10px rgba(0,0,0,.05);
 }
-.page-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-    margin-bottom: 24px;
+
+.summary-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:15px;
 }
-.card-box {
-    background: white;
-    border-radius: 16px;
-    padding: 24px;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+
+.totals-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:15px;
+    margin-top:20px;
 }
-.card-box h2 {
-    margin-top: 0;
-    margin-bottom: 18px;
-    color: #1e40af;
+
+.total-box{
+    background:#f8fafc;
+    padding:15px;
+    border-radius:10px;
 }
-.student-info p {
-    margin-bottom: 10px;
-    color: #374151;
+
+.total-box.paid{
+    background:#dcfce7;
 }
-.form-group label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 600;
+
+.total-box.balance{
+    background:#fee2e2;
 }
-.form-group input {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid #d1d5db;
-    border-radius: 10px;
-    margin-bottom: 18px;
-    box-sizing: border-box;
+
+.form-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:15px;
+    margin-bottom:20px;
 }
-.form-actions {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
+
+input{
+    width:100%;
+    padding:10px;
+    border:1px solid #ddd;
+    border-radius:8px;
 }
-.btn-primary,
-.btn-secondary {
-    display: inline-block;
-    padding: 12px 18px;
-    border-radius: 10px;
-    text-decoration: none;
-    font-weight: 600;
+
+.btn-primary{
+    background:#2563eb;
+    color:white;
+    border:none;
+    padding:10px 16px;
+    border-radius:8px;
+    cursor:pointer;
 }
-.btn-primary {
-    background: #2563eb;
-    color: white;
-    border: none;
+
+.btn-secondary{
+    text-decoration:none;
+    background:#e5e7eb;
+    color:#111;
+    padding:10px 14px;
+    border-radius:8px;
 }
-.btn-secondary {
-    background: #e5e7eb;
-    color: #111827;
+
+.btn-small{
+    background:#16a34a;
+    color:white;
+    padding:6px 10px;
+    border-radius:6px;
+    text-decoration:none;
 }
-.table-wrapper {
-    overflow-x: auto;
+
+table{
+    width:100%;
+    border-collapse:collapse;
 }
-table {
-    width: 100%;
-    border-collapse: collapse;
+
+th,td{
+    padding:10px;
+    border-bottom:1px solid #eee;
+    text-align:left;
 }
-th, td {
-    padding: 12px;
-    border-bottom: 1px solid #e5e7eb;
-    text-align: left;
+
+.badge{
+    padding:4px 10px;
+    border-radius:6px;
 }
-th {
-    background: #2563eb;
-    color: white;
+
+.badge.paid{
+    background:#dcfce7;
 }
-@media (max-width: 900px) {
-    .page-grid {
-        grid-template-columns: 1fr;
-    }
+
+.badge.partially-paid{
+    background:#fef3c7;
 }
+
+.badge.pending{
+    background:#fee2e2;
+}
+
 </style>
+
 {% endblock %}
