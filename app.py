@@ -5959,7 +5959,26 @@ def teacher_resources():
         subject_filter=subject_filter,
         term_filter=term_filter
     )
+@app.route("/fix_fee_payment_details")
+@login_required
+@roles_required("super_admin")
+def fix_fee_payment_details():
+    conn = get_db()
+    cursor = conn.cursor()
 
+    try:
+        cursor.execute("""
+            ALTER TABLE fee_payments
+            ADD COLUMN IF NOT EXISTS details TEXT
+        """)
+        conn.commit()
+        return "fee_payments.details column added successfully"
+    except Exception as e:
+        conn.rollback()
+        return f"Error: {str(e)}"
+    finally:
+        conn.close()
+        
 @app.route("/send_fee_reminder/<int:student_id>")
 @login_required
 @roles_required("school_admin", "super_admin")
@@ -6332,7 +6351,7 @@ def run_fee_payments_migration():
         conn.commit()
     finally:
         conn.close()
-        
+
 def create_year_end_tables():
     conn = get_db()
     cursor = conn.cursor()
