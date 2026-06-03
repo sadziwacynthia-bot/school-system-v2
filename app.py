@@ -6316,10 +6316,16 @@ def run_fee_payments_migration():
 
     try:
         if is_postgres():
-            cursor.execute("ALTER TABLE fee_payments ADD COLUMN IF NOT EXISTS details TEXT")
+            cursor.execute("""
+                ALTER TABLE fee_payments
+                ADD COLUMN IF NOT EXISTS details TEXT
+            """)
         else:
             try:
-                cursor.execute("ALTER TABLE fee_payments ADD COLUMN details TEXT")
+                cursor.execute("""
+                    ALTER TABLE fee_payments
+                    ADD COLUMN details TEXT
+                """)
             except Exception:
                 pass
 
