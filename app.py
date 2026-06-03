@@ -5234,15 +5234,12 @@ def set_class_fees():
     school_id = session.get("school_id")
     role = session.get("role")
 
-    schools = fetch_all(
-        "SELECT * FROM schools ORDER BY school_name"
-    ) if role == "super_admin" else []
+    schools = fetch_all("SELECT * FROM schools ORDER BY school_name") if role == "super_admin" else []
 
     selected_school_id = request.args.get("school_id") or school_id
     selected_class = request.args.get("class_name", "").strip()
 
     if request.method == "POST":
-
         if role == "super_admin":
             selected_school_id = request.form.get("school_id")
 
@@ -5256,8 +5253,8 @@ def set_class_fees():
             flash("Standard fee amount must be a number.", "danger")
             return redirect(url_for("set_class_fees"))
 
-        if not class_name or not term_name or standard_amount <= 0:
-            flash("Class, term and standard amount are required.", "danger")
+        if not selected_school_id or not class_name or not term_name or standard_amount <= 0:
+            flash("School, class, term, and standard amount are required.", "danger")
             return redirect(url_for("set_class_fees"))
 
         students = fetch_all("""
@@ -5265,27 +5262,23 @@ def set_class_fees():
             FROM students
             WHERE school_id = ?
               AND class_name = ?
-              AND COALESCE(current_status,'Active') = 'Active'
+              AND COALESCE(current_status, 'Active') = 'Active'
             ORDER BY first_name, last_name
         """, (selected_school_id, class_name))
 
         created = 0
+        updated = 0
         skipped = 0
 
         for student in students:
-
-            custom_amount = request.form.get(
-                f"amount_{student['id']}", ""
-            ).strip()
+            custom_amount = request.form.get(f"amount_{student['id']}", "").strip()
 
             try:
-                final_amount = (
-                    float(custom_amount)
-                    if custom_amount
-                    else standard_amount
-                )
+                final_amount = float(custom_amount) if custom_amount else standard_amount
             except Exception:
                 final_amount = standard_amount
+
+            final_amount = max(final_amount, 0)
 
             existing = fetch_one("""
                 SELECT id
@@ -5300,7 +5293,43 @@ def set_class_fees():
             ))
 
             if existing:
-                skipped += 1
+                fee_id = existing["id"]
+
+                paid_row = fetch_one("""
+                    SELECT COALESCE(SUM(amount_paid), 0) AS total_paid
+                    FROM fee_payments
+                    WHERE fee_id = ?
+                """, (fee_id,))
+
+                paid_amount = float(paid_row["total_paid"] or 0)
+
+                balance = max(final_amount - paid_amount, 0)
+
+                if balance <= 0:
+                    status = "Paid"
+                elif paid_amount > 0:
+                    status = "Partially Paid"
+                else:
+                    status = "Pending"
+
+                execute_commit("""
+                    UPDATE fees
+                    SET amount = ?,
+                        paid_amount = ?,
+                        balance = ?,
+                        status = ?,
+                        due_date = ?
+                    WHERE id = ?
+                """, (
+                    final_amount,
+                    paid_amount,
+                    balance,
+                    status,
+                    due_date,
+                    fee_id
+                ))
+
+                updated += 1
                 continue
 
             execute_commit("""
@@ -5329,14 +5358,14 @@ def set_class_fees():
             created += 1
 
         log_audit(
-            "Set class fees",
+            "Set or reset class fees",
             "fees",
             None,
-            f"{class_name} | {term_name} | Created={created} | Skipped={skipped}"
+            f"{class_name} | {term_name} | Created={created} | Updated={updated} | Skipped={skipped}"
         )
 
         flash(
-            f"Class fees created successfully. Created: {created}, Skipped: {skipped}",
+            f"Class fees processed successfully. Created: {created}, Updated: {updated}, Skipped: {skipped}",
             "success"
         )
 
@@ -5361,7 +5390,7 @@ def set_class_fees():
             FROM students
             WHERE school_id = ?
               AND class_name = ?
-              AND COALESCE(current_status,'Active') = 'Active'
+              AND COALESCE(current_status, 'Active') = 'Active'
             ORDER BY first_name, last_name
         """, (
             selected_school_id,
@@ -5373,7 +5402,7 @@ def set_class_fees():
         schools=schools,
         class_rows=class_rows,
         students=students,
-        selected_school_id=str(selected_school_id),
+        selected_school_id=str(selected_school_id) if selected_school_id else "",
         selected_class=selected_class
     )
 
