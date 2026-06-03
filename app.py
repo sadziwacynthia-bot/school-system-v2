@@ -2482,7 +2482,12 @@ def attendance_records():
     selected_date = request.args.get("date", "").strip()
 
     query = """
-        SELECT a.*, s.first_name, s.last_name, s.student_number, s.class_name
+        SELECT 
+            a.*,
+            s.first_name,
+            s.last_name,
+            s.student_number,
+            s.class_name AS student_class
         FROM attendance a
         JOIN students s ON a.student_id = s.id
         WHERE 1=1
@@ -2511,23 +2516,48 @@ def attendance_records():
     late_count = sum(1 for a in attendance_list if a["status"] == "Late")
 
     attendance_percentage = 0
+    absent_percentage = 0
+    late_percentage = 0
+
     if total_records > 0:
         attendance_percentage = round((present_count / total_records) * 100, 1)
+        absent_percentage = round((absent_count / total_records) * 100, 1)
+        late_percentage = round((late_count / total_records) * 100, 1)
+
+    if role == "super_admin":
+        class_rows = fetch_all("""
+            SELECT DISTINCT class_name
+            FROM attendance
+            WHERE class_name IS NOT NULL
+              AND class_name != ''
+            ORDER BY class_name
+        """)
+    else:
+        class_rows = fetch_all("""
+            SELECT DISTINCT class_name
+            FROM attendance
+            WHERE school_id = ?
+              AND class_name IS NOT NULL
+              AND class_name != ''
+            ORDER BY class_name
+        """, (school_id,))
+
+    class_options = [row["class_name"] for row in class_rows]
 
     return render_template(
-    "attendance_records.html",
-    attendance_records=attendance_list,
-    class_options=CLASS_OPTIONS,
-    selected_class=selected_class,
-    selected_date=selected_date,
-    total_records=total_records,
-    present_count=present_count,
-    absent_count=absent_count,
-    late_count=late_count,
-    attendance_percentage=attendance_percentage,
-    absent_percentage=absent_percentage,
-    late_percentage=late_percentage
-)
+        "attendance_records.html",
+        attendance_records=attendance_list,
+        class_options=class_options,
+        selected_class=selected_class,
+        selected_date=selected_date,
+        total_records=total_records,
+        present_count=present_count,
+        absent_count=absent_count,
+        late_count=late_count,
+        attendance_percentage=attendance_percentage,
+        absent_percentage=absent_percentage,
+        late_percentage=late_percentage
+    )
 
 # =========================================================
 # ASSIGNMENTS
@@ -5405,6 +5435,53 @@ def set_class_fees():
         selected_school_id=str(selected_school_id) if selected_school_id else "",
         selected_class=selected_class
     )
+
+@app.route("/print_fee_receipt/<int:payment_id>")
+@login_required
+@roles_required("school_admin", "super_admin")
+def print_fee_receipt(payment_id):
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    if role == "super_admin":
+        payment = fetch_one("""
+            SELECT
+                fp.*,
+                f.term_name,
+                s.first_name,
+                s.last_name,
+                s.student_number,
+                s.class_name,
+                sch.school_name
+            FROM fee_payments fp
+            JOIN fees f ON fp.fee_id = f.id
+            JOIN students s ON f.student_id = s.id
+            LEFT JOIN schools sch ON f.school_id = sch.id
+            WHERE fp.id = ?
+        """, (payment_id,))
+    else:
+        payment = fetch_one("""
+            SELECT
+                fp.*,
+                f.term_name,
+                s.first_name,
+                s.last_name,
+                s.student_number,
+                s.class_name,
+                sch.school_name
+            FROM fee_payments fp
+            JOIN fees f ON fp.fee_id = f.id
+            JOIN students s ON f.student_id = s.id
+            LEFT JOIN schools sch ON f.school_id = sch.id
+            WHERE fp.id = ?
+              AND f.school_id = ?
+        """, (payment_id, school_id))
+
+    if not payment:
+        flash("Receipt not found or access denied.", "danger")
+        return redirect(url_for("fees"))
+
+    return render_template("print_fee_receipt.html", payment=payment)
 
 @app.route("/reset_user_password/<int:user_id>", methods=["GET", "POST"])
 @login_required
