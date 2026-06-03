@@ -228,15 +228,16 @@ def init_db():
         """)
 
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS fee_payments (
-                id SERIAL PRIMARY KEY,
-                school_id INTEGER,
-                fee_id INTEGER,
-                payment_date VARCHAR(50),
-                amount_paid NUMERIC(10,2),
-                receipt_number VARCHAR(100)
-            )
-        """)
+    CREATE TABLE IF NOT EXISTS fee_payments (
+        id SERIAL PRIMARY KEY,
+        school_id INTEGER,
+        fee_id INTEGER,
+        payment_date VARCHAR(50),
+        amount_paid NUMERIC(10,2),
+        receipt_number VARCHAR(100),
+        details TEXT
+    )
+""")
 
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS timetables (
@@ -6309,7 +6310,6 @@ def update_school_subscription_states():
                 "UPDATE schools SET is_active = ?, subscription_status = ? WHERE id = ?",
                 (1, "active", school["id"])
             )
-
 def run_fee_payments_migration():
     conn = get_db()
     cursor = conn.cursor()
@@ -6332,7 +6332,7 @@ def run_fee_payments_migration():
         conn.commit()
     finally:
         conn.close()
-
+        
 def create_year_end_tables():
     conn = get_db()
     cursor = conn.cursor()
