@@ -5956,6 +5956,16 @@ def run_users_migration():
     finally:
         conn.close()
 
+ALLOWED_RESOURCE_EXTENSIONS = {
+    "pdf", "doc", "docx", "ppt", "pptx",
+    "xls", "xlsx", "txt", "png", "jpg", "jpeg"
+}
+
+def allowed_resource_file(filename):
+    return (
+        "." in filename
+        and filename.rsplit(".", 1)[1].lower() in ALLOWED_RESOURCE_EXTENSIONS
+    )
 
 @app.route("/upload_resource", methods=["GET", "POST"])
 @login_required
