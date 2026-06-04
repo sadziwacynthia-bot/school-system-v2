@@ -2207,15 +2207,27 @@ table tr:nth-child(even) {
     border-radius: 8px;
     background: #f1f5f9;
 }
-.school-logo {
-    max-width: 80px;
-    max-height: 80px;
-    width: auto;
-    height: auto;
+.sidebar-logo {
+    width: 55px !important;
+    height: 55px !important;
+    max-width: 55px !important;
+    max-height: 55px !important;
     object-fit: contain;
+    display: block;
+    margin: 0 auto 10px auto;
 }
-.school-logo {
-    width: 60px;
-    height: 60px;
-    object-fit: contain;
+
+.sidebar-brand {
+    text-align: center;
+    padding-bottom: 12px;
+    margin-bottom: 18px;
+}
+
+.sidebar-brand h2 {
+    font-size: 18px;
+    line-height: 1.2;
+}
+
+.sidebar-brand p {
+    font-size: 12px;
 }
