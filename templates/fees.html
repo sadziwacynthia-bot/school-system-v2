@@ -88,6 +88,15 @@
         {% endfor %}
       </tbody>
     </table>
+    <div style="display:flex; justify-content:space-between; margin-top:15px;">
+  {% if page > 1 %}
+    <a class="btn" href="{{ url_for('fees', page=page-1, search=search) }}">Previous</a>
+  {% else %}
+    <span></span>
+  {% endif %}
+
+  <a class="btn" href="{{ url_for('fees', page=page+1, search=search) }}">Next</a>
+</div>
   </div>
 
 </div>

@@ -1706,10 +1706,21 @@ def fees():
     if conditions:
         query += " WHERE " + " AND ".join(conditions)
 
-    query += " ORDER BY s.class_name, s.first_name, s.last_name, f.term_name"
-    fee_records = fetch_all(query, tuple(params))
-    return render_template("fees.html", fee_records=fee_records, search=search)
+    page = int(request.args.get("page", 1) or 1)
+    per_page = 50
+    offset = (page - 1) * per_page
 
+    query += " ORDER BY s.class_name, s.first_name, s.last_name, f.term_name LIMIT ? OFFSET ?"
+    params.extend([per_page, offset])
+
+    fee_records = fetch_all(query, tuple(params))
+
+    return render_template(
+        "fees.html",
+        fee_records=fee_records,
+        search=search,
+        page=page
+    )
 
 @app.route("/add_fee", methods=["GET", "POST"])
 @login_required
