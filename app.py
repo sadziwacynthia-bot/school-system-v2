@@ -1721,7 +1721,101 @@ def fees():
         search=search,
         page=page
     )
+@app.route("/fix_overpaid_fees")
+@login_required
+@roles_required("super_admin")
+def fix_overpaid_fees():
+    overpaid_fees = fetch_all("""
+        SELECT *
+        FROM fees
+        WHERE paid_amount > amount
+        ORDER BY student_id, id
+    """)
 
+    fixed = 0
+    no_next_term = 0
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    try:
+        for fee in overpaid_fees:
+            amount = float(fee["amount"] or 0)
+            paid = float(fee["paid_amount"] or 0)
+            excess = paid - amount
+
+            if excess <= 0:
+                continue
+
+            cursor.execute(convert_query("""
+                UPDATE fees
+                SET paid_amount = ?,
+                    balance = ?,
+                    status = ?
+                WHERE id = ?
+            """), (
+                amount,
+                0,
+                "Paid",
+                fee["id"]
+            ))
+
+            cursor.execute(convert_query("""
+                SELECT *
+                FROM fees
+                WHERE student_id = ?
+                  AND id != ?
+                  AND balance > 0
+                ORDER BY id ASC
+                LIMIT 1
+            """), (
+                fee["student_id"],
+                fee["id"]
+            ))
+
+            next_fee = cursor.fetchone()
+
+            if not next_fee:
+                no_next_term += 1
+                continue
+
+            next_amount = float(next_fee["amount"] or 0)
+            next_paid = float(next_fee["paid_amount"] or 0) + excess
+            next_balance = max(next_amount - next_paid, 0)
+
+            if next_balance <= 0:
+                next_status = "Paid"
+                next_paid = next_amount
+            elif next_paid > 0:
+                next_status = "Partially Paid"
+            else:
+                next_status = "Pending"
+
+            cursor.execute(convert_query("""
+                UPDATE fees
+                SET paid_amount = ?,
+                    balance = ?,
+                    status = ?
+                WHERE id = ?
+            """), (
+                next_paid,
+                next_balance,
+                next_status,
+                next_fee["id"]
+            ))
+
+            fixed += 1
+
+        conn.commit()
+        return f"Overpaid fees fixed: {fixed}. No next term found: {no_next_term}"
+
+    except Exception as e:
+        conn.rollback()
+        return f"Error fixing overpaid fees: {str(e)}"
+
+    finally:
+        conn.close()
+        
 @app.route("/add_fee", methods=["GET", "POST"])
 @login_required
 @roles_required("school_admin", "super_admin")
