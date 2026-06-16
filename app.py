@@ -767,6 +767,25 @@ def get_school_classes(school_id):
 
     return CLASS_OPTIONS
 
+def add_school_id_to_audit_logs():
+    conn = get_db()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+            ALTER TABLE audit_logs
+            ADD COLUMN IF NOT EXISTS school_id INTEGER
+        """)
+
+        conn.commit()
+        print("audit_logs.school_id added successfully")
+
+    except Exception as e:
+        conn.rollback()
+        print("Audit migration error:", e)
+
+    finally:
+        conn.close()
 # =========================================================
 # BASIC ROUTES
 # =========================================================
@@ -6251,6 +6270,7 @@ if __name__ == "__main__":
     create_notices_table()
     create_assessments_table()
     add_class_teacher_column()
+    add_school_id_to_audit_logs()
     setup_app()
 
     port = int(os.environ.get("PORT", 10000))
