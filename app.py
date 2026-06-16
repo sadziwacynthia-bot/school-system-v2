@@ -5929,6 +5929,9 @@ def setup_app():
             
             run_audit_migration()
             print("Audit migration completed")
+            
+            add_school_id_to_audit_logs()
+            print("Audit school_id migration completed")
 
             run_school_logo_migration()
             print("School logo migration completed")
@@ -6270,7 +6273,6 @@ if __name__ == "__main__":
     create_notices_table()
     create_assessments_table()
     add_class_teacher_column()
-    add_school_id_to_audit_logs()
     setup_app()
 
     port = int(os.environ.get("PORT", 10000))
