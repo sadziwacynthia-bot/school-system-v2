@@ -5025,53 +5025,6 @@ def set_class_fees():
         selected_class=selected_class
     )
 
-@app.route("/print_fee_receipt/<int:payment_id>")
-@login_required
-@roles_required("school_admin", "super_admin")
-def print_fee_receipt(payment_id):
-    school_id = session.get("school_id")
-    role = session.get("role")
-
-    if role == "super_admin":
-        payment = fetch_one("""
-            SELECT
-                fp.*,
-                f.term_name,
-                s.first_name,
-                s.last_name,
-                s.student_number,
-                s.class_name,
-                sch.school_name
-            FROM fee_payments fp
-            JOIN fees f ON fp.fee_id = f.id
-            JOIN students s ON f.student_id = s.id
-            LEFT JOIN schools sch ON f.school_id = sch.id
-            WHERE fp.id = ?
-        """, (payment_id,))
-    else:
-        payment = fetch_one("""
-            SELECT
-                fp.*,
-                f.term_name,
-                s.first_name,
-                s.last_name,
-                s.student_number,
-                s.class_name,
-                sch.school_name
-            FROM fee_payments fp
-            JOIN fees f ON fp.fee_id = f.id
-            JOIN students s ON f.student_id = s.id
-            LEFT JOIN schools sch ON f.school_id = sch.id
-            WHERE fp.id = ?
-              AND f.school_id = ?
-        """, (payment_id, school_id))
-
-    if not payment:
-        flash("Receipt not found or access denied.", "danger")
-        return redirect(url_for("fees"))
-
-    return render_template("print_fee_receipt.html", payment=payment)
-
 @app.route("/reset_user_password/<int:user_id>", methods=["GET", "POST"])
 @login_required
 @roles_required("school_admin", "super_admin")
