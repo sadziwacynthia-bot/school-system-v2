@@ -2650,6 +2650,119 @@ def timetable():
         selected_class=selected_class,
         timetable_rows=timetable_rows
     )
+@app.route("/import_teacher_assignments", methods=["GET", "POST"])
+@login_required
+@roles_required("super_admin", "school_admin")
+def import_teacher_assignments():
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    schools = fetch_all("SELECT * FROM schools ORDER BY school_name") if role == "super_admin" else []
+
+    if request.method == "POST":
+        if role == "super_admin":
+            school_id = request.form.get("school_id")
+
+        file = request.files.get("assignment_file")
+
+        if not school_id or not file or not file.filename:
+            flash("School and Excel file are required.", "danger")
+            return redirect(url_for("import_teacher_assignments"))
+
+        try:
+            df = pd.read_excel(file)
+
+            required_columns = ["teacher_name", "class_name", "subject"]
+            missing = [c for c in required_columns if c not in df.columns]
+
+            if missing:
+                flash(f"Missing columns: {', '.join(missing)}", "danger")
+                return redirect(url_for("import_teacher_assignments"))
+
+            imported = 0
+            skipped = 0
+
+            conn = get_db()
+            cursor = conn.cursor()
+
+            try:
+                for _, row in df.iterrows():
+                    teacher_name = str(row.get("teacher_name", "")).strip()
+                    class_name = str(row.get("class_name", "")).strip()
+                    subject = str(row.get("subject", "")).strip()
+
+                    if not teacher_name or not class_name or not subject:
+                        skipped += 1
+                        continue
+
+                    cursor.execute(convert_query("""
+                        SELECT id
+                        FROM teachers
+                        WHERE school_id = ?
+                          AND LOWER(TRIM(full_name)) = LOWER(TRIM(?))
+                        LIMIT 1
+                    """), (school_id, teacher_name))
+
+                    teacher = cursor.fetchone()
+
+                    if not teacher:
+                        skipped += 1
+                        continue
+
+                    teacher_id = teacher["id"]
+
+                    cursor.execute(convert_query("""
+                        SELECT id
+                        FROM teacher_assignments
+                        WHERE school_id = ?
+                          AND teacher_id = ?
+                          AND LOWER(TRIM(class_name)) = LOWER(TRIM(?))
+                          AND LOWER(TRIM(subject)) = LOWER(TRIM(?))
+                        LIMIT 1
+                    """), (school_id, teacher_id, class_name, subject))
+
+                    existing = cursor.fetchone()
+
+                    if existing:
+                        skipped += 1
+                        continue
+
+                    cursor.execute(convert_query("""
+                        INSERT INTO teacher_assignments (
+                            school_id, teacher_id, class_name, subject
+                        )
+                        VALUES (?, ?, ?, ?)
+                    """), (school_id, teacher_id, class_name, subject))
+
+                    # Also update matching timetable rows with this teacher
+                    cursor.execute(convert_query("""
+                        UPDATE timetables
+                        SET teacher_id = ?
+                        WHERE school_id = ?
+                          AND LOWER(TRIM(class_name)) = LOWER(TRIM(?))
+                          AND LOWER(TRIM(subject)) = LOWER(TRIM(?))
+                          AND teacher_id IS NULL
+                    """), (teacher_id, school_id, class_name, subject))
+
+                    imported += 1
+
+                conn.commit()
+
+            except Exception:
+                conn.rollback()
+                raise
+
+            finally:
+                conn.close()
+
+            flash(f"Teacher assignment import complete. Imported: {imported}, Skipped: {skipped}", "success")
+            return redirect(url_for("assign_teacher"))
+
+        except Exception as e:
+            flash(f"Import failed: {str(e)}", "danger")
+            return redirect(url_for("import_teacher_assignments"))
+
+    return render_template("import_teacher_assignments.html", schools=schools)
 
 @app.route("/timetable_settings", methods=["GET", "POST"])
 @login_required
