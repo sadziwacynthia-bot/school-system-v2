@@ -5,14 +5,13 @@
   <div class="page-header">
     <div>
       <h1>Import Timetable</h1>
-      <p>Upload an Excel file to create or update timetable entries.</p>
+      <p class="muted">Upload an Excel file to create or update timetable entries.</p>
     </div>
-    <a href="{{ url_for('timetable') }}" class="btn btn-light">Back to Timetable</a>
+    <a href="{{ url_for('timetable') }}" class="btn">Back to Timetable</a>
   </div>
 
   <div class="card">
     <form method="POST" enctype="multipart/form-data">
-
       {% if session.get('role') == 'super_admin' %}
       <label>School</label>
       <select name="school_id" required>
@@ -32,7 +31,7 @@
 
   <div class="card">
     <h3>Required Excel Columns</h3>
-    <p>Your Excel file must have these exact column names:</p>
+    <p class="muted">Your Excel file must have these exact column names:</p>
 
     <table>
       <thead>
@@ -50,7 +49,7 @@
         <tr>
           <td>Form 1 Blue</td>
           <td>Monday</td>
-          <td>07:30</td>s
+          <td>07:30</td>
           <td>08:00</td>
           <td>Mathematics</td>
           <td>Mrs Madotsa</td>
