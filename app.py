@@ -3056,13 +3056,8 @@ def import_timetable():
             df = pd.read_excel(file)
 
             required_columns = [
-                "class_name",
-                "day_of_week",
-                "start_time",
-                "end_time",
-                "subject",
-                "teacher_name",
-                "room"
+                "class_name", "day_of_week", "start_time", "end_time",
+                "subject", "teacher_name", "room"
             ]
 
             missing = [c for c in required_columns if c not in df.columns]
@@ -3087,24 +3082,33 @@ def import_timetable():
                     teacher_name = str(row.get("teacher_name", "")).strip()
                     room = str(row.get("room", "")).strip()
 
-                    if not class_name or not day_of_week or not start_time or not end_time or not subject:
+                    if (
+                        not class_name
+                        or not day_of_week
+                        or not start_time
+                        or not end_time
+                        or not subject
+                    ):
                         skipped += 1
                         continue
 
                     teacher_id = None
+
                     if teacher_name:
-                        teacher = fetch_one("""
+                        cursor.execute(convert_query("""
                             SELECT id
                             FROM teachers
                             WHERE school_id = ?
                               AND LOWER(TRIM(full_name)) = LOWER(TRIM(?))
                             LIMIT 1
-                        """, (school_id, teacher_name))
+                        """), (school_id, teacher_name))
+
+                        teacher = cursor.fetchone()
 
                         if teacher:
                             teacher_id = teacher["id"]
 
-                    existing = fetch_one("""
+                    cursor.execute(convert_query("""
                         SELECT id
                         FROM timetables
                         WHERE school_id = ?
@@ -3112,13 +3116,16 @@ def import_timetable():
                           AND day_of_week = ?
                           AND start_time = ?
                           AND end_time = ?
-                    """, (
+                        LIMIT 1
+                    """), (
                         school_id,
                         class_name,
                         day_of_week,
                         start_time,
                         end_time
                     ))
+
+                    existing = cursor.fetchone()
 
                     if existing:
                         cursor.execute(convert_query("""
@@ -3168,14 +3175,10 @@ def import_timetable():
             finally:
                 conn.close()
 
-            log_audit(
-                "Imported timetable",
-                "timetables",
-                None,
-                f"Imported {imported}, updated {updated}, skipped {skipped}"
+            flash(
+                f"Timetable import complete. Imported: {imported}, Updated: {updated}, Skipped: {skipped}",
+                "success"
             )
-
-            flash(f"Timetable import complete. Imported: {imported}, Updated: {updated}, Skipped: {skipped}", "success")
             return redirect(url_for("timetable"))
 
         except Exception as e:
