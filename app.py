@@ -6406,6 +6406,50 @@ def suspend_school(school_id):
     flash("School suspended successfully.", "success")
     return redirect(url_for("schools"))
 
+@app.route("/debug_timetable")
+@login_required
+@roles_required("super_admin", "school_admin")
+def debug_timetable():
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    if role == "super_admin":
+        rows = fetch_all("""
+            SELECT *
+            FROM timetables
+            ORDER BY id DESC
+            LIMIT 50
+        """)
+    else:
+        rows = fetch_all("""
+            SELECT *
+            FROM timetables
+            WHERE school_id = ?
+            ORDER BY id DESC
+            LIMIT 50
+        """, (school_id,))
+
+    output = "<h2>Latest Timetable Rows</h2>"
+
+    if not rows:
+        return output + "<p>No timetable rows found.</p>"
+
+    for r in rows:
+        output += f"""
+        <p>
+          ID: {r['id']} |
+          School: {r['school_id']} |
+          Class: {r['class_name']} |
+          Day: {r['day_of_week']} |
+          Time: {r['start_time']} - {r['end_time']} |
+          Subject: {r['subject']} |
+          Teacher ID: {r['teacher_id']} |
+          Room: {r['room']}
+        </p>
+        """
+
+    return output
+
 @app.route("/debug_students")
 @login_required
 @roles_required("super_admin")
@@ -6450,6 +6494,18 @@ def activate_school(school_id):
     flash("School activated successfully.", "success")
     return redirect(url_for("schools"))
 
+@app.route("/debug_timetable")
+@login_required
+@roles_required("super_admin", "school_admin")
+def debug_timetable():
+    rows = fetch_all("""
+        SELECT *
+        FROM timetables
+        ORDER BY id DESC
+        LIMIT 100
+    """)
+
+    return "<pre>" + str(rows) + "</pre>"
 
 if __name__ == "__main__":
     setup_app()
