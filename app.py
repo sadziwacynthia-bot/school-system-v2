@@ -6430,6 +6430,7 @@ if __name__ == "__main__":
     create_notices_table()
     create_assessments_table()
     add_class_teacher_column()
+    add_school_id_to_audit_logs()
     setup_app()
 
     port = int(os.environ.get("PORT", 10000))
