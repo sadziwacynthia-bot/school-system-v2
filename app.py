@@ -6451,6 +6451,31 @@ def activate_school(school_id):
     flash("School activated successfully.", "success")
     return redirect(url_for("schools"))
 
+@app.route("/fix_timetable_class_names")
+@login_required
+@roles_required("super_admin")
+def fix_timetable_class_names():
+    updates = [
+        ("1 Blue", "Form 1 Blue"),
+        ("1 Grey", "Form 1 Grey"),
+        ("2 Blue", "Form 2 Blue"),
+        ("2 Grey", "Form 2 Grey"),
+        ("3 Blue", "Form 3 Blue"),
+        ("3 Grey", "Form 3 Grey"),
+        ("4 Blue", "Form 4 Blue"),
+        ("4 Grey", "Form 4 Grey"),
+        ("Form5", "Form 5"),
+        ("Form6", "Form 6"),
+    ]
+
+    for old, new in updates:
+        execute_commit(
+            "UPDATE timetables SET class_name = ? WHERE class_name = ?",
+            (new, old)
+        )
+
+    return "Timetable class names fixed successfully."
+
 @app.route("/debug_timetable")
 @login_required
 @roles_required("super_admin", "school_admin")
