@@ -2729,15 +2729,22 @@ def class_students(class_name):
             WHERE class_name = ?
         """, (class_name,))
 
-        fee_summary = fetch_one("""
-            SELECT
-                COALESCE(SUM(f.amount), 0) AS total_fees,
-                COALESCE(SUM(f.paid_amount), 0) AS total_paid,
-                COALESCE(SUM(f.balance), 0) AS total_balance
-            FROM fees f
-            JOIN students s ON f.student_id = s.id
-            WHERE s.class_name = ?
-        """, (class_name,))
+        if role == "teacher":
+            fee_summary = {
+                "total_fees": 0,
+                "total_paid": 0,
+                "total_balance": 0
+            }
+        else:
+            fee_summary = fetch_one("""
+        SELECT
+            COALESCE(SUM(f.amount), 0) AS total_fees,
+            COALESCE(SUM(f.paid_amount), 0) AS total_paid,
+            COALESCE(SUM(f.balance), 0) AS total_balance
+        FROM fees f
+        JOIN students s ON f.student_id = s.id
+        WHERE f.school_id = ? AND s.class_name = ?
+    """, (school_id, class_name))
 
         results_summary = fetch_one("""
             SELECT
@@ -5929,7 +5936,7 @@ def setup_app():
             
             run_audit_migration()
             print("Audit migration completed")
-            
+
             add_school_id_to_audit_logs()
             print("Audit school_id migration completed")
 

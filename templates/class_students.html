@@ -40,16 +40,6 @@
       <h2>{{ attendance_summary.total_records or 0 }}</h2>
     </div>
 
-    <div class="stat-card money">
-      <span>Total Paid</span>
-      <h2>${{ "%.2f"|format(fee_summary.total_paid or 0) }}</h2>
-    </div>
-
-    <div class="stat-card danger">
-      <span>Balance</span>
-      <h2>${{ "%.2f"|format(fee_summary.total_balance or 0) }}</h2>
-    </div>
-
     <div class="stat-card">
       <span>Average Mark</span>
       <h2>{{ "%.1f"|format(results_summary.average_marks or 0) }}%</h2>
@@ -128,22 +118,6 @@
       </div>
     </div>
 
-    <div class="dashboard-section">
-      <div class="section-title">
-        <h2>Fee Summary</h2>
-      </div>
-
-      <div class="mini-cards">
-        <div>
-          <span>Total Fees</span>
-          <strong>${{ "%.2f"|format(fee_summary.total_fees or 0) }}</strong>
-        </div>
-        <div>
-          <span>Total Balance</span>
-          <strong>${{ "%.2f"|format(fee_summary.total_balance or 0) }}</strong>
-        </div>
-      </div>
-    </div>
   </div>
 
   <div class="dashboard-section">
