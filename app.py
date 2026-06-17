@@ -2517,22 +2517,28 @@ def delete_notice(notice_id):
 def timetable():
     school_id = session.get("school_id")
     role = session.get("role")
+    user_id = session.get("user_id")
     selected_class = request.args.get("class_name", "").strip()
 
+    # Teacher view: only teacher's own timetable
     if role == "teacher":
         teacher = fetch_one("""
-            SELECT * FROM teachers
-            WHERE user_id = ? AND school_id = ?
+            SELECT *
+            FROM teachers
+            WHERE user_id = ?
+              AND school_id = ?
             LIMIT 1
-        """, (session["user_id"], school_id))
+        """, (user_id, school_id))
 
         timetable_rows = []
+
         if teacher:
             timetable_rows = fetch_all("""
                 SELECT t.*, tr.full_name
                 FROM timetables t
                 LEFT JOIN teachers tr ON t.teacher_id = tr.id
-                WHERE t.school_id = ? AND t.teacher_id = ?
+                WHERE t.school_id = ?
+                  AND t.teacher_id = ?
                 ORDER BY
                     CASE t.day_of_week
                         WHEN 'Monday' THEN 1
@@ -2542,18 +2548,68 @@ def timetable():
                         WHEN 'Friday' THEN 5
                         WHEN 'Saturday' THEN 6
                         WHEN 'Sunday' THEN 7
+                        ELSE 8
                     END,
                     t.start_time
             """, (school_id, teacher["id"]))
-        return render_template("teacher_timetable.html", timetable_rows=timetable_rows)
 
+        return render_template(
+            "teacher_timetable.html",
+            timetable_rows=timetable_rows
+        )
+
+    # Admin class dropdown should come from actual timetable rows first
     if role == "super_admin":
-        if selected_class:
+        class_rows = fetch_all("""
+            SELECT DISTINCT class_name
+            FROM timetables
+            WHERE class_name IS NOT NULL
+              AND class_name != ''
+            ORDER BY class_name
+        """)
+    else:
+        class_rows = fetch_all("""
+            SELECT DISTINCT class_name
+            FROM timetables
+            WHERE school_id = ?
+              AND class_name IS NOT NULL
+              AND class_name != ''
+            ORDER BY class_name
+        """, (school_id,))
+
+    class_options = [row["class_name"] for row in class_rows]
+
+    # If nothing imported yet, fall back to school_classes
+    if not class_options:
+        if role == "super_admin":
+            class_rows = fetch_all("""
+                SELECT DISTINCT class_name
+                FROM school_classes
+                WHERE class_name IS NOT NULL
+                  AND class_name != ''
+                ORDER BY class_name
+            """)
+        else:
+            class_rows = fetch_all("""
+                SELECT DISTINCT class_name
+                FROM school_classes
+                WHERE school_id = ?
+                  AND class_name IS NOT NULL
+                  AND class_name != ''
+                ORDER BY class_name
+            """, (school_id,))
+
+        class_options = [row["class_name"] for row in class_rows]
+
+    timetable_rows = []
+
+    if selected_class:
+        if role == "super_admin":
             timetable_rows = fetch_all("""
                 SELECT t.*, tr.full_name
                 FROM timetables t
                 LEFT JOIN teachers tr ON t.teacher_id = tr.id
-                WHERE t.class_name = ?
+                WHERE LOWER(TRIM(t.class_name)) = LOWER(TRIM(?))
                 ORDER BY
                     CASE t.day_of_week
                         WHEN 'Monday' THEN 1
@@ -2563,18 +2619,17 @@ def timetable():
                         WHEN 'Friday' THEN 5
                         WHEN 'Saturday' THEN 6
                         WHEN 'Sunday' THEN 7
+                        ELSE 8
                     END,
                     t.start_time
             """, (selected_class,))
         else:
-            timetable_rows = []
-    else:
-        if selected_class:
             timetable_rows = fetch_all("""
                 SELECT t.*, tr.full_name
                 FROM timetables t
                 LEFT JOIN teachers tr ON t.teacher_id = tr.id
-                WHERE t.school_id = ? AND t.class_name = ?
+                WHERE t.school_id = ?
+                  AND LOWER(TRIM(t.class_name)) = LOWER(TRIM(?))
                 ORDER BY
                     CASE t.day_of_week
                         WHEN 'Monday' THEN 1
@@ -2584,18 +2639,18 @@ def timetable():
                         WHEN 'Friday' THEN 5
                         WHEN 'Saturday' THEN 6
                         WHEN 'Sunday' THEN 7
+                        ELSE 8
                     END,
                     t.start_time
             """, (school_id, selected_class))
-        else:
-            timetable_rows = []
 
     return render_template(
         "timetable.html",
-        class_options=CLASS_OPTIONS,
+        class_options=class_options,
         selected_class=selected_class,
-        timetable_rows=timetable_rows,
+        timetable_rows=timetable_rows
     )
+
 @app.route("/timetable_settings", methods=["GET", "POST"])
 @login_required
 @roles_required("school_admin", "super_admin")
