@@ -725,37 +725,6 @@ def school_is_overdue(school):
     return end_date < datetime.now().date()
 
 
-def cashbook_insert_income(cursor, school_id, payment_date, amount_paid, receipt_number, student_name, term_name, created_by):
-    try:
-        amount = float(amount_paid or 0)
-    except Exception:
-        amount = 0
-
-    if amount <= 0:
-        return
-
-    entry_date = payment_date or datetime.now().strftime("%Y-%m-%d")
-
-    cursor.execute(
-        convert_query("""
-            INSERT INTO cashbook (
-                school_id, entry_date, entry_type, category, description,
-                amount, payment_method, reference_number, created_by
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """),
-        (
-            school_id,
-            entry_date,
-            "income",
-            "School Fees",
-            f"Fee payment from {student_name} for {term_name}",
-            amount,
-            "School Fee Payment",
-            receipt_number,
-            created_by,
-        )
-    )
 def get_school_classes(school_id):
     rows = fetch_all(
         "SELECT * FROM school_classes WHERE school_id = ? ORDER BY class_name",
@@ -2704,14 +2673,52 @@ def timetable_settings():
         settings=settings,
         schools=schools
     )
-
 @app.route("/class/<class_name>")
 @login_required
 @roles_required("school_admin", "super_admin", "teacher")
 def class_students(class_name):
     school_id = session.get("school_id")
     role = session.get("role")
+    user_id = session.get("user_id")
 
+    # Extra teacher security:
+    # Teacher can only open classes assigned to them or where they are class teacher.
+    if role == "teacher":
+        teacher = fetch_one("""
+            SELECT *
+            FROM teachers
+            WHERE user_id = ?
+              AND school_id = ?
+            LIMIT 1
+        """, (user_id, school_id))
+
+        if not teacher:
+            flash("No teacher profile linked to this account.", "danger")
+            return redirect(url_for("teacher_dashboard"))
+
+        allowed_class = fetch_one("""
+            SELECT 1
+            FROM teacher_assignments
+            WHERE teacher_id = ?
+              AND school_id = ?
+              AND class_name = ?
+            LIMIT 1
+        """, (teacher["id"], school_id, class_name))
+
+        class_teacher_class = fetch_one("""
+            SELECT 1
+            FROM school_classes
+            WHERE class_teacher_id = ?
+              AND school_id = ?
+              AND class_name = ?
+            LIMIT 1
+        """, (teacher["id"], school_id, class_name))
+
+        if not allowed_class and not class_teacher_class:
+            flash("You are not allowed to view this class.", "danger")
+            return redirect(url_for("teacher_dashboard"))
+
+    # Students
     if role == "super_admin":
         students = fetch_all("""
             SELECT *
@@ -2719,33 +2726,64 @@ def class_students(class_name):
             WHERE class_name = ?
             ORDER BY first_name, last_name
         """, (class_name,))
+    else:
+        students = fetch_all("""
+            SELECT *
+            FROM students
+            WHERE school_id = ?
+              AND class_name = ?
+            ORDER BY first_name, last_name
+        """, (school_id, class_name))
 
+    # Attendance summary
+    if role == "super_admin":
         attendance_summary = fetch_one("""
             SELECT
                 COUNT(*) AS total_records,
-                SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END) AS present_count,
-                SUM(CASE WHEN status = 'Absent' THEN 1 ELSE 0 END) AS absent_count
+                COALESCE(SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END), 0) AS present_count,
+                COALESCE(SUM(CASE WHEN status = 'Absent' THEN 1 ELSE 0 END), 0) AS absent_count
             FROM attendance
             WHERE class_name = ?
         """, (class_name,))
+    else:
+        attendance_summary = fetch_one("""
+            SELECT
+                COUNT(*) AS total_records,
+                COALESCE(SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END), 0) AS present_count,
+                COALESCE(SUM(CASE WHEN status = 'Absent' THEN 1 ELSE 0 END), 0) AS absent_count
+            FROM attendance
+            WHERE school_id = ?
+              AND class_name = ?
+        """, (school_id, class_name))
 
-        if role == "teacher":
-            fee_summary = {
-                "total_fees": 0,
-                "total_paid": 0,
-                "total_balance": 0
-            }
+    # Fees summary: never expose to teachers
+    fee_summary = None
+
+    if role != "teacher":
+        if role == "super_admin":
+            fee_summary = fetch_one("""
+                SELECT
+                    COALESCE(SUM(f.amount), 0) AS total_fees,
+                    COALESCE(SUM(f.paid_amount), 0) AS total_paid,
+                    COALESCE(SUM(f.balance), 0) AS total_balance
+                FROM fees f
+                JOIN students s ON f.student_id = s.id
+                WHERE s.class_name = ?
+            """, (class_name,))
         else:
             fee_summary = fetch_one("""
-        SELECT
-            COALESCE(SUM(f.amount), 0) AS total_fees,
-            COALESCE(SUM(f.paid_amount), 0) AS total_paid,
-            COALESCE(SUM(f.balance), 0) AS total_balance
-        FROM fees f
-        JOIN students s ON f.student_id = s.id
-        WHERE f.school_id = ? AND s.class_name = ?
-    """, (school_id, class_name))
+                SELECT
+                    COALESCE(SUM(f.amount), 0) AS total_fees,
+                    COALESCE(SUM(f.paid_amount), 0) AS total_paid,
+                    COALESCE(SUM(f.balance), 0) AS total_balance
+                FROM fees f
+                JOIN students s ON f.student_id = s.id
+                WHERE f.school_id = ?
+                  AND s.class_name = ?
+            """, (school_id, class_name))
 
+    # Results summary
+    if role == "super_admin":
         results_summary = fetch_one("""
             SELECT
                 COUNT(*) AS total_results,
@@ -2753,7 +2791,18 @@ def class_students(class_name):
             FROM results
             WHERE class_name = ?
         """, (class_name,))
+    else:
+        results_summary = fetch_one("""
+            SELECT
+                COUNT(*) AS total_results,
+                COALESCE(AVG(marks), 0) AS average_marks
+            FROM results
+            WHERE school_id = ?
+              AND class_name = ?
+        """, (school_id, class_name))
 
+    # Timetable rows
+    if role == "super_admin":
         timetable_rows = fetch_all("""
             SELECT t.*, tr.full_name
             FROM timetables t
@@ -2768,50 +2817,17 @@ def class_students(class_name):
                     WHEN 'Friday' THEN 5
                     WHEN 'Saturday' THEN 6
                     WHEN 'Sunday' THEN 7
+                    ELSE 8
                 END,
                 t.start_time
         """, (class_name,))
-
     else:
-        students = fetch_all("""
-            SELECT *
-            FROM students
-            WHERE school_id = ? AND class_name = ?
-            ORDER BY first_name, last_name
-        """, (school_id, class_name))
-
-        attendance_summary = fetch_one("""
-            SELECT
-                COUNT(*) AS total_records,
-                SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END) AS present_count,
-                SUM(CASE WHEN status = 'Absent' THEN 1 ELSE 0 END) AS absent_count
-            FROM attendance
-            WHERE school_id = ? AND class_name = ?
-        """, (school_id, class_name))
-
-        fee_summary = fetch_one("""
-            SELECT
-                COALESCE(SUM(f.amount), 0) AS total_fees,
-                COALESCE(SUM(f.paid_amount), 0) AS total_paid,
-                COALESCE(SUM(f.balance), 0) AS total_balance
-            FROM fees f
-            JOIN students s ON f.student_id = s.id
-            WHERE f.school_id = ? AND s.class_name = ?
-        """, (school_id, class_name))
-
-        results_summary = fetch_one("""
-            SELECT
-                COUNT(*) AS total_results,
-                COALESCE(AVG(marks), 0) AS average_marks
-            FROM results
-            WHERE school_id = ? AND class_name = ?
-        """, (school_id, class_name))
-
         timetable_rows = fetch_all("""
             SELECT t.*, tr.full_name
             FROM timetables t
             LEFT JOIN teachers tr ON t.teacher_id = tr.id
-            WHERE t.school_id = ? AND t.class_name = ?
+            WHERE t.school_id = ?
+              AND t.class_name = ?
             ORDER BY
                 CASE t.day_of_week
                     WHEN 'Monday' THEN 1
@@ -2821,11 +2837,16 @@ def class_students(class_name):
                     WHEN 'Friday' THEN 5
                     WHEN 'Saturday' THEN 6
                     WHEN 'Sunday' THEN 7
+                    ELSE 8
                 END,
                 t.start_time
         """, (school_id, class_name))
 
-    active_students = sum(1 for s in students if (s["current_status"] or "Active") == "Active")
+    active_students = sum(
+        1 for s in students
+        if (s["current_status"] or "Active") == "Active"
+    )
+
     inactive_students = len(students) - active_students
 
     return render_template(
@@ -6426,12 +6447,8 @@ def activate_school(school_id):
     flash("School activated successfully.", "success")
     return redirect(url_for("schools"))
 
-if __name__ == "__main__":
-    create_notices_table()
-    create_assessments_table()
-    add_class_teacher_column()
-    add_school_id_to_audit_logs()
-    setup_app()
+setup_app()
 
+if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, debug=False)
