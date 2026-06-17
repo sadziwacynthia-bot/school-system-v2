@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-container">
+  <div class="page-header">
+    <div>
+      <h1>Import Timetable</h1>
+      <p>Upload an Excel file to create or update timetable entries.</p>
+    </div>
+    <a href="{{ url_for('timetable') }}" class="btn btn-light">Back to Timetable</a>
+  </div>
+
+  <div class="card">
+    <form method="POST" enctype="multipart/form-data">
+
+      {% if session.get('role') == 'super_admin' %}
+      <label>School</label>
+      <select name="school_id" required>
+        <option value="">Select school</option>
+        {% for school in schools %}
+          <option value="{{ school.id }}">{{ school.school_name }}</option>
+        {% endfor %}
+      </select>
+      {% endif %}
+
+      <label>Timetable Excel File</label>
+      <input type="file" name="timetable_file" accept=".xlsx,.xls" required>
+
+      <button type="submit" class="btn btn-primary">Import Timetable</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h3>Required Excel Columns</h3>
+    <p>Your Excel file must have these exact column names:</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>class_name</th>
+          <th>day_of_week</th>
+          <th>start_time</th>
+          <th>end_time</th>
+          <th>subject</th>
+          <th>teacher_name</th>
+          <th>room</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Form 1 Blue</td>
+          <td>Monday</td>
+          <td>07:30</td>s
+          <td>08:00</td>
+          <td>Mathematics</td>
+          <td>Mrs Madotsa</td>
+          <td>Room 1</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

@@ -3012,6 +3012,156 @@ def global_search():
         students=students,
         teachers=teachers
     )
+@app.route("/import_timetable", methods=["GET", "POST"])
+@login_required
+@roles_required("super_admin", "school_admin")
+def import_timetable():
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    schools = fetch_all("SELECT * FROM schools ORDER BY school_name") if role == "super_admin" else []
+
+    if request.method == "POST":
+        if role == "super_admin":
+            school_id = request.form.get("school_id")
+
+        file = request.files.get("timetable_file")
+
+        if not school_id or not file or not file.filename:
+            flash("School and Excel file are required.", "danger")
+            return redirect(url_for("import_timetable"))
+
+        try:
+            df = pd.read_excel(file)
+
+            required_columns = [
+                "class_name",
+                "day_of_week",
+                "start_time",
+                "end_time",
+                "subject",
+                "teacher_name",
+                "room"
+            ]
+
+            missing = [c for c in required_columns if c not in df.columns]
+            if missing:
+                flash(f"Missing columns: {', '.join(missing)}", "danger")
+                return redirect(url_for("import_timetable"))
+
+            imported = 0
+            updated = 0
+            skipped = 0
+
+            conn = get_db()
+            cursor = conn.cursor()
+
+            try:
+                for _, row in df.iterrows():
+                    class_name = str(row.get("class_name", "")).strip()
+                    day_of_week = str(row.get("day_of_week", "")).strip()
+                    start_time = str(row.get("start_time", "")).strip()
+                    end_time = str(row.get("end_time", "")).strip()
+                    subject = str(row.get("subject", "")).strip()
+                    teacher_name = str(row.get("teacher_name", "")).strip()
+                    room = str(row.get("room", "")).strip()
+
+                    if not class_name or not day_of_week or not start_time or not end_time or not subject:
+                        skipped += 1
+                        continue
+
+                    teacher_id = None
+                    if teacher_name:
+                        teacher = fetch_one("""
+                            SELECT id
+                            FROM teachers
+                            WHERE school_id = ?
+                              AND LOWER(TRIM(full_name)) = LOWER(TRIM(?))
+                            LIMIT 1
+                        """, (school_id, teacher_name))
+
+                        if teacher:
+                            teacher_id = teacher["id"]
+
+                    existing = fetch_one("""
+                        SELECT id
+                        FROM timetables
+                        WHERE school_id = ?
+                          AND class_name = ?
+                          AND day_of_week = ?
+                          AND start_time = ?
+                          AND end_time = ?
+                    """, (
+                        school_id,
+                        class_name,
+                        day_of_week,
+                        start_time,
+                        end_time
+                    ))
+
+                    if existing:
+                        cursor.execute(convert_query("""
+                            UPDATE timetables
+                            SET subject = ?,
+                                teacher_id = ?,
+                                room = ?
+                            WHERE id = ?
+                        """), (
+                            subject,
+                            teacher_id,
+                            room,
+                            existing["id"]
+                        ))
+                        updated += 1
+                    else:
+                        cursor.execute(convert_query("""
+                            INSERT INTO timetables (
+                                school_id,
+                                class_name,
+                                subject,
+                                teacher_id,
+                                day_of_week,
+                                start_time,
+                                end_time,
+                                room
+                            )
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        """), (
+                            school_id,
+                            class_name,
+                            subject,
+                            teacher_id,
+                            day_of_week,
+                            start_time,
+                            end_time,
+                            room
+                        ))
+                        imported += 1
+
+                conn.commit()
+
+            except Exception:
+                conn.rollback()
+                raise
+
+            finally:
+                conn.close()
+
+            log_audit(
+                "Imported timetable",
+                "timetables",
+                None,
+                f"Imported {imported}, updated {updated}, skipped {skipped}"
+            )
+
+            flash(f"Timetable import complete. Imported: {imported}, Updated: {updated}, Skipped: {skipped}", "success")
+            return redirect(url_for("timetable"))
+
+        except Exception as e:
+            flash(f"Import failed: {str(e)}", "danger")
+            return redirect(url_for("import_timetable"))
+
+    return render_template("import_timetable.html", schools=schools)
 
 @app.route("/add_timetable", methods=["GET", "POST"])
 @login_required
