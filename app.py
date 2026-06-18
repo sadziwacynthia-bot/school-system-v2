@@ -2763,6 +2763,145 @@ def import_teacher_assignments():
             return redirect(url_for("import_teacher_assignments"))
 
     return render_template("import_teacher_assignments.html", schools=schools)
+@app.route("/teacher_assignments")
+@login_required
+@roles_required("school_admin", "super_admin")
+def teacher_assignments_page():
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    if role == "super_admin":
+        assignments = fetch_all("""
+            SELECT ta.*, t.full_name, s.school_name
+            FROM teacher_assignments ta
+            JOIN teachers t ON ta.teacher_id = t.id
+            LEFT JOIN schools s ON ta.school_id = s.id
+            ORDER BY s.school_name, t.full_name, ta.class_name, ta.subject
+        """)
+    else:
+        assignments = fetch_all("""
+            SELECT ta.*, t.full_name
+            FROM teacher_assignments ta
+            JOIN teachers t ON ta.teacher_id = t.id
+            WHERE ta.school_id = ?
+            ORDER BY t.full_name, ta.class_name, ta.subject
+        """, (school_id,))
+
+    return render_template("teacher_assignments.html", assignments=assignments)
+
+@app.route("/edit_teacher_assignment/<int:assignment_id>", methods=["GET", "POST"])
+@login_required
+@roles_required("school_admin", "super_admin")
+def edit_teacher_assignment(assignment_id):
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    if role == "super_admin":
+        assignment = fetch_one("SELECT * FROM teacher_assignments WHERE id = ?", (assignment_id,))
+    else:
+        assignment = fetch_one("""
+            SELECT *
+            FROM teacher_assignments
+            WHERE id = ? AND school_id = ?
+        """, (assignment_id, school_id))
+
+    if not assignment:
+        flash("Teacher assignment not found.", "danger")
+        return redirect(url_for("teacher_assignments_page"))
+
+    school_id_for_assignment = assignment["school_id"]
+
+    teachers = fetch_all("""
+        SELECT *
+        FROM teachers
+        WHERE school_id = ?
+        ORDER BY full_name
+    """, (school_id_for_assignment,))
+
+    classes = fetch_all("""
+        SELECT DISTINCT class_name
+        FROM school_classes
+        WHERE school_id = ?
+        ORDER BY class_name
+    """, (school_id_for_assignment,))
+
+    subjects = fetch_all("""
+        SELECT subject_name
+        FROM subjects
+        WHERE school_id = ?
+        ORDER BY subject_name
+    """, (school_id_for_assignment,))
+
+    if request.method == "POST":
+        teacher_id = request.form.get("teacher_id")
+        class_name = request.form.get("class_name", "").strip()
+        subject = request.form.get("subject", "").strip()
+
+        if not teacher_id or not class_name or not subject:
+            flash("Teacher, class, and subject are required.", "danger")
+            return redirect(url_for("edit_teacher_assignment", assignment_id=assignment_id))
+
+        execute_commit("""
+            UPDATE teacher_assignments
+            SET teacher_id = ?, class_name = ?, subject = ?
+            WHERE id = ?
+        """, (teacher_id, class_name, subject, assignment_id))
+
+        execute_commit("""
+            UPDATE timetables
+            SET teacher_id = ?
+            WHERE school_id = ?
+              AND LOWER(TRIM(class_name)) = LOWER(TRIM(?))
+              AND LOWER(TRIM(subject)) = LOWER(TRIM(?))
+        """, (teacher_id, school_id_for_assignment, class_name, subject))
+
+        flash("Teacher assignment updated successfully.", "success")
+        return redirect(url_for("teacher_assignments_page"))
+
+    return render_template(
+        "edit_teacher_assignment.html",
+        assignment=assignment,
+        teachers=teachers,
+        classes=classes,
+        subjects=subjects
+    )
+
+@app.route("/delete_teacher_assignment/<int:assignment_id>", methods=["POST"])
+@login_required
+@roles_required("school_admin", "super_admin")
+def delete_teacher_assignment(assignment_id):
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    if role == "super_admin":
+        assignment = fetch_one("SELECT * FROM teacher_assignments WHERE id = ?", (assignment_id,))
+    else:
+        assignment = fetch_one("""
+            SELECT *
+            FROM teacher_assignments
+            WHERE id = ? AND school_id = ?
+        """, (assignment_id, school_id))
+
+    if not assignment:
+        flash("Teacher assignment not found.", "danger")
+        return redirect(url_for("teacher_assignments_page"))
+
+    execute_commit("""
+        UPDATE timetables
+        SET teacher_id = NULL
+        WHERE school_id = ?
+          AND LOWER(TRIM(class_name)) = LOWER(TRIM(?))
+          AND LOWER(TRIM(subject)) = LOWER(TRIM(?))
+    """, (
+        assignment["school_id"],
+        assignment["class_name"],
+        assignment["subject"]
+    ))
+
+    execute_commit("DELETE FROM teacher_assignments WHERE id = ?", (assignment_id,))
+
+    flash("Teacher assignment deleted successfully.", "success")
+    return redirect(url_for("teacher_assignments_page"))
 
 @app.route("/timetable_settings", methods=["GET", "POST"])
 @login_required
