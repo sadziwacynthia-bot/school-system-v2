@@ -2789,52 +2789,68 @@ def teacher_assignments_page():
 
     return render_template("teacher_assignments.html", assignments=assignments)
 
-@app.route('/edit_teacher_assignment/<int:assignment_id>', methods=['GET', 'POST'])
+@app.route("/edit_teacher_assignment/<int:assignment_id>", methods=["GET", "POST"])
 @login_required
-@permission_required('manage_teachers')
+@roles_required("school_admin", "super_admin")
 def edit_teacher_assignment(assignment_id):
 
-    assignment = execute_query("""
+    school_id = session.get("school_id")
+
+    assignment = fetch_one("""
         SELECT *
         FROM teacher_assignments
         WHERE id = ?
-    """, (assignment_id,), one=True)
+    """, (assignment_id,))
 
     if not assignment:
-        flash('Assignment not found.', 'danger')
-        return redirect(url_for('teacher_assignments'))
+        flash("Assignment not found.", "danger")
+        return redirect(url_for("teacher_assignments_page"))
 
-    teachers = execute_query("""
-        SELECT id, first_name, last_name
+    teachers = fetch_all("""
+        SELECT id, full_name
         FROM teachers
         WHERE school_id = ?
-        ORDER BY first_name
-    """, (session['school_id'],))
+        ORDER BY full_name
+    """, (school_id,))
 
-    if request.method == 'POST':
+    classes = fetch_all("""
+        SELECT DISTINCT class_name
+        FROM school_classes
+        WHERE school_id = ?
+        ORDER BY class_name
+    """, (school_id,))
 
-        new_teacher_id = request.form.get('teacher_id')
-        new_class_name = request.form.get('class_name')
-        new_subject = request.form.get('subject')
+    subjects = fetch_all("""
+        SELECT subject_name
+        FROM subjects
+        WHERE school_id = ?
+        ORDER BY subject_name
+    """, (school_id,))
+
+    if request.method == "POST":
+
+        teacher_id = request.form.get("teacher_id")
+        class_name = request.form.get("class_name")
+        subject = request.form.get("subject")
 
         try:
 
-            # Remove old timetable links
+            # Remove old timetable link
             execute_commit("""
                 UPDATE timetables
                 SET teacher_id = NULL
                 WHERE school_id = ?
                   AND teacher_id = ?
-                  AND LOWER(TRIM(class_name)) = LOWER(TRIM(?))
-                  AND LOWER(TRIM(subject)) = LOWER(TRIM(?))
+                  AND class_name = ?
+                  AND subject = ?
             """, (
-                session['school_id'],
-                assignment['teacher_id'],
-                assignment['class_name'],
-                assignment['subject']
+                school_id,
+                assignment["teacher_id"],
+                assignment["class_name"],
+                assignment["subject"]
             ))
 
-            # Update assignment record
+            # Update assignment
             execute_commit("""
                 UPDATE teacher_assignments
                 SET teacher_id = ?,
@@ -2842,42 +2858,39 @@ def edit_teacher_assignment(assignment_id):
                     subject = ?
                 WHERE id = ?
             """, (
-                new_teacher_id,
-                new_class_name,
-                new_subject,
+                teacher_id,
+                class_name,
+                subject,
                 assignment_id
             ))
 
-            # Update new timetable rows
+            # Update timetable
             execute_commit("""
                 UPDATE timetables
                 SET teacher_id = ?
                 WHERE school_id = ?
-                  AND LOWER(TRIM(class_name)) = LOWER(TRIM(?))
-                  AND LOWER(TRIM(subject)) = LOWER(TRIM(?))
+                  AND class_name = ?
+                  AND subject = ?
             """, (
-                new_teacher_id,
-                session['school_id'],
-                new_class_name,
-                new_subject
+                teacher_id,
+                school_id,
+                class_name,
+                subject
             ))
 
-            log_audit(
-                action="Edit Teacher Assignment",
-                details=f"Assignment #{assignment_id} updated"
-            )
+            flash("Teacher assignment updated successfully.", "success")
 
-            flash('Teacher assignment updated successfully.', 'success')
-
-            return redirect(url_for('teacher_assignments'))
+            return redirect(url_for("teacher_assignments_page"))
 
         except Exception as e:
-            flash(f'Error updating assignment: {str(e)}', 'danger')
+            flash(f"Error: {str(e)}", "danger")
 
     return render_template(
-        'edit_teacher_assignment.html',
+        "edit_teacher_assignment.html",
         assignment=assignment,
-        teachers=teachers
+        teachers=teachers,
+        classes=classes,
+        subjects=subjects
     )
 
 @app.route("/delete_teacher_assignment/<int:assignment_id>", methods=["POST"])
