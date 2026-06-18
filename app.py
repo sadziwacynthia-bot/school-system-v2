@@ -2794,7 +2794,7 @@ def teacher_assignments_page():
 @roles_required("school_admin", "super_admin")
 def edit_teacher_assignment(assignment_id):
 
-    school_id = session.get("school_id")
+    school_id = assignment["school_id"]
 
     assignment = fetch_one("""
         SELECT *
