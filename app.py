@@ -1043,6 +1043,78 @@ def audit_logs():
         end_date=end_date
     )
 
+@app.route("/edit_timetable_entry/<int:timetable_id>", methods=["GET", "POST"])
+@login_required
+@roles_required("school_admin", "super_admin")
+def edit_timetable_entry(timetable_id):
+
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    if role == "super_admin":
+        entry = fetch_one("""
+            SELECT *
+            FROM timetables
+            WHERE id = ?
+        """, (timetable_id,))
+    else:
+        entry = fetch_one("""
+            SELECT *
+            FROM timetables
+            WHERE id = ?
+              AND school_id = ?
+        """, (timetable_id, school_id))
+
+    if not entry:
+        flash("Timetable entry not found.", "danger")
+        return redirect(url_for("timetable", view="master"))
+
+    teachers = fetch_all("""
+        SELECT id, full_name
+        FROM teachers
+        WHERE school_id = ?
+        ORDER BY full_name
+    """, (entry["school_id"],))
+
+    if request.method == "POST":
+
+        day_of_week = request.form.get("day_of_week")
+        start_time = request.form.get("start_time")
+        end_time = request.form.get("end_time")
+        subject = request.form.get("subject")
+        class_name = request.form.get("class_name")
+        teacher_id = request.form.get("teacher_id")
+        room = request.form.get("room")
+
+        execute_commit("""
+            UPDATE timetables
+            SET day_of_week = ?,
+                start_time = ?,
+                end_time = ?,
+                subject = ?,
+                class_name = ?,
+                teacher_id = ?,
+                room = ?
+            WHERE id = ?
+        """, (
+            day_of_week,
+            start_time,
+            end_time,
+            subject,
+            class_name,
+            teacher_id if teacher_id else None,
+            room,
+            timetable_id
+        ))
+
+        flash("Timetable updated successfully.", "success")
+        return redirect(url_for("timetable", view="master"))
+
+    return render_template(
+        "edit_timetable_entry.html",
+        entry=entry,
+        teachers=teachers
+    )
 
 @app.route("/fix_audit_table")
 @login_required

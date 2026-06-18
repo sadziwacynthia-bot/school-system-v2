@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Timetable Entry{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <h1>Edit Timetable Entry</h1>
+</div>
+
+<div class="card">
+
+<form method="POST">
+
+    <label>Day</label>
+    <select name="day_of_week" required>
+        <option value="Monday" {% if entry.day_of_week=="Monday" %}selected{% endif %}>Monday</option>
+        <option value="Tuesday" {% if entry.day_of_week=="Tuesday" %}selected{% endif %}>Tuesday</option>
+        <option value="Wednesday" {% if entry.day_of_week=="Wednesday" %}selected{% endif %}>Wednesday</option>
+        <option value="Thursday" {% if entry.day_of_week=="Thursday" %}selected{% endif %}>Thursday</option>
+        <option value="Friday" {% if entry.day_of_week=="Friday" %}selected{% endif %}>Friday</option>
+    </select>
+
+    <label>Start Time</label>
+    <input type="time" name="start_time" value="{{ entry.start_time }}" required>
+
+    <label>End Time</label>
+    <input type="time" name="end_time" value="{{ entry.end_time }}" required>
+
+    <label>Class</label>
+    <input type="text" name="class_name" value="{{ entry.class_name }}" required>
+
+    <label>Subject</label>
+    <input type="text" name="subject" value="{{ entry.subject }}" required>
+
+    <label>Teacher</label>
+    <select name="teacher_id">
+        <option value="">Not Assigned</option>
+
+        {% for teacher in teachers %}
+        <option value="{{ teacher.id }}"
+            {% if teacher.id == entry.teacher_id %}selected{% endif %}>
+            {{ teacher.full_name }}
+        </option>
+        {% endfor %}
+    </select>
+
+    <label>Room</label>
+    <input type="text" name="room" value="{{ entry.room }}">
+
+    <br><br>
+
+    <button type="submit" class="btn btn-primary">
+        Save Changes
+    </button>
+
+    <a href="{{ url_for('timetable', view='master') }}"
+       class="btn btn-secondary">
+        Cancel
+    </a>
+
+</form>
+
+</div>
+
+{% endblock %}
