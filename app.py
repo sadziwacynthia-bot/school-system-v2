@@ -2793,8 +2793,7 @@ def teacher_assignments_page():
 @login_required
 @roles_required("school_admin", "super_admin")
 def edit_teacher_assignment(assignment_id):
-
-    school_id = assignment["school_id"]
+    role = session.get("role")
 
     assignment = fetch_one("""
         SELECT *
@@ -2804,6 +2803,12 @@ def edit_teacher_assignment(assignment_id):
 
     if not assignment:
         flash("Assignment not found.", "danger")
+        return redirect(url_for("teacher_assignments_page"))
+
+    school_id = assignment["school_id"]
+
+    if role != "super_admin" and school_id != session.get("school_id"):
+        flash("You are not allowed to edit this assignment.", "danger")
         return redirect(url_for("teacher_assignments_page"))
 
     teachers = fetch_all("""
@@ -2828,62 +2833,40 @@ def edit_teacher_assignment(assignment_id):
     """, (school_id,))
 
     if request.method == "POST":
-
         teacher_id = request.form.get("teacher_id")
         class_name = request.form.get("class_name")
         subject = request.form.get("subject")
 
-        try:
+        execute_commit("""
+            UPDATE timetables
+            SET teacher_id = NULL
+            WHERE school_id = ?
+              AND teacher_id = ?
+              AND class_name = ?
+              AND subject = ?
+        """, (
+            school_id,
+            assignment["teacher_id"],
+            assignment["class_name"],
+            assignment["subject"]
+        ))
 
-            # Remove old timetable link
-            execute_commit("""
-                UPDATE timetables
-                SET teacher_id = NULL
-                WHERE school_id = ?
-                  AND teacher_id = ?
-                  AND class_name = ?
-                  AND subject = ?
-            """, (
-                school_id,
-                assignment["teacher_id"],
-                assignment["class_name"],
-                assignment["subject"]
-            ))
+        execute_commit("""
+            UPDATE teacher_assignments
+            SET teacher_id = ?, class_name = ?, subject = ?
+            WHERE id = ?
+        """, (teacher_id, class_name, subject, assignment_id))
 
-            # Update assignment
-            execute_commit("""
-                UPDATE teacher_assignments
-                SET teacher_id = ?,
-                    class_name = ?,
-                    subject = ?
-                WHERE id = ?
-            """, (
-                teacher_id,
-                class_name,
-                subject,
-                assignment_id
-            ))
+        execute_commit("""
+            UPDATE timetables
+            SET teacher_id = ?
+            WHERE school_id = ?
+              AND class_name = ?
+              AND subject = ?
+        """, (teacher_id, school_id, class_name, subject))
 
-            # Update timetable
-            execute_commit("""
-                UPDATE timetables
-                SET teacher_id = ?
-                WHERE school_id = ?
-                  AND class_name = ?
-                  AND subject = ?
-            """, (
-                teacher_id,
-                school_id,
-                class_name,
-                subject
-            ))
-
-            flash("Teacher assignment updated successfully.", "success")
-
-            return redirect(url_for("teacher_assignments_page"))
-
-        except Exception as e:
-            flash(f"Error: {str(e)}", "danger")
+        flash("Teacher assignment updated successfully.", "success")
+        return redirect(url_for("teacher_assignments_page"))
 
     return render_template(
         "edit_teacher_assignment.html",
@@ -2892,7 +2875,6 @@ def edit_teacher_assignment(assignment_id):
         classes=classes,
         subjects=subjects
     )
-
 @app.route("/delete_teacher_assignment/<int:assignment_id>", methods=["POST"])
 @login_required
 @roles_required("school_admin", "super_admin")
