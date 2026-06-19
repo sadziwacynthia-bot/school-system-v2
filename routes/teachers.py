@@ -627,7 +627,112 @@ def register_teacher_routes(app):
             classes=classes,
             subjects=subjects
         )
+    @app.route("/import_teachers", methods=["GET", "POST"])
+    @login_required
+    @roles_required("super_admin")
+    def import_teachers():
+        schools = fetch_all("SELECT * FROM schools ORDER BY school_name")
 
+        if request.method == "POST":
+            school_id = request.form.get("school_id")
+            file = request.files.get("teacher_file")
+
+            if not school_id or not file or not file.filename:
+                flash("School and Excel file are required.", "danger")
+                return redirect(url_for("import_teachers"))
+
+            try:
+                df = pd.read_excel(file)
+
+                required_columns = ["full_name", "phone", "email", "username", "password"]
+                missing = [c for c in required_columns if c not in df.columns]
+
+                if missing:
+                    flash(f"Missing columns: {', '.join(missing)}", "danger")
+                    return redirect(url_for("import_teachers"))
+
+                imported = 0
+                skipped = 0
+
+                for _, row in df.iterrows():
+                    full_name = str(row.get("full_name", "")).strip()
+                    phone = str(row.get("phone", "")).strip()
+                    email = str(row.get("email", "")).strip()
+                    username = str(row.get("username", "")).strip()
+                    password = str(row.get("password", "")).strip()
+
+                    if not full_name or not username or not password:
+                        skipped += 1
+                        continue
+
+                    existing = fetch_one("SELECT id FROM users WHERE username = ?", (username,))
+                    if existing:
+                        skipped += 1
+                        continue
+
+                    conn = get_db()
+                    cursor = conn.cursor()
+
+                    try:
+                        if is_postgres():
+                            cursor.execute(convert_query("""
+                                INSERT INTO users (school_id, full_name, username, password, role)
+                                VALUES (?, ?, ?, ?, ?)
+                                RETURNING id
+                            """), (
+                                school_id,
+                                full_name,
+                                username,
+                                generate_password_hash(password),
+                                "teacher"
+                            ))
+                            user_id = cursor.fetchone()["id"]
+                        else:
+                            cursor.execute(convert_query("""
+                                INSERT INTO users (school_id, full_name, username, password, role)
+                                VALUES (?, ?, ?, ?, ?)
+                            """), (
+                                school_id,
+                                full_name,
+                                username,
+                                generate_password_hash(password),
+                                "teacher"
+                            ))
+                            user_id = cursor.lastrowid
+
+                        cursor.execute(convert_query("""
+                            INSERT INTO teachers (
+                                school_id, user_id, teacher_id, full_name, phone, email
+                            )
+                            VALUES (?, ?, ?, ?, ?, ?)
+                        """), (
+                            school_id,
+                            user_id,
+                            generate_teacher_id(),
+                            full_name,
+                            phone,
+                            email
+                        ))
+
+                        conn.commit()
+                        imported += 1
+
+                    except Exception:
+                        conn.rollback()
+                        skipped += 1
+
+                    finally:
+                        conn.close()
+
+                flash(f"Teacher import complete. Imported: {imported}, Skipped: {skipped}", "success")
+                return redirect(url_for("teachers"))
+
+            except Exception as e:
+                flash(f"Import failed: {str(e)}", "danger")
+                return redirect(url_for("import_teachers"))
+
+        return render_template("import_teachers.html", schools=schools)
+    
 
     @app.route("/delete_teacher_assignment/<int:assignment_id>", methods=["POST"])
     @login_required
