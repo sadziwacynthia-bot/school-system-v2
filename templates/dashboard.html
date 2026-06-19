@@ -16,14 +16,8 @@
       <div>
         <p class="eyebrow">{{ session.get("school_name", "EduTrack") }}</p>
         <h1>Welcome back{% if session.get('full_name') %}, {{ session.get('full_name') }}{% endif %}</h1>
-        <p class="muted">Grouped overview of school operations, admissions, finance, and system tools.</p>
+        <p class="muted">Clean overview of your school operations, finance, academics, and communication.</p>
       </div>
-    </div>
-
-    <div class="hero-actions">
-      <a href="{{ url_for('add_student') }}" class="btn primary">+ Add Student</a>
-      <a href="{{ url_for('add_application') }}" class="btn">+ Application</a>
-      <a href="{{ url_for('add_fee') }}" class="btn">Add Fee</a>
     </div>
   </div>
 
@@ -60,8 +54,8 @@
     <section class="module-section">
       <div class="section-header">
         <div>
-          <p class="eyebrow">School Operations</p>
-          <h2>Daily Management</h2>
+          <p class="eyebrow">Core Management</p>
+          <h2>School Operations</h2>
         </div>
       </div>
 
@@ -69,37 +63,25 @@
         <a href="{{ url_for('students') }}" class="shortcut-card">
           <span>👥</span>
           <strong>Students</strong>
-          <small>Manage learners</small>
+          <small>Manage learner profiles and records</small>
         </a>
 
         <a href="{{ url_for('teachers') }}" class="shortcut-card">
           <span>🧑‍🏫</span>
           <strong>Teachers</strong>
-          <small>Staff records</small>
+          <small>Manage staff and teacher accounts</small>
         </a>
 
         <a href="{{ url_for('classes') }}" class="shortcut-card">
           <span>🏫</span>
           <strong>Classes</strong>
-          <small>Class lists</small>
+          <small>View class lists and summaries</small>
         </a>
 
         <a href="{{ url_for('attendance') }}" class="shortcut-card">
           <span>🗓️</span>
           <strong>Attendance</strong>
-          <small>Daily register</small>
-        </a>
-
-        <a href="{{ url_for('results') }}" class="shortcut-card">
-          <span>📘</span>
-          <strong>Results</strong>
-          <small>Marks and grades</small>
-        </a>
-
-        <a href="{{ url_for('assignments') }}" class="shortcut-card">
-          <span>📝</span>
-          <strong>Assignments</strong>
-          <small>Class work</small>
+          <small>Mark and view daily attendance</small>
         </a>
       </div>
     </section>
@@ -107,28 +89,46 @@
     <section class="module-section">
       <div class="section-header">
         <div>
-          <p class="eyebrow">Admissions</p>
-          <h2>Applications & Enrollment</h2>
+          <p class="eyebrow">Academics</p>
+          <h2>Learning & Timetable</h2>
         </div>
       </div>
 
       <div class="shortcut-grid">
-        <a href="{{ url_for('applications') }}" class="shortcut-card">
-          <span>📋</span>
-          <strong>Applications</strong>
-          <small>Waiting list</small>
+        <a href="{{ url_for('subjects') }}" class="shortcut-card">
+          <span>📚</span>
+          <strong>Subjects</strong>
+          <small>Manage school subjects</small>
         </a>
 
-        <a href="{{ url_for('add_application') }}" class="shortcut-card">
-          <span>➕</span>
-          <strong>New Application</strong>
-          <small>Register applicant</small>
+        <a href="{{ url_for('timetable') }}" class="shortcut-card">
+          <span>🕒</span>
+          <strong>Timetable</strong>
+          <small>Class, teacher, and master views</small>
         </a>
 
-        <a href="{{ url_for('year_end_promotion') }}" class="shortcut-card">
-          <span>🎓</span>
-          <strong>Promotions</strong>
-          <small>Move classes</small>
+        <a href="{{ url_for('results') }}" class="shortcut-card">
+          <span>📘</span>
+          <strong>Results</strong>
+          <small>Marks, grades, and reports</small>
+        </a>
+
+        <a href="{{ url_for('assignments') }}" class="shortcut-card">
+          <span>📝</span>
+          <strong>Assignments</strong>
+          <small>Classwork and homework</small>
+        </a>
+
+        <a href="{{ url_for('teacher_resources') }}" class="shortcut-card">
+          <span>📁</span>
+          <strong>Resources</strong>
+          <small>Learning files and uploads</small>
+        </a>
+
+        <a href="{{ url_for('teacher_assignments_page') }}" class="shortcut-card">
+          <span>🔗</span>
+          <strong>Teacher Assignments</strong>
+          <small>Manage teacher allocations</small>
         </a>
       </div>
     </section>
@@ -146,31 +146,31 @@
           <a href="{{ url_for('fees') }}" class="shortcut-card">
             <span>💰</span>
             <strong>Fees</strong>
-            <small>Fee records</small>
+            <small>Fee records and payments</small>
           </a>
 
           <a href="{{ url_for('fee_analytics') }}" class="shortcut-card">
             <span>📊</span>
             <strong>Fee Analytics</strong>
-            <small>Payment summary</small>
+            <small>Payment summaries</small>
           </a>
 
           <a href="{{ url_for('fee_reminders') }}" class="shortcut-card">
             <span>📲</span>
-            <strong>Reminders</strong>
-            <small>Parent messages</small>
+            <strong>Fee Reminders</strong>
+            <small>Send parent reminders</small>
           </a>
 
           <a href="{{ url_for('cashbook') }}" class="shortcut-card">
             <span>📒</span>
             <strong>Cashbook</strong>
-            <small>Income & expenses</small>
+            <small>Income and expenses</small>
           </a>
 
           <a href="{{ url_for('cashbook_reports') }}" class="shortcut-card">
             <span>🧾</span>
-            <strong>Reports</strong>
-            <small>Daily/monthly</small>
+            <strong>Cashbook Reports</strong>
+            <small>Daily and monthly reports</small>
           </a>
         </div>
 
@@ -201,63 +201,34 @@
     <section class="module-section">
       <div class="section-header">
         <div>
-          <p class="eyebrow">Academic Setup</p>
-          <h2>Subjects, Timetable & Resources</h2>
+          <p class="eyebrow">Admissions & Communication</p>
+          <h2>Parents, Applications & Notices</h2>
         </div>
       </div>
 
       <div class="shortcut-grid">
-        <a href="{{ url_for('subjects') }}" class="shortcut-card">
-          <span>📚</span>
-          <strong>Subjects</strong>
-          <small>Subject list</small>
+        <a href="{{ url_for('applications') }}" class="shortcut-card">
+          <span>📋</span>
+          <strong>Applications</strong>
+          <small>Waiting list and applicants</small>
         </a>
 
-        <a href="{{ url_for('assign_teacher') }}" class="shortcut-card">
-          <span>🔗</span>
-          <strong>Assign Teacher</strong>
-          <small>Subjects/classes</small>
+        <a href="{{ url_for('year_end_promotion') }}" class="shortcut-card">
+          <span>🎓</span>
+          <strong>Promotions</strong>
+          <small>Year-end class movement</small>
         </a>
 
-        <a href="{{ url_for('assign_class_teacher') }}" class="shortcut-card">
-          <span>🏷️</span>
-          <strong>Class Teacher</strong>
-          <small>Homeroom setup</small>
-        </a>
-
-        <a href="{{ url_for('timetable') }}" class="shortcut-card">
-          <span>🕒</span>
-          <strong>Timetable</strong>
-          <small>Class schedule</small>
-        </a>
-
-        <a href="{{ url_for('teacher_resources') }}" class="shortcut-card">
-          <span>📁</span>
-          <strong>Resources</strong>
-          <small>Learning files</small>
-        </a>
-      </div>
-    </section>
-
-    <section class="module-section">
-      <div class="section-header">
-        <div>
-          <p class="eyebrow">Communication</p>
-          <h2>Notices & Parent Updates</h2>
-        </div>
-      </div>
-
-      <div class="shortcut-grid">
         <a href="{{ url_for('notices') }}" class="shortcut-card">
           <span>📢</span>
           <strong>Notices</strong>
-          <small>Announcements</small>
+          <small>School announcements</small>
         </a>
 
-        <a href="{{ url_for('add_notice') }}" class="shortcut-card">
-          <span>✍️</span>
-          <strong>Post Notice</strong>
-          <small>Send update</small>
+        <a href="{{ url_for('users') }}" class="shortcut-card">
+          <span>👤</span>
+          <strong>Users</strong>
+          <small>Parent and teacher accounts</small>
         </a>
       </div>
     </section>
@@ -266,7 +237,7 @@
     <section class="module-section super-section">
       <div class="section-header">
         <div>
-          <p class="eyebrow">Super Admin Tools</p>
+          <p class="eyebrow">Super Admin</p>
           <h2>Platform Control</h2>
         </div>
       </div>
@@ -278,16 +249,10 @@
           <small>Manage schools</small>
         </a>
 
-        <a href="{{ url_for('add_school') }}" class="shortcut-card">
-          <span>➕</span>
-          <strong>Add School</strong>
-          <small>New institution</small>
-        </a>
-
-        <a href="{{ url_for('users') }}" class="shortcut-card">
-          <span>👤</span>
-          <strong>Users</strong>
-          <small>Accounts</small>
+        <a href="{{ url_for('billing_dashboard') }}" class="shortcut-card">
+          <span>💼</span>
+          <strong>Billing</strong>
+          <small>Subscriptions</small>
         </a>
 
         <a href="{{ url_for('audit_logs') }}" class="shortcut-card">
@@ -296,40 +261,40 @@
           <small>System activity</small>
         </a>
 
-        <a href="{{ url_for('billing_dashboard') }}" class="shortcut-card">
-          <span>💼</span>
-          <strong>Billing</strong>
-          <small>Subscriptions</small>
-        </a>
-
         <a href="{{ url_for('import_students') }}" class="shortcut-card import-card">
           <span>📥</span>
           <strong>Import Students</strong>
           <small>Excel upload</small>
         </a>
 
-        <a href="{{ url_for('import_teacher_assignments') }}" class="shortcut-card import-card">
-          <span>👨‍🏫</span>
+        <a href="{{ url_for('import_teachers') }}" class="shortcut-card import-card">
+          <span>🧑‍🏫</span>
           <strong>Import Teachers</strong>
           <small>Excel upload</small>
+        </a>
+
+        <a href="{{ url_for('import_teacher_assignments') }}" class="shortcut-card import-card">
+          <span>🔗</span>
+          <strong>Import Teacher Assignments</strong>
+          <small>Class and subject allocation</small>
         </a>
 
         <a href="{{ url_for('import_fees') }}" class="shortcut-card import-card">
           <span>💳</span>
           <strong>Import Fees</strong>
-          <small>Excel upload</small>
+          <small>Opening balances</small>
         </a>
+
         <a href="{{ url_for('import_fee_transactions') }}" class="shortcut-card import-card">
-  <span>🧾</span>
-  <strong>Import Fee Transactions</strong>
-  <small>Receipts & payments</small>
-</a>
+          <span>🧾</span>
+          <strong>Import Payments</strong>
+          <small>Receipts and transactions</small>
+        </a>
       </div>
     </section>
     {% endif %}
 
   </div>
-
 </div>
 
 <style>
@@ -343,10 +308,7 @@
   background: linear-gradient(135deg, #2563eb, #0f172a);
   color: white;
   border-radius: 22px;
-  padding: 24px;
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
+  padding: 22px;
   margin-bottom: 16px;
   box-shadow: 0 14px 35px rgba(37, 99, 235, 0.18);
 }
@@ -354,24 +316,24 @@
 .hero-left {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
 }
 
 .hero-logo,
 .hero-logo-placeholder {
-  width: 72px;
-  height: 72px;
-  border-radius: 18px;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
   background: white;
   object-fit: contain;
-  padding: 8px;
+  padding: 6px;
 }
 
 .hero-logo-placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 34px;
+  font-size: 26px;
 }
 
 .eyebrow {
@@ -389,44 +351,14 @@
 }
 
 .dashboard-hero h1 {
-  margin: 6px 0;
-  font-size: 28px;
+  margin: 5px 0;
+  font-size: 27px;
 }
 
 .muted {
   color: #64748b;
   font-size: 13px;
   margin: 0;
-}
-
-.hero-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.btn {
-  text-decoration: none;
-  border-radius: 12px;
-  padding: 10px 14px;
-  border: 1px solid #dbe3ef;
-  background: white;
-  color: #0f172a;
-  font-weight: 800;
-  font-size: 13px;
-  display: inline-flex;
-  justify-content: center;
-}
-
-.btn.primary {
-  background: #2563eb;
-  color: white;
-  border-color: #2563eb;
-}
-
-.dashboard-hero .btn {
-  border: none;
 }
 
 .stats-grid {
@@ -491,9 +423,6 @@
 }
 
 .section-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
   margin-bottom: 14px;
 }
 
@@ -505,7 +434,7 @@
 
 .shortcut-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
   gap: 12px;
 }
 
@@ -519,7 +448,8 @@
   display: flex;
   flex-direction: column;
   gap: 7px;
-  min-height: 115px;
+  min-height: 118px;
+  transition: 0.2s ease;
 }
 
 .shortcut-card:hover {
@@ -538,6 +468,7 @@
 .shortcut-card small {
   color: #64748b;
   font-size: 12px;
+  line-height: 1.35;
 }
 
 .import-card {
@@ -589,14 +520,14 @@
 .dot.red { background: #dc2626; }
 
 @media (max-width: 950px) {
-  .dashboard-hero,
   .hero-left,
   .finance-layout {
     display: block;
   }
 
-  .hero-actions {
-    margin-top: 14px;
+  .hero-logo,
+  .hero-logo-placeholder {
+    margin-bottom: 12px;
   }
 
   .fee-status-card {
