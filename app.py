@@ -42,6 +42,7 @@ from routes.applications import (
 from routes.fees import register_fee_routes
 from routes.teachers import register_teacher_routes
 from routes.admin import register_admin_routes
+from utils.storage import upload_to_supabase
 UPLOAD_FOLDER = os.path.join("static", "uploads", "resources")
 ALLOWED_RESOURCE_EXTENSIONS = {"pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "png", "jpg", "jpeg"}
 
@@ -4442,12 +4443,10 @@ def upload_resource():
             flash("Invalid file type. Allowed: PDF, Word, PowerPoint, Excel, PNG, JPG.", "danger")
             return redirect(url_for("upload_resource"))
 
-        original_filename = secure_filename(file.filename)
-        ext = original_filename.rsplit(".", 1)[1].lower()
-        saved_filename = f"resource_{school_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{random.randint(1000,9999)}.{ext}"
+        uploaded = upload_to_supabase(file, folder=f"resources/school_{school_id}")
 
-        file_path = os.path.join(UPLOAD_FOLDER, saved_filename)
-        file.save(file_path)
+        saved_filename = uploaded["url"]
+        original_filename = uploaded["original_filename"]
 
         teacher_id = teacher["id"] if teacher else None
 
