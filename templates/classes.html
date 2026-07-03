@@ -1,273 +1,59 @@
-{% extends "base.html" %}
+{% extends "base_premium.html" %}
+{% block title %}Classes{% endblock %}
+
 {% block content %}
-
-<div class="classes-page">
-
-  <div class="page-header">
-    <div>
-      <p class="eyebrow">Classes</p>
-      <h1>Class Management</h1>
-      <p class="muted">Manage classes, dashboards, attendance and fees.</p>
-    </div>
-
-    <div class="header-actions">
-      <a href="{{ url_for('add_class') }}" class="btn primary">+ Add Class</a>
-    </div>
-  </div>
-
-  {% if schools %}
-  <div class="filter-card">
-    <form method="GET" action="{{ url_for('classes') }}">
-      <label>Filter by school</label>
-      <div class="filter-row">
-        <select name="school_id">
-          <option value="">All Schools</option>
-          {% for school in schools %}
-          <option value="{{ school.id }}" {% if selected_school|string == school.id|string %}selected{% endif %}>
-            {{ school.school_name }}
-          </option>
-          {% endfor %}
-        </select>
-        <button type="submit" class="btn primary">Filter</button>
-      </div>
-    </form>
-  </div>
-  {% endif %}
-
-  <div class="class-grid">
-    {% for c in classes %}
-    <div class="class-card">
-
-      <div class="class-top">
-        <div>
-          <p class="label">Class</p>
-          <h2>{{ c.class_name }}</h2>
-          {% if c.school_name %}
-          <p class="school-name">{{ c.school_name }}</p>
-          {% endif %}
-        </div>
-
-        <div class="student-count">
-          <strong>{{ c.total_students or 0 }}</strong>
-          <span>Students</span>
-        </div>
-      </div>
-
-      <div class="class-actions">
-        <a href="{{ url_for('class_students', class_name=c.class_name) }}" class="action-btn main">
-          Dashboard
-        </a>
-
-        <a href="{{ url_for('attendance', class_name=c.class_name) }}" class="action-btn">
-          Attendance
-        </a>
-
-        <a href="{{ url_for('add_fee', class_name=c.class_name) }}" class="action-btn">
-          Fees
-        </a>
-
-        <!-- If you don't have this route yet, comment it out -->
-        <a href="{{ url_for('print_class_list', class_name=c.class_name) }}" class="action-btn dark">
-          Print
-        </a>
-      </div>
-
-      {% if session.get("role") == "super_admin" %}
-      <form method="POST"
-            action="{{ url_for('delete_class', class_id=c.id) }}"
-            onsubmit="return confirm('Delete this class?');">
-        <button type="submit" class="delete-btn">Delete</button>
-      </form>
-      {% endif %}
-
-    </div>
-    {% else %}
-    <div class="empty-card">
-      <h2>No classes yet</h2>
-      <p>Create your first class to get started.</p>
-      <a href="{{ url_for('add_class') }}" class="btn primary">+ Add Class</a>
-    </div>
-    {% endfor %}
-  </div>
-
+<div class="page-header-card">
+    <h1>Classes</h1>
+    <p>Manage grades, streams, class teachers, and student allocations.</p>
 </div>
 
-<style>
-.classes-page {
-  padding: 16px;
-}
+<div class="premium-card">
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
+    <div class="section-title">
 
-.eyebrow {
-  font-size: 11px;
-  color: #2563eb;
-  font-weight: 700;
-}
+        <h2>Class Management</h2>
 
-.page-header h1 {
-  font-size: 24px;
-  margin: 2px 0;
-}
+        <div class="action-row">
 
-.muted {
-  font-size: 13px;
-  color: #64748b;
-}
+            <a href="{{ url_for('add_class') }}" class="premium-btn">
+                ➕ Add Class
+            </a>
 
-.header-actions {
-  display: flex;
-  gap: 8px;
-}
+            <a href="{{ url_for('assign_class_teacher') }}" class="premium-btn premium-btn-light">
+                👨‍🏫 Assign Class Teacher
+            </a>
 
-.btn {
-  padding: 8px 12px;
-  font-size: 13px;
-  border-radius: 10px;
-  border: 1px solid #ddd;
-  background: white;
-  font-weight: 600;
-  text-decoration: none;
-}
+            <a href="{{ url_for('students') }}" class="premium-btn premium-btn-light">
+                👨‍🎓 View Students
+            </a>
 
-.btn.primary {
-  background: #2563eb;
-  color: white;
-  border-color: #2563eb;
-}
+        </div>
 
-.filter-card {
-  padding: 12px;
-  border: 1px solid #eee;
-  border-radius: 12px;
-  margin-bottom: 16px;
-}
+    </div>
 
-.filter-row {
-  display: flex;
-  gap: 8px;
-}
-
-.filter-row select {
-  flex: 1;
-  padding: 8px;
-  border-radius: 8px;
-  border: 1px solid #ccc;
-}
-
-.class-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
-}
-
-.class-card {
-  border: 1px solid #eee;
-  border-radius: 14px;
-  padding: 14px;
-  background: white;
-}
-
-.class-top {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
-.label {
-  font-size: 11px;
-  color: #2563eb;
-  font-weight: 700;
-}
-
-.class-card h2 {
-  font-size: 18px;
-  margin: 4px 0;
-}
-
-.school-name {
-  font-size: 12px;
-  color: #666;
-}
-
-.student-count {
-  text-align: center;
-  padding: 6px;
-}
-
-.student-count strong {
-  font-size: 16px;
-}
-
-.student-count span {
-  font-size: 11px;
-  color: #666;
-}
-
-.class-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-}
-
-.action-btn {
-  text-align: center;
-  padding: 7px;
-  font-size: 12px;
-  border-radius: 8px;
-  border: 1px solid #ddd;
-  text-decoration: none;
-  color: #333;
-}
-
-.action-btn.main {
-  grid-column: span 2;
-  background: #2563eb;
-  color: white;
-  border-color: #2563eb;
-}
-
-.action-btn.dark {
-  background: #111;
-  color: white;
-  border-color: #111;
-}
-
-.delete-btn {
-  margin-top: 8px;
-  width: 100%;
-  padding: 7px;
-  font-size: 12px;
-  border-radius: 8px;
-  border: 1px solid #fca5a5;
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.empty-card {
-  grid-column: 1 / -1;
-  text-align: center;
-  padding: 30px;
-  border: 1px dashed #ccc;
-  border-radius: 14px;
-}
-
-@media (max-width: 900px) {
-  .class-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 600px) {
-  .class-grid {
-    grid-template-columns: 1fr;
-  }
-}
-</style>
-
+  {% if classes %}
+  <table class="premium-table">
+    <thead>
+      <tr>
+        <th>Class</th>
+        <th>Teacher</th>
+        <th>Students</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for class in classes %}
+      <tr>
+        <td><strong>{{ class.name or class.class_name }}</strong></td>
+        <td>{{ class.teacher_name or '-' }}</td>
+        <td>{{ class.student_count or 0 }}</td>
+        <td><span class="badge badge-success">Active</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-box">No classes found yet.</div>
+  {% endif %}
+</div>
 {% endblock %}

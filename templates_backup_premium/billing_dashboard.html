@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Billing Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h2 class="page-title">Billing Dashboard</h2>
+        <p class="page-subtitle">School subscription overview</p>
+    </div>
+</div>
+
+<div class="dashboard-grid premium-stats-grid">
+    <div class="stats-card premium-card students-card">
+        <div class="stats-card-label">Total Schools</div>
+        <div class="stats-card-value">{{ summary.total_schools }}</div>
+    </div>
+    <div class="stats-card premium-card teachers-card">
+        <div class="stats-card-label">Active</div>
+        <div class="stats-card-value">{{ summary.active_schools }}</div>
+    </div>
+    <div class="stats-card premium-card users-card">
+        <div class="stats-card-label">Suspended</div>
+        <div class="stats-card-value">{{ summary.suspended_schools }}</div>
+    </div>
+    <div class="stats-card premium-card fees-card">
+        <div class="stats-card-label">Overdue</div>
+        <div class="stats-card-value">{{ summary.overdue_schools }}</div>
+    </div>
+    <div class="stats-card premium-card schools-card">
+        <div class="stats-card-label">Trial</div>
+        <div class="stats-card-value">{{ summary.trial_schools }}</div>
+    </div>
+</div>
+
+<div class="table-card">
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>School</th>
+                    <th>Code</th>
+                    <th>Status</th>
+                    <th>End Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for school in schools %}
+                <tr>
+                    <td>{{ school.school_name }}</td>
+                    <td>{{ school.school_code }}</td>
+                    <td>{{ school.subscription_status }}</td>
+                    <td>{{ school.subscription_end_date or '-' }}</td>
+                    <td>
+                        <a href="{{ url_for('school_profile', school_id=school.id) }}" class="btn btn-secondary btn-sm">View</a>
+                        <a href="{{ url_for('update_school_subscription', school_id=school.id) }}" class="btn btn-primary btn-sm">Manage</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5">No schools found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

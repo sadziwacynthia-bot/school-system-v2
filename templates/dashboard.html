@@ -1,539 +1,119 @@
-{% extends "base.html" %}
+{% extends "base_premium.html" %}
+
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
 
-<div class="dashboard-page">
+<div class="hero-card">
+  <h2>Welcome back, {{ session.get('full_name') or session.get('username', 'Admin') }} 👋</h2>
+  <p>Manage your school from one premium command center.</p>
 
-  <div class="dashboard-hero">
-    <div class="hero-left">
-      {% if session.get("logo_url") %}
-        <img src="{{ url_for('static', filename=session.get('logo_url')) }}" class="hero-logo" alt="School Logo">
-      {% else %}
-        <div class="hero-logo-placeholder">🏫</div>
-      {% endif %}
-
-      <div>
-        <p class="eyebrow">{{ session.get("school_name", "EduTrack") }}</p>
-        <h1>Welcome back{% if session.get('full_name') %}, {{ session.get('full_name') }}{% endif %}</h1>
-        <p class="muted">Clean overview of your school operations, finance, academics, and communication.</p>
-      </div>
-    </div>
-  </div>
-
-  <div class="stats-grid">
-    {% if session.get('role') == 'super_admin' %}
-    <div class="stat-card purple">
-      <span>Schools</span>
-      <h2>{{ total_schools|default(0) }}</h2>
-      <p>Registered schools</p>
-    </div>
-    {% endif %}
-
-    <div class="stat-card blue">
+  <div class="hero-stats">
+    <div class="hero-mini">
       <span>Students</span>
-      <h2>{{ total_students|default(0) }}</h2>
-      <p>Total learners</p>
+      <strong>{{ total_students or 0 }}</strong>
     </div>
 
-    <div class="stat-card green">
+    <div class="hero-mini">
       <span>Teachers</span>
-      <h2>{{ total_teachers|default(0) }}</h2>
-      <p>Teaching staff</p>
+      <strong>{{ total_teachers or 0 }}</strong>
     </div>
 
-    <div class="stat-card red">
-      <span>Outstanding Fees</span>
-      <h2>${{ "%.2f"|format(total_balance|default(0)) }}</h2>
-      <p>Unpaid balance</p>
+    <div class="hero-mini">
+      <span>Classes</span>
+      <strong>{{ total_classes or 0 }}</strong>
     </div>
-  </div>
 
-  <div class="dashboard-sections">
-
-    <section class="module-section">
-      <div class="section-header">
-        <div>
-          <p class="eyebrow">Core Management</p>
-          <h2>School Operations</h2>
-        </div>
-      </div>
-
-      <div class="shortcut-grid">
-        <a href="{{ url_for('students') }}" class="shortcut-card">
-          <span>👥</span>
-          <strong>Students</strong>
-          <small>Manage learner profiles and records</small>
-        </a>
-
-        <a href="{{ url_for('teachers') }}" class="shortcut-card">
-          <span>🧑‍🏫</span>
-          <strong>Teachers</strong>
-          <small>Manage staff and teacher accounts</small>
-        </a>
-
-        <a href="{{ url_for('classes') }}" class="shortcut-card">
-          <span>🏫</span>
-          <strong>Classes</strong>
-          <small>View class lists and summaries</small>
-        </a>
-
-        <a href="{{ url_for('attendance') }}" class="shortcut-card">
-          <span>🗓️</span>
-          <strong>Attendance</strong>
-          <small>Mark and view daily attendance</small>
-        </a>
-      </div>
-    </section>
-
-    <section class="module-section">
-      <div class="section-header">
-        <div>
-          <p class="eyebrow">Academics</p>
-          <h2>Learning & Timetable</h2>
-        </div>
-      </div>
-
-      <div class="shortcut-grid">
-        <a href="{{ url_for('subjects') }}" class="shortcut-card">
-          <span>📚</span>
-          <strong>Subjects</strong>
-          <small>Manage school subjects</small>
-        </a>
-
-        <a href="{{ url_for('timetable') }}" class="shortcut-card">
-          <span>🕒</span>
-          <strong>Timetable</strong>
-          <small>Class, teacher, and master views</small>
-        </a>
-
-        <a href="{{ url_for('results') }}" class="shortcut-card">
-          <span>📘</span>
-          <strong>Results</strong>
-          <small>Marks, grades, and reports</small>
-        </a>
-
-        <a href="{{ url_for('assignments') }}" class="shortcut-card">
-          <span>📝</span>
-          <strong>Assignments</strong>
-          <small>Classwork and homework</small>
-        </a>
-
-        <a href="{{ url_for('teacher_resources') }}" class="shortcut-card">
-          <span>📁</span>
-          <strong>Resources</strong>
-          <small>Learning files and uploads</small>
-        </a>
-
-        <a href="{{ url_for('teacher_assignments_page') }}" class="shortcut-card">
-          <span>🔗</span>
-          <strong>Teacher Assignments</strong>
-          <small>Manage teacher allocations</small>
-        </a>
-      </div>
-    </section>
-
-    <section class="module-section">
-      <div class="section-header">
-        <div>
-          <p class="eyebrow">Finance</p>
-          <h2>Fees & Cashbook</h2>
-        </div>
-      </div>
-
-      <div class="finance-layout">
-        <div class="shortcut-grid">
-          <a href="{{ url_for('fees') }}" class="shortcut-card">
-            <span>💰</span>
-            <strong>Fees</strong>
-            <small>Fee records and payments</small>
-          </a>
-
-          <a href="{{ url_for('fee_analytics') }}" class="shortcut-card">
-            <span>📊</span>
-            <strong>Fee Analytics</strong>
-            <small>Payment summaries</small>
-          </a>
-
-          <a href="{{ url_for('fee_reminders') }}" class="shortcut-card">
-            <span>📲</span>
-            <strong>Fee Reminders</strong>
-            <small>Send parent reminders</small>
-          </a>
-
-          <a href="{{ url_for('cashbook') }}" class="shortcut-card">
-            <span>📒</span>
-            <strong>Cashbook</strong>
-            <small>Income and expenses</small>
-          </a>
-
-          <a href="{{ url_for('cashbook_reports') }}" class="shortcut-card">
-            <span>🧾</span>
-            <strong>Cashbook Reports</strong>
-            <small>Daily and monthly reports</small>
-          </a>
-        </div>
-
-        <div class="fee-status-card">
-          <h3>Fee Status</h3>
-
-          <div class="status-item">
-            <span class="dot green"></span>
-            <p>Paid</p>
-            <strong>{{ paid_count|default(0) }}</strong>
-          </div>
-
-          <div class="status-item">
-            <span class="dot yellow"></span>
-            <p>Partial</p>
-            <strong>{{ partial_count|default(0) }}</strong>
-          </div>
-
-          <div class="status-item">
-            <span class="dot red"></span>
-            <p>Pending</p>
-            <strong>{{ pending_count|default(0) }}</strong>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="module-section">
-      <div class="section-header">
-        <div>
-          <p class="eyebrow">Admissions & Communication</p>
-          <h2>Parents, Applications & Notices</h2>
-        </div>
-      </div>
-
-      <div class="shortcut-grid">
-        <a href="{{ url_for('applications') }}" class="shortcut-card">
-          <span>📋</span>
-          <strong>Applications</strong>
-          <small>Waiting list and applicants</small>
-        </a>
-
-        <a href="{{ url_for('year_end_promotion') }}" class="shortcut-card">
-          <span>🎓</span>
-          <strong>Promotions</strong>
-          <small>Year-end class movement</small>
-        </a>
-
-        <a href="{{ url_for('notices') }}" class="shortcut-card">
-          <span>📢</span>
-          <strong>Notices</strong>
-          <small>School announcements</small>
-        </a>
-
-        <a href="{{ url_for('users') }}" class="shortcut-card">
-          <span>👤</span>
-          <strong>Users</strong>
-          <small>Parent and teacher accounts</small>
-        </a>
-      </div>
-    </section>
-
-    {% if session.get("role") == "super_admin" %}
-    <section class="module-section super-section">
-      <div class="section-header">
-        <div>
-          <p class="eyebrow">Super Admin</p>
-          <h2>Platform Control</h2>
-        </div>
-      </div>
-
-      <div class="shortcut-grid">
-        <a href="{{ url_for('schools') }}" class="shortcut-card">
-          <span>🏢</span>
-          <strong>Schools</strong>
-          <small>Manage schools</small>
-        </a>
-
-        <a href="{{ url_for('billing_dashboard') }}" class="shortcut-card">
-          <span>💼</span>
-          <strong>Billing</strong>
-          <small>Subscriptions</small>
-        </a>
-
-        <a href="{{ url_for('audit_logs') }}" class="shortcut-card">
-          <span>🧾</span>
-          <strong>Audit Logs</strong>
-          <small>System activity</small>
-        </a>
-
-        <a href="{{ url_for('import_students') }}" class="shortcut-card import-card">
-          <span>📥</span>
-          <strong>Import Students</strong>
-          <small>Excel upload</small>
-        </a>
-
-        <a href="{{ url_for('import_teachers') }}" class="shortcut-card import-card">
-          <span>🧑‍🏫</span>
-          <strong>Import Teachers</strong>
-          <small>Excel upload</small>
-        </a>
-
-        <a href="{{ url_for('import_teacher_assignments') }}" class="shortcut-card import-card">
-          <span>🔗</span>
-          <strong>Import Teacher Assignments</strong>
-          <small>Class and subject allocation</small>
-        </a>
-
-        <a href="{{ url_for('import_fees') }}" class="shortcut-card import-card">
-          <span>💳</span>
-          <strong>Import Fees</strong>
-          <small>Opening balances</small>
-        </a>
-
-        <a href="{{ url_for('import_fee_transactions') }}" class="shortcut-card import-card">
-          <span>🧾</span>
-          <strong>Import Payments</strong>
-          <small>Receipts and transactions</small>
-        </a>
-      </div>
-    </section>
-    {% endif %}
-
+    <div class="hero-mini">
+      <span>Pending</span>
+      <strong>{{ pending_count or 0 }}</strong>
+    </div>
   </div>
 </div>
 
-<style>
-.dashboard-page {
-  max-width: 1250px;
-  margin: auto;
-  padding: 16px;
-}
+<div class="premium-grid">
+  <div class="stat-card card-blue">
+    <span>Total Students</span>
+    <strong>{{ total_students or 0 }}</strong>
+  </div>
 
-.dashboard-hero {
-  background: linear-gradient(135deg, #2563eb, #0f172a);
-  color: white;
-  border-radius: 22px;
-  padding: 22px;
-  margin-bottom: 16px;
-  box-shadow: 0 14px 35px rgba(37, 99, 235, 0.18);
-}
+  <div class="stat-card card-green">
+    <span>Total Teachers</span>
+    <strong>{{ total_teachers or 0 }}</strong>
+  </div>
 
-.hero-left {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
+  <div class="stat-card card-purple">
+    <span>Classes</span>
+    <strong>{{ total_classes or 0 }}</strong>
+  </div>
 
-.hero-logo,
-.hero-logo-placeholder {
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-  background: white;
-  object-fit: contain;
-  padding: 6px;
-}
+  <div class="stat-card card-orange">
+    <span>Outstanding Fees</span>
+    <strong>${{ outstanding_fees or 0 }}</strong>
+  </div>
+</div>
 
-.hero-logo-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 26px;
-}
+<div class="dashboard-layout">
 
-.eyebrow {
-  font-size: 11px;
-  font-weight: 900;
-  text-transform: uppercase;
-  margin: 0;
-  color: #2563eb;
-  letter-spacing: .08em;
-}
+  <div class="premium-card">
+    <div class="section-title">
+      <h2>Quick Actions</h2>
+    </div>
 
-.dashboard-hero .eyebrow,
-.dashboard-hero .muted {
-  color: #dbeafe;
-}
+    <div class="quick-action-grid">
+      <a href="{{ url_for('add_student') }}" class="quick-tile">➕ Add Student</a>
+      <a href="{{ url_for('add_application') }}" class="quick-tile">📝 New Application</a>
+      <a href="{{ url_for('add_class') }}" class="quick-tile">🏫 Add Class</a>
+      <a href="{{ url_for('add_subject') }}" class="quick-tile">📚 Add Subject</a>
+      <a href="{{ url_for('add_cashbook_entry') }}" class="quick-tile">📒 Add Cash Entry</a>
+      <a href="{{ url_for('fee_reminders') }}" class="quick-tile">🔔 Fee Reminders</a>
+    </div>
+  </div>
 
-.dashboard-hero h1 {
-  margin: 5px 0;
-  font-size: 27px;
-}
+  <div class="premium-card">
+    <div class="section-title">
+      <h2>Today’s Activity</h2>
+    </div>
 
-.muted {
-  color: #64748b;
-  font-size: 13px;
-  margin: 0;
-}
+    <div class="activity-item">✅ System online and ready</div>
+    <div class="activity-item">🎓 {{ total_students or 0 }} student records available</div>
+    <div class="activity-item">👨‍🏫 {{ total_teachers or 0 }} teachers registered</div>
+    <div class="activity-item">📝 {{ pending_count or 0 }} applications pending</div>
+    <div class="activity-item">💰 Finance module active</div>
+  </div>
 
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  gap: 14px;
-  margin-bottom: 16px;
-}
+</div>
 
-.stat-card,
-.module-section,
-.fee-status-card {
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 18px;
-  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.05);
-}
+<br>
 
-.stat-card {
-  padding: 16px;
-  border-left: 5px solid #2563eb;
-}
+<div class="dashboard-layout">
 
-.stat-card.green { border-left-color: #16a34a; }
-.stat-card.red { border-left-color: #dc2626; }
-.stat-card.purple { border-left-color: #7c3aed; }
+  <div class="premium-card">
+    <div class="section-title">
+      <h2>Management Modules</h2>
+    </div>
 
-.stat-card span {
-  color: #64748b;
-  font-size: 12px;
-  font-weight: 800;
-}
+    <div class="quick-action-grid">
+      <a href="{{ url_for('students') }}" class="quick-tile">🎓 Students</a>
+      <a href="{{ url_for('teachers') }}" class="quick-tile">👨‍🏫 Teachers</a>
+      <a href="{{ url_for('fees') }}" class="quick-tile">💰 Fees</a>
+      <a href="{{ url_for('attendance') }}" class="quick-tile">📋 Attendance</a>
+      <a href="{{ url_for('timetable') }}" class="quick-tile">🕒 Timetable</a>
+      <a href="{{ url_for('cashbook') }}" class="quick-tile">📒 Cashbook</a>
+    </div>
+  </div>
 
-.stat-card h2 {
-  margin: 6px 0 0;
-  font-size: 29px;
-  color: #0f172a;
-}
+  <div class="premium-card">
+    <div class="section-title">
+      <h2>System Health</h2>
+    </div>
 
-.stat-card p {
-  margin: 4px 0 0;
-  color: #64748b;
-  font-size: 12px;
-}
+    <div class="activity-item">🟢 Database connected</div>
+    <div class="activity-item">🟢 Permissions active</div>
+    <div class="activity-item">🟢 Premium UI active</div>
+    <div class="activity-item">🟢 Multi-role system ready</div>
+  </div>
 
-.stat-card.red h2 {
-  color: #dc2626;
-}
-
-.dashboard-sections {
-  display: grid;
-  gap: 16px;
-}
-
-.module-section {
-  padding: 18px;
-}
-
-.super-section {
-  border: 1px solid #bfdbfe;
-  background: linear-gradient(180deg, #ffffff, #eff6ff);
-}
-
-.section-header {
-  margin-bottom: 14px;
-}
-
-.section-header h2 {
-  margin: 4px 0 0;
-  color: #0f172a;
-  font-size: 19px;
-}
-
-.shortcut-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
-  gap: 12px;
-}
-
-.shortcut-card {
-  text-decoration: none;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  padding: 14px;
-  color: #0f172a;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  min-height: 118px;
-  transition: 0.2s ease;
-}
-
-.shortcut-card:hover {
-  background: #eef2ff;
-  transform: translateY(-2px);
-}
-
-.shortcut-card span {
-  font-size: 25px;
-}
-
-.shortcut-card strong {
-  font-size: 14px;
-}
-
-.shortcut-card small {
-  color: #64748b;
-  font-size: 12px;
-  line-height: 1.35;
-}
-
-.import-card {
-  border-color: #93c5fd;
-  background: #eff6ff;
-}
-
-.finance-layout {
-  display: grid;
-  grid-template-columns: 1fr 280px;
-  gap: 14px;
-}
-
-.fee-status-card {
-  padding: 14px;
-}
-
-.fee-status-card h3 {
-  margin: 0 0 12px;
-  color: #0f172a;
-  font-size: 16px;
-}
-
-.status-item {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 10px;
-  background: #f8fafc;
-  padding: 11px;
-  border-radius: 13px;
-  margin-bottom: 9px;
-}
-
-.status-item p {
-  margin: 0;
-  color: #475569;
-  font-size: 13px;
-}
-
-.dot {
-  width: 11px;
-  height: 11px;
-  border-radius: 999px;
-}
-
-.dot.green { background: #16a34a; }
-.dot.yellow { background: #f59e0b; }
-.dot.red { background: #dc2626; }
-
-@media (max-width: 950px) {
-  .hero-left,
-  .finance-layout {
-    display: block;
-  }
-
-  .hero-logo,
-  .hero-logo-placeholder {
-    margin-bottom: 12px;
-  }
-
-  .fee-status-card {
-    margin-top: 14px;
-  }
-}
-</style>
+</div>
 
 {% endblock %}

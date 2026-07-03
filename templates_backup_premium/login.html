@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login | School Suite</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/premium.css') }}">
+</head>
+
+<body class="login-body">
+
+<div class="login-page">
+
+  <div class="login-hero">
+    <div>
+      <h1>School Suite Premium</h1>
+      <p>Manage students, teachers, attendance, fees, applications, and reports from one modern platform.</p>
+    </div>
+  </div>
+
+  <div class="login-card">
+
+    <div class="login-logo">
+      <div class="premium-logo-circle">S</div>
+      <div>
+        <h2>Welcome Back</h2>
+        <p>Sign in to continue</p>
+      </div>
+    </div>
+
+    {% if error %}
+      <div class="login-error">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('login') }}">
+      <label>Username</label>
+      <input class="premium-input" type="text" name="username" placeholder="Enter username" required>
+
+      <label>Password</label>
+      <input class="premium-input" type="password" name="password" placeholder="Enter password" required>
+
+      <button class="premium-btn login-btn" type="submit">Sign In</button>
+    </form>
+
+  </div>
+
+</div>
+
+</body>
+</html>

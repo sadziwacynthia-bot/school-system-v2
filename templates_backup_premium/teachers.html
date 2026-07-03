@@ -1,0 +1,43 @@
+{% extends "base_premium.html" %}
+{% block title %}Teachers{% endblock %}
+
+{% block content %}
+<div class="page-header-card">
+  <h1>Teachers</h1>
+  <p>Manage teacher profiles, subjects, class teacher roles, and account status.</p>
+</div>
+
+<div class="premium-card">
+  <div class="section-title">
+    <h2>Teacher Records</h2>
+    <a href="#" class="premium-btn">+ Add Teacher</a>
+  </div>
+
+  {% if teachers %}
+  <table class="premium-table">
+    <thead>
+      <tr>
+        <th>Teacher</th>
+        <th>Email</th>
+        <th>Subject</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for teacher in teachers %}
+      <tr>
+        <td><strong>{{ teacher.name or teacher.full_name }}</strong></td>
+        <td>{{ teacher.email or '-' }}</td>
+        <td>{{ teacher.subject or teacher.subject_name or '-' }}</td>
+        <td><span class="badge badge-success">Active</span></td>
+        <td><a href="#" class="premium-btn premium-btn-light">View</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-box">No teachers found yet.</div>
+  {% endif %}
+</div>
+{% endblock %}

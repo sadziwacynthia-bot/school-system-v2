@@ -1,430 +1,60 @@
-{% extends "base.html" %}
+{% extends "base_premium.html" %}
+{% block title %}Cashbook{% endblock %}
+
 {% block content %}
-
-<div class="cashbook-page">
-
-  <div class="page-header">
-    <div>
-      <p class="eyebrow">Finance</p>
-      <h1>Cashbook</h1>
-      <p class="muted">Track school income, expenses, and running balance.</p>
-    </div>
-
-    <div class="header-actions">
-      <a href="{{ url_for('add_cashbook_entry') }}" class="btn primary">+ Add Entry</a>
-      <a href="{{ url_for('cashbook_reports') }}" class="btn">Reports</a>
-      <a href="{{ url_for('export_cashbook_csv') }}" class="btn">Export CSV</a>
-    </div>
-  </div>
-
-  <div class="stats-grid">
-    <div class="stat-card income">
-      <span>Total Income</span>
-      <h2>${{ "%.2f"|format(total_income or 0) }}</h2>
-    </div>
-
-    <div class="stat-card expense">
-      <span>Total Expenses</span>
-      <h2>${{ "%.2f"|format(total_expense or 0) }}</h2>
-    </div>
-
-    <div class="stat-card balance">
-      <span>Net Balance</span>
-      <h2>${{ "%.2f"|format(net_balance or 0) }}</h2>
-    </div>
-  </div>
-
-  <div class="filter-card">
-    <form method="GET" action="{{ url_for('cashbook') }}" class="filter-form">
-
-      <div class="form-group">
-        <label>Type</label>
-        <select name="entry_type">
-          <option value="">All</option>
-          <option value="income" {% if entry_type == "income" %}selected{% endif %}>Income</option>
-          <option value="expense" {% if entry_type == "expense" %}selected{% endif %}>Expense</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label>Source</label>
-        <select name="source">
-          <option value="">All</option>
-          <option value="auto_fees" {% if source == "auto_fees" %}selected{% endif %}>Auto Fee Entries</option>
-          <option value="manual" {% if source == "manual" %}selected{% endif %}>Manual Entries</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label>Category</label>
-        <input type="text" name="category" placeholder="e.g. School Fees" value="{{ category or '' }}">
-      </div>
-
-      <div class="form-group">
-        <label>From</label>
-        <input type="date" name="start_date" value="{{ start_date or '' }}">
-      </div>
-
-      <div class="form-group">
-        <label>To</label>
-        <input type="date" name="end_date" value="{{ end_date or '' }}">
-      </div>
-
-      <div class="filter-actions">
-        <button type="submit" class="btn primary">Filter</button>
-        <a href="{{ url_for('cashbook') }}" class="btn">Reset</a>
-      </div>
-
-    </form>
-  </div>
-
-  <div class="table-card">
-    <div class="table-header">
-      <h2>Cashbook Entries</h2>
-      <p class="muted">{{ entries|length }} record(s)</p>
-    </div>
-
-    <table>
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Type</th>
-          <th>Category</th>
-          <th>Description</th>
-          <th>Method</th>
-          <th>Reference</th>
-          <th>Amount</th>
-          <th>Running Balance</th>
-          <th>Recorded By</th>
-          {% if session.get("role") == "super_admin" %}
-          <th>Actions</th>
-          {% endif %}
-        </tr>
-      </thead>
-
-      <tbody>
-        {% for e in entries %}
-        <tr>
-          <td>{{ e.entry_date or "-" }}</td>
-
-          <td>
-            {% if e.entry_type == "income" %}
-              <span class="badge income">Income</span>
-            {% else %}
-              <span class="badge expense">Expense</span>
-            {% endif %}
-          </td>
-
-          <td>{{ e.category or "-" }}</td>
-
-          <td class="desc">
-            {{ e.description or "-" }}
-            {% if e.category == "School Fees" %}
-              <span class="source-tag">AUTO</span>
-            {% else %}
-              <span class="source-tag manual">MANUAL</span>
-            {% endif %}
-          </td>
-
-          <td>{{ e.payment_method or "-" }}</td>
-          <td>{{ e.reference_number or "-" }}</td>
-
-          <td class="{% if e.entry_type == 'income' %}amount-income{% else %}amount-expense{% endif %}">
-            {% if e.entry_type == "income" %}+{% else %}-{% endif %}${{ "%.2f"|format(e.amount or 0) }}
-          </td>
-
-          <td>
-            ${{ "%.2f"|format(e.running_balance or 0) }}
-          </td>
-
-          <td>{{ e.created_by or "-" }}</td>
-
-          {% if session.get("role") == "super_admin" %}
-          <td>
-            <a href="{{ url_for('edit_cashbook_entry', entry_id=e.id) }}"
-   class="btn small">
-   Edit
-</a>
-            <form method="POST"
-                  action="{{ url_for('delete_cashbook_entry', entry_id=e.id) }}"
-                  onsubmit="return confirm('Delete this cashbook entry? This cannot be undone.')">
-              <button type="submit" class="btn small danger">Delete</button>
-            </form>
-          </td>
-          {% endif %}
-        </tr>
-
-        {% else %}
-        <tr>
-          <td colspan="{% if session.get('role') == 'super_admin' %}10{% else %}9{% endif %}" class="empty">
-            No cashbook entries found.
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
+<div class="page-header-card">
+  <h1>Cashbook</h1>
+  <p>Track school income, expenses, balances, and financial activity.</p>
 </div>
 
-<style>
-.cashbook-page {
-  max-width: 1250px;
-  margin: auto;
-  padding: 16px;
-}
+<div class="premium-grid">
+  <div class="stat-card card-green">
+    <span>Total Income</span>
+    <strong>${{ total_income or 0 }}</strong>
+  </div>
+  <div class="stat-card card-orange">
+    <span>Total Expenses</span>
+    <strong>${{ total_expenses or 0 }}</strong>
+  </div>
+  <div class="stat-card card-blue">
+    <span>Balance</span>
+    <strong>${{ balance or 0 }}</strong>
+  </div>
+  <div class="stat-card card-purple">
+    <span>Transactions</span>
+    <strong>{{ transaction_count or 0 }}</strong>
+  </div>
+</div>
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-}
+<div class="premium-card">
+  <div class="section-title">
+    <h2>Cashbook Entries</h2>
+    <a href="#" class="premium-btn">+ Add Entry</a>
+  </div>
 
-.eyebrow {
-  font-size: 11px;
-  color: #2563eb;
-  font-weight: 800;
-  text-transform: uppercase;
-  margin: 0;
-}
-
-.page-header h1 {
-  margin: 4px 0;
-  font-size: 26px;
-  color: #0f172a;
-}
-
-.muted {
-  color: #64748b;
-  font-size: 13px;
-  margin: 0;
-}
-
-.header-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.btn {
-  text-decoration: none;
-  border-radius: 10px;
-  padding: 9px 14px;
-  font-size: 13px;
-  font-weight: 700;
-  border: 1px solid #dbe3ef;
-  background: white;
-  color: #0f172a;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.btn.primary {
-  background: #2563eb;
-  color: white;
-  border-color: #2563eb;
-}
-
-.btn.small {
-  padding: 7px 10px;
-  font-size: 12px;
-}
-
-.btn.danger {
-  background: #dc2626;
-  color: white;
-  border-color: #dc2626;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
-  margin-bottom: 16px;
-}
-
-.stat-card,
-.filter-card,
-.table-card {
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-}
-
-.stat-card {
-  padding: 16px;
-}
-
-.stat-card span {
-  color: #64748b;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.stat-card h2 {
-  margin: 6px 0 0;
-  font-size: 26px;
-  color: #0f172a;
-}
-
-.stat-card.income h2 {
-  color: #16a34a;
-}
-
-.stat-card.expense h2 {
-  color: #dc2626;
-}
-
-.filter-card {
-  padding: 14px;
-  margin-bottom: 16px;
-}
-
-.filter-form {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1.4fr 1fr 1fr auto;
-  gap: 10px;
-  align-items: end;
-}
-
-.form-group label {
-  display: block;
-  font-size: 12px;
-  color: #334155;
-  font-weight: 700;
-  margin-bottom: 6px;
-}
-
-.form-group input,
-.form-group select {
-  width: 100%;
-  padding: 9px 10px;
-  border: 1px solid #cbd5e1;
-  border-radius: 10px;
-  font-size: 13px;
-}
-
-.filter-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.table-card {
-  overflow-x: auto;
-}
-
-.table-header {
-  padding: 14px 16px;
-  border-bottom: 1px solid #e2e8f0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.table-header h2 {
-  margin: 0;
-  font-size: 18px;
-  color: #0f172a;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th {
-  background: #f8fafc;
-  color: #475569;
-  text-align: left;
-  padding: 11px;
-  font-size: 11px;
-  text-transform: uppercase;
-}
-
-td {
-  padding: 11px;
-  border-top: 1px solid #e2e8f0;
-  font-size: 13px;
-  color: #334155;
-  vertical-align: top;
-}
-
-.desc {
-  min-width: 220px;
-}
-
-.badge,
-.source-tag {
-  display: inline-block;
-  padding: 4px 8px;
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 800;
-}
-
-.badge.income {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.badge.expense {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.source-tag {
-  margin-left: 6px;
-  background: #e0f2fe;
-  color: #075985;
-}
-
-.source-tag.manual {
-  background: #f1f5f9;
-  color: #475569;
-}
-
-.amount-income {
-  color: #16a34a;
-  font-weight: 800;
-}
-
-.amount-expense {
-  color: #dc2626;
-  font-weight: 800;
-}
-
-.empty {
-  text-align: center;
-  color: #64748b;
-  padding: 24px;
-}
-
-@media (max-width: 1000px) {
-  .stats-grid,
-  .filter-form {
-    grid-template-columns: 1fr;
-  }
-
-  .page-header,
-  .table-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .header-actions,
-  .filter-actions {
-    width: 100%;
-  }
-
-  .header-actions .btn,
-  .filter-actions .btn {
-    flex: 1;
-  }
-}
-</style>
-
+  {% if entries %}
+  <table class="premium-table">
+    <thead>
+      <tr>
+        <th>Description</th>
+        <th>Type</th>
+        <th>Amount</th>
+        <th>Date</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in entries %}
+      <tr>
+        <td><strong>{{ entry.description or '-' }}</strong></td>
+        <td>{{ entry.type or '-' }}</td>
+        <td>${{ entry.amount or 0 }}</td>
+        <td>{{ entry.date or entry.created_at or '-' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-box">No cashbook entries found yet.</div>
+  {% endif %}
+</div>
 {% endblock %}

@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="reminders-page">
+
+  <div class="page-header">
+    <div>
+      <p class="eyebrow">Finance</p>
+      <h1>Fee Reminders</h1>
+      <p class="muted">Send WhatsApp reminders to parents with outstanding balances.</p>
+    </div>
+
+    <a href="{{ url_for('fees') }}" class="btn">Back to Fees</a>
+  </div>
+
+  <div class="table-card">
+    <table>
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>Class</th>
+          <th>Guardian</th>
+          <th>Phone</th>
+          <th>Balance</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for reminder in reminders %}
+        <tr>
+          <td>
+            <strong>{{ reminder.student.first_name }} {{ reminder.student.last_name }}</strong><br>
+            <small>{{ reminder.student.student_number }}</small>
+          </td>
+
+          <td>{{ reminder.student.class_name }}</td>
+          <td>{{ reminder.student.guardian1_name or "-" }}</td>
+          <td>{{ reminder.student.guardian1_phone or "-" }}</td>
+
+          <td class="balance">
+            ${{ "%.2f"|format(reminder.balance or 0) }}
+          </td>
+
+          <td class="actions">
+            {% if reminder.whatsapp_link %}
+            <a href="{{ reminder.whatsapp_link }}" target="_blank" class="btn primary">
+              WhatsApp
+            </a>
+            {% else %}
+            <span class="no-phone">No phone</span>
+            {% endif %}
+
+            <a href="{{ url_for('fee_statement', student_id=reminder.student.id) }}" class="btn">
+              Statement
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="empty">
+            No outstanding fee reminders found.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<style>
+.reminders-page {
+  max-width: 1100px;
+  margin: auto;
+  padding: 16px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.eyebrow {
+  font-size: 11px;
+  color: #2563eb;
+  font-weight: 800;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.page-header h1 {
+  margin: 4px 0;
+  font-size: 24px;
+  color: #0f172a;
+}
+
+.muted {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.btn {
+  display: inline-block;
+  padding: 7px 10px;
+  font-size: 12px;
+  border-radius: 8px;
+  border: 1px solid #dbe3ef;
+  background: white;
+  color: #0f172a;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.btn.primary {
+  background: #16a34a;
+  color: white;
+  border-color: #16a34a;
+}
+
+.table-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th {
+  text-align: left;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 12px;
+  padding: 10px;
+}
+
+td {
+  border-top: 1px solid #e2e8f0;
+  padding: 10px;
+  font-size: 13px;
+  color: #334155;
+}
+
+.balance {
+  color: #dc2626;
+  font-weight: 800;
+}
+
+.actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.no-phone {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.empty {
+  text-align: center;
+  color: #64748b;
+  padding: 20px;
+}
+
+@media (max-width: 700px) {
+  .page-header {
+    display: block;
+  }
+
+  .page-header .btn {
+    margin-top: 12px;
+  }
+}
+</style>
+
+{% endblock %}

@@ -1,15 +1,40 @@
-{% extends "base.html" %}
+{% extends "base_premium.html" %}
 
 {% block title %}Subjects{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div>
-        <h2 class="page-title">Subjects</h2>
-        <p class="page-subtitle">Subjects registered for this school</p>
-    </div>
-    <a href="{{ url_for('add_subject') }}" class="btn btn-primary">+ Add Subject</a>
+<div class="page-header-card">
+    <h1>Subjects</h1>
+    <p>Create subjects and assign them to teachers and classes.</p>
 </div>
+
+<div class="premium-card">
+
+    <div class="section-title">
+
+        <h2>Subjects</h2>
+
+        <div class="action-row">
+
+            <a href="{{ url_for('add_subject') }}" class="premium-btn">
+                ➕ Add Subject
+            </a>
+
+            <a href="{{ url_for('assign_teacher') }}" class="premium-btn premium-btn-light">
+                👨‍🏫 Assign Teacher
+            </a>
+
+            <a href="{{ url_for('teacher_assignments_page') }}" class="premium-btn premium-btn-light">
+                📋 Teacher Assignments
+            </a>
+
+            <a href="{{ url_for('import_teacher_assignments') }}" class="premium-btn premium-btn-light">
+                📥 Import Assignments
+            </a>
+
+        </div>
+
+    </div>
 
 <div class="table-card">
     <div class="table-responsive">

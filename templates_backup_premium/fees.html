@@ -1,0 +1,60 @@
+{% extends "base_premium.html" %}
+{% block title %}Fees{% endblock %}
+
+{% block content %}
+<div class="page-header-card">
+  <h1>Fees & Payments</h1>
+  <p>Track payments, balances, statements, and reminders.</p>
+</div>
+
+<div class="premium-grid">
+  <div class="stat-card card-blue">
+    <span>Total Expected</span>
+    <strong>${{ total_expected or 0 }}</strong>
+  </div>
+  <div class="stat-card card-green">
+    <span>Total Paid</span>
+    <strong>${{ total_paid or 0 }}</strong>
+  </div>
+  <div class="stat-card card-orange">
+    <span>Outstanding</span>
+    <strong>${{ outstanding_fees or 0 }}</strong>
+  </div>
+  <div class="stat-card card-purple">
+    <span>Payments</span>
+    <strong>{{ payment_count or 0 }}</strong>
+  </div>
+</div>
+
+<div class="premium-card">
+  <div class="section-title">
+    <h2>Fee Records</h2>
+    <a href="#" class="premium-btn">+ Record Payment</a>
+  </div>
+
+  {% if payments %}
+  <table class="premium-table">
+    <thead>
+      <tr>
+        <th>Student</th>
+        <th>Amount</th>
+        <th>Date</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for payment in payments %}
+      <tr>
+        <td><strong>{{ payment.student_name or '-' }}</strong></td>
+        <td>${{ payment.amount or 0 }}</td>
+        <td>{{ payment.date or payment.created_at or '-' }}</td>
+        <td><span class="badge badge-success">Paid</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-box">No fee records found yet.</div>
+  {% endif %}
+</div>
+{% endblock %}

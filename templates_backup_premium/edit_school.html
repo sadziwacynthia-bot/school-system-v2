@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Edit School Branding{% endblock %}
+
+{% block content %}
+
+<div style="padding:25px; background:#f4f6f9; min-height:100vh;">
+    <div style="background:white; padding:25px; border-radius:14px; max-width:650px; box-shadow:0 4px 12px rgba(0,0,0,0.06);">
+
+        <h2>Edit School Branding</h2>
+        <p style="color:#6b7280;">Update school name, code, and logo.</p>
+
+        {% if school.logo_url %}
+            <div style="margin-bottom:20px;">
+                <p><strong>Current Logo</strong></p>
+                <img src="{{ url_for('static', filename=school.logo_url) }}"
+                     alt="School Logo"
+                     style="max-height:90px; border-radius:10px; border:1px solid #ddd; padding:8px;">
+            </div>
+        {% endif %}
+
+        <form method="POST" enctype="multipart/form-data">
+            <label>School Name</label>
+            <input type="text"
+                   name="school_name"
+                   value="{{ school.school_name }}"
+                   required
+                   style="width:100%; padding:11px; margin-bottom:15px; border:1px solid #d1d5db; border-radius:8px;">
+
+            <label>School Code</label>
+            <input type="text"
+                   name="school_code"
+                   value="{{ school.school_code }}"
+                   style="width:100%; padding:11px; margin-bottom:15px; border:1px solid #d1d5db; border-radius:8px;">
+
+            <label>Upload Logo</label>
+            <input type="file"
+                   name="logo_file"
+                   accept=".png,.jpg,.jpeg,.webp"
+                   style="width:100%; padding:11px; margin-bottom:20px; border:1px solid #d1d5db; border-radius:8px;">
+
+            <button type="submit" class="btn btn-primary">Save Branding</button>
+            <a href="{{ url_for('schools') }}" class="btn btn-secondary">Cancel</a>
+        </form>
+
+    </div>
+</div>
+
+{% endblock %}

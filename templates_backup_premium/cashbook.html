@@ -1,0 +1,60 @@
+{% extends "base_premium.html" %}
+{% block title %}Cashbook{% endblock %}
+
+{% block content %}
+<div class="page-header-card">
+  <h1>Cashbook</h1>
+  <p>Track school income, expenses, balances, and financial activity.</p>
+</div>
+
+<div class="premium-grid">
+  <div class="stat-card card-green">
+    <span>Total Income</span>
+    <strong>${{ total_income or 0 }}</strong>
+  </div>
+  <div class="stat-card card-orange">
+    <span>Total Expenses</span>
+    <strong>${{ total_expenses or 0 }}</strong>
+  </div>
+  <div class="stat-card card-blue">
+    <span>Balance</span>
+    <strong>${{ balance or 0 }}</strong>
+  </div>
+  <div class="stat-card card-purple">
+    <span>Transactions</span>
+    <strong>{{ transaction_count or 0 }}</strong>
+  </div>
+</div>
+
+<div class="premium-card">
+  <div class="section-title">
+    <h2>Cashbook Entries</h2>
+    <a href="#" class="premium-btn">+ Add Entry</a>
+  </div>
+
+  {% if entries %}
+  <table class="premium-table">
+    <thead>
+      <tr>
+        <th>Description</th>
+        <th>Type</th>
+        <th>Amount</th>
+        <th>Date</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in entries %}
+      <tr>
+        <td><strong>{{ entry.description or '-' }}</strong></td>
+        <td>{{ entry.type or '-' }}</td>
+        <td>${{ entry.amount or 0 }}</td>
+        <td>{{ entry.date or entry.created_at or '-' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-box">No cashbook entries found yet.</div>
+  {% endif %}
+</div>
+{% endblock %}

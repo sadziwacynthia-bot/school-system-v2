@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="search-page">
+
+  <div class="search-header">
+    <div>
+      <p class="eyebrow">Global Search</p>
+      <h1>Search Results</h1>
+      <p class="muted">Find students, teachers, classes, and guardian details quickly.</p>
+    </div>
+  </div>
+
+  <form method="GET" action="{{ url_for('global_search') }}" class="big-search">
+    <input type="text" name="q" placeholder="Search student name, student number, class, phone..." value="{{ q }}">
+    <button type="submit">Search</button>
+  </form>
+
+  {% if q %}
+  <div class="result-summary">
+    Results for: <strong>{{ q }}</strong>
+  </div>
+
+  <div class="section">
+    <h2>Students</h2>
+
+    <div class="result-grid">
+      {% for s in students %}
+      <a href="{{ url_for('student_profile', id=s.id) }}" class="result-card">
+        <div>
+          <h3>{{ s.first_name }} {{ s.last_name }}</h3>
+          <p>{{ s.student_number or "No student number" }}</p>
+        </div>
+
+        <div class="meta">
+          <span>{{ s.class_name or "No class" }}</span>
+          <span>{{ s.current_status or "Active" }}</span>
+        </div>
+
+        <div class="small-info">
+          Guardian: {{ s.guardian1_name or "-" }}<br>
+          Phone: {{ s.guardian1_phone or "-" }}
+        </div>
+      </a>
+      {% else %}
+      <div class="empty">No students found.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Teachers</h2>
+
+    <div class="result-grid">
+      {% for t in teachers %}
+      <div class="result-card teacher-card">
+        <div>
+          <h3>{{ t.full_name }}</h3>
+          <p>{{ t.teacher_id or "Teacher" }}</p>
+        </div>
+
+        <div class="small-info">
+          Phone: {{ t.phone or "-" }}<br>
+          Email: {{ t.email or "-" }}
+        </div>
+      </div>
+      {% else %}
+      <div class="empty">No teachers found.</div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+<style>
+.search-page {
+  padding: 18px;
+}
+
+.search-header {
+  margin-bottom: 14px;
+}
+
+.eyebrow {
+  font-size: 11px;
+  color: #2563eb;
+  font-weight: 800;
+  margin: 0 0 4px;
+  text-transform: uppercase;
+}
+
+.search-header h1 {
+  margin: 0;
+  font-size: 24px;
+  color: #0f172a;
+}
+
+.muted {
+  margin: 5px 0 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.big-search {
+  display: flex;
+  gap: 8px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  padding: 10px;
+  border-radius: 14px;
+  margin-bottom: 16px;
+}
+
+.big-search input {
+  flex: 1;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+.big-search button {
+  border: none;
+  background: #2563eb;
+  color: white;
+  border-radius: 10px;
+  padding: 0 16px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.result-summary {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
+.section {
+  margin-bottom: 24px;
+}
+
+.section h2 {
+  font-size: 18px;
+  margin-bottom: 10px;
+  color: #0f172a;
+}
+
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.result-card {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.result-card:hover {
+  border-color: #2563eb;
+}
+
+.result-card h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #0f172a;
+}
+
+.result-card p {
+  margin: 4px 0 10px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.meta {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.meta span {
+  background: #f1f5f9;
+  color: #334155;
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.small-info {
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.empty {
+  grid-column: 1 / -1;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  padding: 18px;
+  border-radius: 14px;
+  color: #64748b;
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .result-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .result-grid,
+  .big-search {
+    grid-template-columns: 1fr;
+    display: block;
+  }
+
+  .big-search input {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+
+  .big-search button {
+    width: 100%;
+    padding: 10px;
+  }
+}
+</style>
+
+{% endblock %}

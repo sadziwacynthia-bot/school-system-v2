@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Users{% endblock %}
+{% block page_heading %}Users{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <div>
+        <h2 class="page-title">User Management</h2>
+        <p class="page-subtitle">Search, edit, and manage users easily</p>
+    </div>
+</div>
+
+<!-- SEARCH + FILTER -->
+<div class="form-card">
+    <form method="GET" class="form-grid">
+        <input type="text" name="search" placeholder="Search users..." value="{{ search or '' }}">
+
+        <select name="role">
+            <option value="">All Roles</option>
+            <option value="teacher" {% if role_filter == 'teacher' %}selected{% endif %}>Teachers</option>
+            <option value="parent" {% if role_filter == 'parent' %}selected{% endif %}>Parents</option>
+        </select>
+
+        <select name="class_name">
+            <option value="">All Classes</option>
+            {% for c in class_options %}
+            <option value="{{ c }}" {% if class_filter == c %}selected{% endif %}>{{ c }}</option>
+            {% endfor %}
+        </select>
+
+        <div class="action-group">
+            <button type="submit" class="btn btn-primary">Search</button>
+            <a href="{{ url_for('users') }}" class="btn btn-secondary">Reset</a>
+        </div>
+    </form>
+</div>
+
+<!-- SUMMARY -->
+<div class="dashboard-stat-grid">
+    <div class="metric-card metric-card-blue">
+        <div class="metric-label">Teachers</div>
+        <div class="metric-value">{{ teacher_users|length }}</div>
+    </div>
+
+    <div class="metric-card metric-card-emerald">
+        <div class="metric-label">Parents</div>
+        <div class="metric-value">{{ parent_users|length }}</div>
+    </div>
+</div>
+
+<!-- USERS TABLE -->
+<div class="dashboard-panel premium-surface">
+    <div class="panel-header-row">
+        <h3>All Users</h3>
+    </div>
+
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Username</th>
+                    <th>Role</th>
+                    <th>Student</th>
+                    <th>Class</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>{{ user.full_name }}</td>
+                    <td>{{ user.username }}</td>
+
+                    <td>
+                        <span class="status-badge status-active">
+                            {{ user.role|replace('_',' ')|title }}
+                        </span>
+                    </td>
+
+                    <td>
+                        {% if user.student_first_name %}
+                            {{ user.student_first_name }} {{ user.student_last_name }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+
+                    <td>{{ user.student_class or '-' }}</td>
+
+                    <td>
+                        {% if user.is_active|default(1) %}
+                            <span class="status-badge status-active">Active</span>
+                        {% else %}
+                            <span class="status-badge status-inactive">Inactive</span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        <div class="action-group">
+                            <a href="{{ url_for('edit_user', user_id=user.id) }}" class="btn-edit">Edit</a>
+                            <a href="{{ url_for('reset_user_password', user_id=user.id) }}" class="btn btn-primary btn-sm">
+                                Reset
+                            </a>
+
+                            {% if user.is_active|default(1) %}
+                            <form action="{{ url_for('deactivate_user', user_id=user.id) }}" method="POST">
+                                <button class="btn btn-warning btn-sm">Deactivate</button>
+                            </form>
+                            {% else %}
+                            <form action="{{ url_for('activate_user', user_id=user.id) }}" method="POST">
+                                <button class="btn btn-success btn-sm">Activate</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+
+                {% else %}
+                <tr>
+                    <td colspan="7" style="text-align:center;">No users found</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

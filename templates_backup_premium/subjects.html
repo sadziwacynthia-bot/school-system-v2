@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Subjects{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h2 class="page-title">Subjects</h2>
+        <p class="page-subtitle">Subjects registered for this school</p>
+    </div>
+    <a href="{{ url_for('add_subject') }}" class="btn btn-primary">+ Add Subject</a>
+</div>
+
+<div class="table-card">
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Subject Name</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for subject in subjects %}
+                <tr>
+                    <td>{{ subject.subject_name }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td>No subjects added yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

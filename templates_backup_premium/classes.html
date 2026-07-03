@@ -1,0 +1,41 @@
+{% extends "base_premium.html" %}
+{% block title %}Classes{% endblock %}
+
+{% block content %}
+<div class="page-header-card">
+  <h1>Classes</h1>
+  <p>Organize grades, streams, class teachers, and student groups.</p>
+</div>
+
+<div class="premium-card">
+  <div class="section-title">
+    <h2>Class Records</h2>
+    <a href="#" class="premium-btn">+ Add Class</a>
+  </div>
+
+  {% if classes %}
+  <table class="premium-table">
+    <thead>
+      <tr>
+        <th>Class</th>
+        <th>Teacher</th>
+        <th>Students</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for class in classes %}
+      <tr>
+        <td><strong>{{ class.name or class.class_name }}</strong></td>
+        <td>{{ class.teacher_name or '-' }}</td>
+        <td>{{ class.student_count or 0 }}</td>
+        <td><span class="badge badge-success">Active</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-box">No classes found yet.</div>
+  {% endif %}
+</div>
+{% endblock %}

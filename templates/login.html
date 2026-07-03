@@ -1,23 +1,50 @@
-{% extends "base.html" %}
-{% block title %}Login{% endblock %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login | School Suite</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/premium.css') }}">
+</head>
 
-{% block content %}
-<div style="max-width: 450px; margin: 40px auto; background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 14px rgba(0,0,0,0.08);">
-    <h1 style="margin-top:0; color:#2563eb;">Login</h1>
-    <form method="POST">
-        <div style="margin-bottom:14px;">
-            <label>Username</label>
-            <input type="text" name="username" required style="width:100%; padding:12px; border:1px solid #d1d5db; border-radius:10px;">
-        </div>
+<body class="login-body">
 
-        <div style="margin-bottom:14px;">
-            <label>Password</label>
-            <input type="password" name="password" required style="width:100%; padding:12px; border:1px solid #d1d5db; border-radius:10px;">
-        </div>
+<div class="login-page">
 
-        <button type="submit" style="background:#2563eb; color:white; border:none; padding:12px 18px; border-radius:10px; font-weight:600;">
-            Login
-        </button>
+  <div class="login-hero">
+    <div>
+      <h1>School Suite Premium</h1>
+      <p>Manage students, teachers, attendance, fees, applications, and reports from one modern platform.</p>
+    </div>
+  </div>
+
+  <div class="login-card">
+
+    <div class="login-logo">
+      <div class="premium-logo-circle">S</div>
+      <div>
+        <h2>Welcome Back</h2>
+        <p>Sign in to continue</p>
+      </div>
+    </div>
+
+    {% if error %}
+      <div class="login-error">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('login') }}">
+      <label>Username</label>
+      <input class="premium-input" type="text" name="username" placeholder="Enter username" required>
+
+      <label>Password</label>
+      <input class="premium-input" type="password" name="password" placeholder="Enter password" required>
+
+      <button class="premium-btn login-btn" type="submit">Sign In</button>
     </form>
+
+  </div>
+
 </div>
-{% endblock %}
+
+</body>
+</html>

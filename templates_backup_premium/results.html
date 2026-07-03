@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Results{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h2 class="page-title">Student Results</h2>
+        <p class="page-subtitle">View results grouped by student and term</p>
+    </div>
+    <a href="{{ url_for('enter_result') }}" class="btn btn-primary">+ Enter Result</a>
+    <a href="{{ url_for('export_results_csv') }}" class="btn btn-secondary">
+    Export Results
+</a>
+</div>
+
+<div class="table-card">
+    {% if result_groups %}
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Student Number</th>
+                    <th>Name</th>
+                    <th>Class</th>
+                    <th>Term</th>
+                    <th>Subjects</th>
+                    <th>Total Marks</th>
+                    <th>Average</th>
+                    <th>Print</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for result in result_groups %}
+                <tr>
+                    <td>{{ result.student_number or '-' }}</td>
+                    <td>{{ result.first_name }} {{ result.last_name }}</td>
+                    <td>{{ result.class_name or '-' }}</td>
+                    <td>{{ result.term or '-' }}</td>
+                    <td>{{ result.subject_count or 0 }}</td>
+                    <td>{{ result.total_marks or 0 }}</td>
+                    <td>{{ "%.2f"|format(result.average_marks or 0) }}</td>
+                    <td>
+                        <a href="{{ url_for('print_result', student_id=result.student_id, term=result.term) }}"
+                           class="btn btn-secondary btn-sm"
+                           target="_blank">
+                            Print Slip
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+        <p>No results found yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

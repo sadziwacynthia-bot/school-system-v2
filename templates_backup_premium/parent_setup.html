@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Parent Setup{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Parent Password Setup</h1>
+    <p>Set your password using your child’s student number and your phone number.</p>
+</div>
+
+<div class="card-box">
+    <form method="POST" class="setup-form">
+        <div class="form-group">
+            <label>Student Number</label>
+            <input type="text" name="student_number" required>
+        </div>
+
+        <div class="form-group">
+            <label>Phone Number</label>
+            <input type="text" name="phone" required>
+        </div>
+
+        <div class="form-group">
+            <label>New Password</label>
+            <input type="password" name="password" required>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">Set Password</button>
+            <a href="{{ url_for('login') }}" class="btn-secondary">Back to Login</a>
+        </div>
+    </form>
+</div>
+
+<style>
+.page-header {
+    margin-bottom: 24px;
+}
+.page-header h1 {
+    margin: 0;
+    color: #2563eb;
+    font-size: 30px;
+}
+.page-header p {
+    margin-top: 8px;
+    color: #6b7280;
+}
+.card-box {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    max-width: 650px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+}
+.setup-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+.form-group input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    box-sizing: border-box;
+}
+.form-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.btn-primary,
+.btn-secondary {
+    display: inline-block;
+    padding: 12px 18px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 600;
+}
+.btn-primary {
+    background: #2563eb;
+    color: white;
+    border: none;
+}
+.btn-secondary {
+    background: #e5e7eb;
+    color: #111827;
+}
+</style>
+{% endblock %}

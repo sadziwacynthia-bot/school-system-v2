@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Add Timetable Entry{% endblock %}
+{% block page_heading %}Add Timetable Entry{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h2 class="page-title">Add Timetable Entry</h2>
+        <p class="page-subtitle">Add a lesson to the timetable manually</p>
+    </div>
+</div>
+
+<div class="form-card">
+    <form method="POST">
+        <div class="form-grid">
+            <div>
+                <label>Class</label>
+                <select name="class_name" required>
+                    <option value="">Select class</option>
+                    {% for c in class_options %}
+                    <option value="{{ c }}">{{ c }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label>Subject</label>
+                <select name="subject" required>
+                    <option value="">Select subject</option>
+                    {% for subject in subjects %}
+                    <option value="{{ subject }}">{{ subject }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label>Teacher</label>
+                <select name="teacher_id" required>
+                    <option value="">Select teacher</option>
+                    {% for teacher in teachers %}
+                    <option value="{{ teacher.id }}">{{ teacher.full_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label>Day</label>
+                <select name="day_of_week" required>
+                    <option value="">Select day</option>
+                    <option value="Monday">Monday</option>
+                    <option value="Tuesday">Tuesday</option>
+                    <option value="Wednesday">Wednesday</option>
+                    <option value="Thursday">Thursday</option>
+                    <option value="Friday">Friday</option>
+                </select>
+            </div>
+
+            <div>
+                <label>Start Time</label>
+                <input type="time" name="start_time" required>
+            </div>
+
+            <div>
+                <label>End Time</label>
+                <input type="time" name="end_time" required>
+            </div>
+
+            <div>
+                <label>Room</label>
+                <input type="text" name="room" placeholder="Optional room">
+            </div>
+        </div>
+
+        <div class="action-group" style="margin-top: 18px;">
+            <button type="submit" class="btn btn-primary">Save Entry</button>
+            <a href="{{ url_for('timetable') }}" class="btn btn-secondary">Back to Timetable</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

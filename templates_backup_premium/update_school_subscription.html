@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Update Subscription{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h2 class="page-title">Update Subscription</h2>
+        <p class="page-subtitle">{{ school.school_name }}</p>
+    </div>
+</div>
+
+<div class="form-card">
+    <form method="POST">
+        <label for="subscription_status">Subscription Status</label>
+        <select name="subscription_status" required>
+            <option value="active" {% if school.subscription_status == 'active' %}selected{% endif %}>Active</option>
+            <option value="trial" {% if school.subscription_status == 'trial' %}selected{% endif %}>Trial</option>
+            <option value="suspended" {% if school.subscription_status == 'suspended' %}selected{% endif %}>Suspended</option>
+            <option value="overdue" {% if school.subscription_status == 'overdue' %}selected{% endif %}>Overdue</option>
+        </select>
+
+        <label for="subscription_end_date">Subscription End Date</label>
+        <input type="date" name="subscription_end_date" value="{{ school.subscription_end_date or '' }}">
+
+        <button type="submit" class="btn btn-primary">Save Subscription</button>
+    </form>
+</div>
+{% endblock %}

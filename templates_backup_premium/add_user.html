@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}Add User{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Add User</h1>
+    <p>Create a new system user account.</p>
+</div>
+
+<div class="form-card">
+    <form method="POST" action="{{ url_for('add_user') }}" class="user-form">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="full_name">Full Name</label>
+                <input type="text" id="full_name" name="full_name" required>
+            </div>
+
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+
+            <div class="form-group">
+                <label for="role">Role</label>
+                <select id="role" name="role" required>
+                    <option value="">Select role</option>
+                    <option value="admin">Admin</option>
+                    <option value="director">Director</option>
+                    <option value="teacher">Teacher</option>
+                    <option value="parent">Parent</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">Save User</button>
+            <a href="{{ url_for('users') }}" class="btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<style>
+.page-header {
+    margin-bottom: 24px;
+}
+
+.page-header h1 {
+    margin: 0;
+    color: #2563eb;
+    font-size: 30px;
+}
+
+.page-header p {
+    margin-top: 8px;
+    color: #6b7280;
+    font-size: 15px;
+}
+
+.form-card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+
+.user-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #374151;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    font-size: 15px;
+    box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.btn-primary,
+.btn-secondary {
+    display: inline-block;
+    padding: 12px 18px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 600;
+    text-align: center;
+}
+
+.btn-primary {
+    background: #2563eb;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-primary:hover {
+    background: #1e40af;
+}
+
+.btn-secondary {
+    background: #e5e7eb;
+    color: #111827;
+}
+
+.btn-secondary:hover {
+    background: #d1d5db;
+}
+
+@media (max-width: 900px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}

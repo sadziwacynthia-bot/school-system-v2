@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Parent Results{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h2 class="page-title">Results</h2>
+        <p class="page-subtitle">Academic performance records</p>
+    </div>
+</div>
+
+{% if student %}
+<div class="dashboard-panel premium-panel">
+    <div class="panel-header">
+        <h3>{{ student.first_name }} {{ student.last_name }}</h3>
+        <p>{{ student.class_name or 'No Class' }}</p>
+    </div>
+</div>
+{% endif %}
+
+<div class="table-card">
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Term</th>
+                    <th>Subject</th>
+                    <th>Marks</th>
+                    <th>Grade</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for result in result_records %}
+                <tr>
+                    <td>{{ result.term }}</td>
+                    <td>{{ result.subject }}</td>
+                    <td>{{ result.marks }}</td>
+                    <td>{{ result.grade }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4">No results available.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

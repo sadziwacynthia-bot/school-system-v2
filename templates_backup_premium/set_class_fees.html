@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Set Class Fees{% endblock %}
+
+{% block content %}
+
+<div class="form-page">
+  <div class="page-header">
+    <div>
+      <p class="eyebrow">Fee Management</p>
+      <h1>Set Fees for Class</h1>
+      <p class="muted">Create fee records for all students in a class and apply individual discounts.</p>
+    </div>
+
+    <a href="{{ url_for('fees') }}" class="btn">Back to Fees</a>
+  </div>
+
+  <div class="form-card">
+    <form method="GET" action="{{ url_for('set_class_fees') }}">
+      {% if session.get("role") == "super_admin" %}
+      <div class="form-group">
+        <label>School</label>
+        <select name="school_id" onchange="this.form.submit()" required>
+          <option value="">Select school</option>
+          {% for school in schools %}
+          <option value="{{ school.id }}" {% if selected_school_id == school.id|string %}selected{% endif %}>
+            {{ school.school_name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+
+      <div class="form-group">
+        <label>Class</label>
+        <select name="class_name" onchange="this.form.submit()" required>
+          <option value="">Select class</option>
+          {% for row in class_rows %}
+          <option value="{{ row.class_name }}" {% if selected_class == row.class_name %}selected{% endif %}>
+            {{ row.class_name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+    </form>
+  </div>
+
+  {% if students %}
+  <div class="form-card">
+    <form method="POST">
+      {% if session.get("role") == "super_admin" %}
+      <input type="hidden" name="school_id" value="{{ selected_school_id }}">
+      {% endif %}
+      <input type="hidden" name="class_name" value="{{ selected_class }}">
+
+      <div class="grid-3">
+        <div class="form-group">
+          <label>Term</label>
+          <input type="text" name="term_name" placeholder="Term 1" required>
+        </div>
+
+        <div class="form-group">
+          <label>Standard Fee Amount</label>
+          <input type="number" step="0.01" name="amount" placeholder="600" required>
+        </div>
+
+        <div class="form-group">
+          <label>Due Date</label>
+          <input type="date" name="due_date">
+        </div>
+      </div>
+
+      <h2>Student Discounts</h2>
+      <p class="muted">Leave discount as 0 for students paying the full amount.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Student Number</th>
+              <th>Name</th>
+              <th>Class</th>
+              <th>Student Fee Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for student in students %}
+            <tr>
+              <td>{{ student.student_number }}</td>
+              <td>{{ student.first_name }} {{ student.last_name }}</td>
+              <td>{{ student.class_name }}</td>
+              <td>
+                <input type="number" step="0.01" name="amount_{{ student.id }}" value="">
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <button type="submit" class="btn primary">Create Class Fees</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+
+<style>
+.form-page { max-width: 1100px; margin: auto; padding: 16px; }
+.page-header { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 16px; }
+.eyebrow { margin: 0; color: #2563eb; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+.page-header h1 { margin: 4px 0; color: #0f172a; }
+.muted { color: #64748b; font-size: 13px; }
+.form-card { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px; margin-bottom: 16px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.form-group { margin-bottom: 14px; }
+label { display: block; font-weight: 700; margin-bottom: 6px; color: #334155; }
+input, select { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 10px; }
+.table-wrap { overflow-x: auto; margin: 14px 0; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 11px; border-bottom: 1px solid #e2e8f0; text-align: left; font-size: 13px; }
+th { background: #f8fafc; color: #334155; }
+.btn { text-decoration: none; border-radius: 10px; padding: 10px 14px; border: 1px solid #dbe3ef; background: white; color: #0f172a; font-weight: 700; cursor: pointer; }
+.btn.primary { background: #2563eb; color: white; border-color: #2563eb; }
+@media (max-width: 800px) { .grid-3 { grid-template-columns: 1fr; } .page-header { display: block; } }
+</style>
+
+{% endblock %}

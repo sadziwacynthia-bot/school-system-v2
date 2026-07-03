@@ -1,252 +1,66 @@
-{% extends "base.html" %}
+{% extends "base_premium.html" %}
+{% block title %}Attendance{% endblock %}
+
 {% block content %}
-
-<div class="attendance-page">
-
-  <div class="page-header">
-    <div>
-      <p class="eyebrow">Attendance</p>
-      <h1>Take Attendance</h1>
-      <p class="muted">Select a class and mark today’s attendance.</p>
-    </div>
-  </div>
-
-  <div class="filter-card">
-    <form method="GET" action="{{ url_for('attendance') }}">
-      <label>Select Class</label>
-      <div class="filter-row">
-        <select name="class_name" required>
-          <option value="">Choose class</option>
-          {% for class_name in class_options %}
-          <option value="{{ class_name }}" {% if selected_class == class_name %}selected{% endif %}>
-            {{ class_name }}
-          </option>
-          {% endfor %}
-        </select>
-
-        <button type="submit" class="btn primary">Load Students</button>
-      </div>
-    </form>
-  </div>
-
-  {% if selected_class %}
-  <form method="POST" action="{{ url_for('save_attendance') }}">
-    <input type="hidden" name="class_name" value="{{ selected_class }}">
-
-    <div class="attendance-header">
-      <div>
-        <h2>{{ selected_class }}</h2>
-        <p>{{ students|length }} students loaded</p>
-      </div>
-
-      <div>
-        <label>Date</label>
-        <input type="date" name="date" value="{{ today }}" required>
-      </div>
-    </div>
-
-    <div class="table-card">
-      <table>
-        <thead>
-          <tr>
-            <th>Student No.</th>
-            <th>Student Name</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {% for s in students %}
-          <tr>
-            <td>{{ s.student_number }}</td>
-            <td>
-              <strong>{{ s.first_name }} {{ s.last_name }}</strong>
-              <input type="hidden" name="student_id" value="{{ s.id }}">
-            </td>
-            <td>
-              <select name="status_{{ s.id }}">
-                <option value="Present">Present</option>
-                <option value="Absent">Absent</option>
-                <option value="Late">Late</option>
-              </select>
-            </td>
-          </tr>
-          {% else %}
-          <tr>
-            <td colspan="3" class="empty">
-              No students found for this class. Check that the teacher is assigned to this class and students have the exact same class name.
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-
-    {% if students %}
-    <div class="submit-row">
-      <button type="submit" class="btn primary">Save Attendance</button>
-    </div>
-    {% endif %}
-  </form>
-  {% endif %}
-
+<div class="page-header-card">
+  <h1>Attendance</h1>
+  <p>Mark daily attendance and monitor student presence.</p>
 </div>
 
-<style>
-.attendance-page {
-  max-width: 1050px;
-  margin: auto;
-  padding: 16px;
-}
+<div class="premium-grid">
+  <div class="stat-card card-green">
+    <span>Present Today</span>
+    <strong>{{ present_today or 0 }}</strong>
+  </div>
+  <div class="stat-card card-orange">
+    <span>Absent Today</span>
+    <strong>{{ absent_today or 0 }}</strong>
+  </div>
+  <div class="stat-card card-blue">
+    <span>Total Students</span>
+    <strong>{{ total_students or 0 }}</strong>
+  </div>
+  <div class="stat-card card-purple">
+    <span>Attendance Rate</span>
+    <strong>{{ attendance_today or 0 }}%</strong>
+  </div>
+</div>
 
-.page-header {
-  margin-bottom: 16px;
-}
+<div class="premium-card">
+  <div class="section-title">
+    <h2>Attendance Register</h2>
+    <a href="#" class="premium-btn">Take Attendance</a>
+  </div>
 
-.eyebrow {
-  font-size: 11px;
-  color: #2563eb;
-  font-weight: 800;
-  text-transform: uppercase;
-  margin: 0;
-}
-
-.page-header h1 {
-  font-size: 24px;
-  margin: 4px 0;
-  color: #0f172a;
-}
-
-.muted {
-  color: #64748b;
-  font-size: 13px;
-  margin: 0;
-}
-
-.filter-card,
-.table-card,
-.attendance-header {
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 14px;
-}
-
-.filter-card {
-  margin-bottom: 14px;
-}
-
-.filter-card label,
-.attendance-header label {
-  display: block;
-  font-size: 12px;
-  font-weight: 700;
-  color: #334155;
-  margin-bottom: 6px;
-}
-
-.filter-row {
-  display: flex;
-  gap: 8px;
-}
-
-select,
-input[type="date"] {
-  padding: 8px;
-  border-radius: 8px;
-  border: 1px solid #cbd5e1;
-  font-size: 13px;
-}
-
-.filter-row select {
-  flex: 1;
-}
-
-.btn {
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid #dbe3ef;
-  background: white;
-  font-weight: 700;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.btn.primary {
-  background: #2563eb;
-  color: white;
-  border-color: #2563eb;
-}
-
-.attendance-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 14px;
-}
-
-.attendance-header h2 {
-  margin: 0 0 4px;
-  font-size: 19px;
-}
-
-.attendance-header p {
-  margin: 0;
-  color: #64748b;
-  font-size: 13px;
-}
-
-.table-card {
-  overflow-x: auto;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th {
-  text-align: left;
-  background: #f8fafc;
-  color: #334155;
-  font-size: 12px;
-  padding: 10px;
-}
-
-td {
-  padding: 10px;
-  border-top: 1px solid #e2e8f0;
-  font-size: 13px;
-}
-
-td select {
-  min-width: 130px;
-}
-
-.empty {
-  text-align: center;
-  color: #64748b;
-  padding: 20px;
-}
-
-.submit-row {
-  margin-top: 14px;
-  text-align: right;
-}
-
-@media (max-width: 700px) {
-  .filter-row,
-  .attendance-header {
-    display: block;
-  }
-
-  .filter-row select,
-  .filter-row button,
-  .submit-row button {
-    width: 100%;
-    margin-top: 8px;
-  }
-}
-</style>
-
+  {% if attendance_records %}
+  <table class="premium-table">
+    <thead>
+      <tr>
+        <th>Student</th>
+        <th>Class</th>
+        <th>Date</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for record in attendance_records %}
+      <tr>
+        <td><strong>{{ record.student_name or '-' }}</strong></td>
+        <td>{{ record.class_name or '-' }}</td>
+        <td>{{ record.date or '-' }}</td>
+        <td>
+          {% if record.status == 'Absent' %}
+          <span class="badge badge-danger">Absent</span>
+          {% else %}
+          <span class="badge badge-success">Present</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-box">No attendance records found yet.</div>
+  {% endif %}
+</div>
 {% endblock %}

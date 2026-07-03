@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}Timetable{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <h1>Timetable</h1>
+    <p>View class, teacher, and master timetable.</p>
+</div>
+
+<div class="card">
+    <a href="{{ url_for('timetable', view='class') }}" class="btn">Class Timetable</a>
+    <a href="{{ url_for('timetable', view='teacher') }}" class="btn">Teacher Timetable</a>
+    <a href="{{ url_for('timetable', view='master') }}" class="btn">Master Timetable</a>
+</div>
+
+<div class="card">
+    {% if view_mode == "class" %}
+    <form method="GET" action="{{ url_for('timetable') }}">
+        <input type="hidden" name="view" value="class">
+
+        <div class="form-group">
+            <label>Select Class</label>
+            <select name="class_name" required>
+                <option value="">-- Select Class --</option>
+                {% for class_name in class_options %}
+                <option value="{{ class_name }}" {% if selected_class == class_name %}selected{% endif %}>
+                    {{ class_name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <button class="btn btn-primary">Load Class Timetable</button>
+    </form>
+    {% endif %}
+
+    {% if view_mode == "teacher" %}
+    <form method="GET" action="{{ url_for('timetable') }}">
+        <input type="hidden" name="view" value="teacher">
+
+        <div class="form-group">
+            <label>Select Teacher</label>
+            <select name="teacher_id" required>
+                <option value="">-- Select Teacher --</option>
+                {% for teacher in teachers %}
+                <option value="{{ teacher.id }}" {% if selected_teacher|string == teacher.id|string %}selected{% endif %}>
+                    {{ teacher.full_name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <button class="btn btn-primary">Load Teacher Timetable</button>
+    </form>
+    {% endif %}
+</div>
+
+{% if view_mode == "master" %}
+<div class="card">
+    <h2>Master Timetable</h2>
+
+    {% if timetable_rows %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Class</th>
+                <th>Day</th>
+                <th>Time</th>
+                <th>Subject</th>
+                <th>Teacher</th>
+                <th>Room</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in timetable_rows %}
+            <tr>
+                <td>{{ row.class_name }}</td>
+                <td>{{ row.day_of_week }}</td>
+                <td>{{ row.start_time }} - {{ row.end_time }}</td>
+                <td>{{ row.subject }}</td>
+                <td>{{ row.full_name or "Not Assigned" }}</td>
+                <td>{{ row.room if row.room and row.room != "nan" else "-" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="alert alert-warning">No timetable records found.</div>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if view_mode in ["class", "teacher"] and timetable_rows %}
+<div class="card">
+    <h2>
+        {% if view_mode == "class" %}
+            {{ selected_class }} Timetable
+        {% else %}
+            Teacher Timetable
+        {% endif %}
+    </h2>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Day</th>
+                <th>Time</th>
+                <th>Class</th>
+                <th>Subject</th>
+                <th>Teacher</th>
+                <th>Room</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for row in timetable_rows %}
+            <tr>
+                <td>{{ row.day_of_week }}</td>
+                <td>{{ row.start_time }} - {{ row.end_time }}</td>
+                <td>{{ row.class_name }}</td>
+                <td>{{ row.subject }}</td>
+                <td>{{ row.full_name or "Not Assigned" }}</td>
+                <td>{{ row.room if row.room and row.room != "nan" else "-" }}</td>
+                <td>
+    <a href="{{ url_for('edit_timetable_entry', timetable_id=row.id) }}"
+       class="btn btn-primary btn-sm">
+        Edit
+    </a>
+</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% elif view_mode in ["class", "teacher"] and (selected_class or selected_teacher) %}
+<div class="card">
+    <div class="alert alert-warning">No timetable entries found.</div>
+</div>
+{% endif %}
+
+{% endblock %}

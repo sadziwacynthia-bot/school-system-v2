@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Teacher Assignment{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <h1>Edit Teacher Assignment</h1>
+    <p>Update the teacher, class, or subject allocation.</p>
+</div>
+
+<div class="card">
+
+    <form method="POST">
+
+        <div class="form-group">
+            <label>Teacher</label>
+
+            <select name="teacher_id" required>
+                {% for teacher in teachers %}
+                <option value="{{ teacher.id }}"
+                    {% if teacher.id == assignment.teacher_id %}selected{% endif %}>
+                    {{ teacher.full_name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Class</label>
+
+            <select name="class_name" required>
+                {% for cls in classes %}
+                <option value="{{ cls.class_name }}"
+                    {% if cls.class_name == assignment.class_name %}selected{% endif %}>
+                    {{ cls.class_name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Subject</label>
+
+            <select name="subject" required>
+                {% for subject in subjects %}
+                <option value="{{ subject.subject_name }}"
+                    {% if subject.subject_name == assignment.subject %}selected{% endif %}>
+                    {{ subject.subject_name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div style="margin-top:20px;">
+            <button type="submit" class="btn btn-primary">
+                Save Changes
+            </button>
+
+            <a href="{{ url_for('teacher_assignments_page') }}"
+               class="btn btn-secondary">
+                Cancel
+            </a>
+        </div>
+
+    </form>
+
+</div>
+
+{% endblock %}

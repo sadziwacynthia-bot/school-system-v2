@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+
+{% block title %}Assign Teacher{% endblock %}
+
+{% block content %}
+
+<style>
+.assign-page {
+    padding: 25px;
+    background: #f4f6f9;
+    min-height: 100vh;
+}
+
+.assign-header {
+    background: linear-gradient(135deg, #1e3a8a, #2563eb);
+    color: white;
+    padding: 24px;
+    border-radius: 18px;
+    margin-bottom: 22px;
+}
+
+.assign-card {
+    background: white;
+    padding: 22px;
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    margin-bottom: 20px;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    align-items: end;
+}
+
+label {
+    display: block;
+    font-weight: 700;
+    color: #374151;
+    margin-bottom: 6px;
+}
+
+select, input {
+    width: 100%;
+    padding: 11px;
+    border: 1px solid #d1d5db;
+    border-radius: 9px;
+}
+
+.btn {
+    padding: 11px 15px;
+    border-radius: 9px;
+    border: none;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background: #2563eb;
+    color: white;
+}
+
+.assign-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.assign-table th {
+    background: #1e3a8a;
+    color: white;
+    padding: 12px;
+    text-align: left;
+}
+
+.assign-table td {
+    padding: 12px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.empty {
+    padding: 20px;
+    text-align: center;
+    color: #6b7280;
+}
+
+@media (max-width: 900px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<div class="assign-page">
+
+    <div class="assign-header">
+        <h1>Assign Teacher</h1>
+        <p>Assign teachers to real classes and subjects registered under the school.</p>
+    </div>
+
+    {% if session.get('role') == 'super_admin' %}
+    <div class="assign-card">
+        <form method="GET" class="form-grid">
+            <div>
+                <label>Select School</label>
+                <select name="school_id" onchange="this.form.submit()" required>
+                    <option value="">Select School</option>
+                    {% for school in schools %}
+                        <option value="{{ school.id }}"
+                            {% if selected_school_id == school.id|string %}selected{% endif %}>
+                            {{ school.school_name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+
+    <div class="assign-card">
+        <h2>New Assignment</h2>
+
+        <form method="POST" class="form-grid">
+
+            {% if session.get('role') == 'super_admin' %}
+                <input type="hidden" name="school_id" value="{{ selected_school_id }}">
+            {% endif %}
+
+            <div>
+                <label>Teacher</label>
+                <select name="teacher_id" required>
+                    <option value="">Select Teacher</option>
+                    {% for teacher in teachers %}
+                        <option value="{{ teacher.id }}">{{ teacher.full_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label>Class</label>
+                <select name="class_name" required>
+                    <option value="">Select Class</option>
+                    {% for class in class_options %}
+                        <option value="{{ class }}">{{ class }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label>Subject</label>
+                <select name="subject" required>
+                    <option value="">Select Subject</option>
+                    {% for subject in subjects %}
+                        <option value="{{ subject }}">{{ subject }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <button type="submit" class="btn btn-primary">Assign Teacher</button>
+            </div>
+
+        </form>
+
+        {% if not teachers or not class_options or not subjects %}
+            <p style="color:#dc2626; margin-top:15px;">
+                Make sure this school has teachers, classes, and subjects registered first.
+            </p>
+        {% endif %}
+    </div>
+
+    <div class="assign-card">
+        <h2>Current Assignments</h2>
+
+        <table class="assign-table">
+            <thead>
+                <tr>
+                    <th>Teacher</th>
+                    <th>Class</th>
+                    <th>Subject</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for assignment in assignments %}
+                <tr>
+                    <td>{{ assignment.full_name }}</td>
+                    <td>{{ assignment.class_name }}</td>
+                    <td>{{ assignment.subject }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="3" class="empty">No teacher assignments found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+{% endblock %}

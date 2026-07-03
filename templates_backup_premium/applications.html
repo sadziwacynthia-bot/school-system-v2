@@ -1,0 +1,60 @@
+{% extends "base_premium.html" %}
+{% block title %}Applications{% endblock %}
+
+{% block content %}
+<div class="page-header-card">
+  <h1>Applications</h1>
+  <p>Review waiting list applications, uploaded documents, and admissions status.</p>
+</div>
+
+<div class="premium-grid">
+  <div class="stat-card card-blue">
+    <span>Total Applications</span>
+    <strong>{{ total_applications or 0 }}</strong>
+  </div>
+  <div class="stat-card card-orange">
+    <span>Pending</span>
+    <strong>{{ pending_count or 0 }}</strong>
+  </div>
+  <div class="stat-card card-green">
+    <span>Approved</span>
+    <strong>{{ approved_count or 0 }}</strong>
+  </div>
+  <div class="stat-card card-purple">
+    <span>Documents</span>
+    <strong>{{ document_count or 0 }}</strong>
+  </div>
+</div>
+
+<div class="premium-card">
+  <div class="section-title">
+    <h2>Application Records</h2>
+    <a href="#" class="premium-btn">+ New Application</a>
+  </div>
+
+  {% if applications %}
+  <table class="premium-table">
+    <thead>
+      <tr>
+        <th>Applicant</th>
+        <th>Class</th>
+        <th>Guardian</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for app in applications %}
+      <tr>
+        <td><strong>{{ app.student_name or app.name or '-' }}</strong></td>
+        <td>{{ app.class_name or '-' }}</td>
+        <td>{{ app.guardian_name or app.parent_name or '-' }}</td>
+        <td><span class="badge badge-warning">{{ app.status or 'Pending' }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-box">No applications found yet.</div>
+  {% endif %}
+</div>
+{% endblock %}

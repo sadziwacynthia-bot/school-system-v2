@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Parent Assignments{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h2 class="page-title">Assignments</h2>
+        <p class="page-subtitle">See current school assignments</p>
+    </div>
+</div>
+
+<div class="table-card">
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Class</th>
+                    <th>Subject</th>
+                    <th>Title</th>
+                    <th>Description</th>
+                    <th>Due Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for assignment in assignments %}
+                <tr>
+                    <td>{{ assignment.class_name }}</td>
+                    <td>{{ assignment.subject }}</td>
+                    <td>{{ assignment.title }}</td>
+                    <td>{{ assignment.description }}</td>
+                    <td>{{ assignment.due_date }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5">No assignments found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Add Fee{% endblock %}
+{% block page_heading %}Add Fee{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h2 class="page-title">Add Fee Record</h2>
+        <p class="page-subtitle">Choose a class first, then select a student</p>
+    </div>
+</div>
+
+<div class="form-card">
+    <form method="GET" action="{{ url_for('add_fee') }}">
+        <label>Select Class</label>
+        <div class="search-bar">
+            <select name="class_name" required>
+                <option value="">Choose class</option>
+                {% for c in class_options %}
+                <option value="{{ c }}" {% if selected_class == c %}selected{% endif %}>{{ c }}</option>
+                {% endfor %}
+            </select>
+
+            <button type="submit" class="btn btn-primary">Load Students</button>
+        </div>
+    </form>
+</div>
+
+{% if selected_class %}
+<div class="form-card">
+    <form method="POST">
+        <div class="form-grid">
+            <div>
+                <label>Student</label>
+                <select name="student_id" required>
+                    <option value="">Select student</option>
+                    {% for student in students %}
+                    <option value="{{ student.id }}">
+                        {{ student.first_name }} {{ student.last_name }} - {{ student.student_number }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label>Term</label>
+                <select name="term_name" required>
+                    <option value="">Select term</option>
+                    <option value="Term 1">Term 1</option>
+                    <option value="Term 2">Term 2</option>
+                    <option value="Term 3">Term 3</option>
+                </select>
+            </div>
+
+            <div>
+                <label>Total Amount</label>
+                <input type="number" step="0.01" name="amount" required>
+            </div>
+
+            <div>
+                <label>Initial Payment</label>
+                <input type="number" step="0.01" name="paid_amount" value="0">
+            </div>
+
+            <div>
+                <label>Due Date</label>
+                <input type="date" name="due_date">
+            </div>
+
+            <div>
+                <label>Payment Date</label>
+                <input type="date" name="payment_date">
+            </div>
+        </div>
+
+        <label>Receipt Number</label>
+        <input type="text" name="receipt_number" placeholder="Optional receipt number">
+
+        <div class="action-group" style="margin-top: 18px;">
+            <button type="submit" class="btn btn-primary">Save Fee Record</button>
+            <a href="{{ url_for('fees') }}" class="btn btn-secondary">Back to Fees</a>
+        </div>
+    </form>
+</div>
+{% endif %}
+{% endblock %}

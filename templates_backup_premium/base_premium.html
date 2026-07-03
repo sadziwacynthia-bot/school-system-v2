@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}School System{% endblock %}</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/premium.css') }}">
+</head>
+
+<body>
+
+<div class="premium-shell">
+
+    <!-- Sidebar -->
+    <aside class="premium-sidebar">
+
+        <div class="premium-logo">
+
+            <div class="premium-logo-circle">
+                S
+            </div>
+
+            <div class="premium-logo-text">
+                <strong>School Suite</strong>
+                <span>Premium Management</span>
+            </div>
+
+        </div>
+
+        <nav class="premium-nav">
+
+            <a href="{{ url_for('dashboard') }}">🏠 Dashboard</a>
+
+            <a href="{{ url_for('students') }}">🎓 Students</a>
+
+            <a href="{{ url_for('teachers') }}">👨‍🏫 Teachers</a>
+
+            <a href="{{ url_for('classes') }}">🏫 Classes</a>
+
+            <a href="{{ url_for('fees') }}">💰 Fees</a>
+
+            <a href="{{ url_for('attendance') }}">📋 Attendance</a>
+
+            <a href="{{ url_for('applications') }}">📝 Applications</a>
+
+            <a href="{{ url_for('cashbook') }}">📒 Cashbook</a>
+
+            <a href="{{ url_for('logout') }}">🚪 Logout</a>
+
+        </nav>
+
+    </aside>
+
+    <!-- Main Content -->
+
+    <main class="premium-main">
+
+        {% block content %}
+
+        {% endblock %}
+
+    </main>
+
+</div>
+
+</body>
+</html>

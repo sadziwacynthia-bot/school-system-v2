@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Teacher Registration{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Teacher Registration</h1>
+    <p>Add a new teacher to the system.</p>
+</div>
+
+<div class="card-box">
+    <form method="POST" class="form-grid">
+        <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" name="full_name" required>
+        </div>
+
+        <div class="form-group">
+            <label>Phone</label>
+            <input type="text" name="phone">
+        </div>
+
+        <div class="form-group">
+            <label>Email</label>
+            <input type="email" name="email">
+        </div>
+
+        <div class="form-group">
+            <label>Username</label>
+            <input type="text" name="username" required>
+        </div>
+
+        <div class="form-group">
+            <label>Password</label>
+            <input type="password" name="password" required>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">Register Teacher</button>
+        </div>
+    </form>
+</div>
+
+<style>
+.page-header h1 { color:#2563eb; margin:0; }
+.page-header p { color:#6b7280; margin-top:8px; }
+.card-box {
+    background:white; border-radius:16px; padding:24px;
+    box-shadow:0 4px 14px rgba(0,0,0,0.08); max-width:800px;
+}
+.form-grid {
+    display:grid; grid-template-columns:repeat(2,1fr); gap:18px;
+}
+.form-group label {
+    display:block; margin-bottom:8px; font-weight:600;
+}
+.form-group input {
+    width:100%; padding:12px; border:1px solid #d1d5db; border-radius:10px;
+}
+.form-actions {
+    grid-column:span 2;
+}
+.btn-primary {
+    background:#2563eb; color:white; border:none;
+    padding:12px 18px; border-radius:10px; font-weight:600;
+}
+@media (max-width:700px) {
+    .form-grid { grid-template-columns:1fr; }
+    .form-actions { grid-column:span 1; }
+}
+</style>
+{% endblock %}

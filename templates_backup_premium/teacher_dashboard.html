@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="teacher-page">
+
+  <div class="page-header">
+    <div>
+      <p class="eyebrow">Teacher Portal</p>
+      <h1>Teacher Dashboard</h1>
+      <p class="muted">Your attendance class, teaching classes, subjects, and timetable.</p>
+    </div>
+  </div>
+
+  {% if teacher %}
+  <div class="teacher-card">
+    <div>
+      <p class="eyebrow">Teacher</p>
+      <h2>{{ teacher.full_name }}</h2>
+      <p class="muted">{{ teacher.teacher_id or "Teacher" }}{% if teacher.email %} • {{ teacher.email }}{% endif %}</p>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="section">
+    <div class="section-head">
+      <div>
+        <h2>My Attendance Class</h2>
+        <p class="muted">Only your assigned class teacher class appears here.</p>
+      </div>
+    </div>
+
+    <div class="class-grid">
+      {% for class_name in attendance_classes %}
+      <div class="mini-card blue-left">
+        <h3>{{ class_name }}</h3>
+        <a href="{{ url_for('attendance', class_name=class_name) }}" class="btn primary">Take Attendance</a>
+        <a href="{{ url_for('class_students', class_name=class_name) }}" class="btn">View Class</a>
+      </div>
+      {% else %}
+      <div class="empty">No attendance class assigned yet.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="two-column">
+    <div class="section">
+      <h2>My Teaching Classes</h2>
+      <div class="pill-row">
+        {% for class_name in assigned_classes %}
+          <span class="pill">{{ class_name }}</span>
+        {% else %}
+          <span class="empty-text">No teaching classes assigned.</span>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>My Subjects</h2>
+      <div class="pill-row">
+        {% for subject in assigned_subjects %}
+          <span class="pill subject">{{ subject }}</span>
+        {% else %}
+          <span class="empty-text">No subjects assigned.</span>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>My Timetable</h2>
+
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th>Day</th>
+            <th>Time</th>
+            <th>Class</th>
+            <th>Subject</th>
+            <th>Room</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in timetable_rows %}
+          <tr>
+            <td>{{ t.day_of_week }}</td>
+            <td>{{ t.start_time }} - {{ t.end_time }}</td>
+            <td>{{ t.class_name }}</td>
+            <td>{{ t.subject }}</td>
+            <td>{{ t.room or "-" }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="5" class="empty-cell">No timetable entries yet.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<style>
+.teacher-page {
+  max-width: 1100px;
+  margin: auto;
+  padding: 16px;
+}
+
+.page-header {
+  margin-bottom: 14px;
+}
+
+.eyebrow {
+  font-size: 11px;
+  color: #2563eb;
+  font-weight: 800;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.page-header h1 {
+  font-size: 24px;
+  margin: 4px 0;
+  color: #0f172a;
+}
+
+.muted {
+  color: #64748b;
+  font-size: 13px;
+  margin: 0;
+}
+
+.teacher-card,
+.section,
+.mini-card,
+.table-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+}
+
+.teacher-card {
+  margin-bottom: 14px;
+}
+
+.teacher-card h2 {
+  margin: 4px 0;
+  font-size: 20px;
+  color: #0f172a;
+}
+
+.section {
+  margin-bottom: 14px;
+}
+
+.section h2 {
+  font-size: 17px;
+  margin: 0 0 8px;
+  color: #0f172a;
+}
+
+.section-head {
+  margin-bottom: 12px;
+}
+
+.class-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.two-column {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.mini-card h3 {
+  margin: 0 0 10px;
+  font-size: 17px;
+  color: #0f172a;
+}
+
+.blue-left {
+  border-left: 4px solid #2563eb;
+}
+
+.btn {
+  display: block;
+  text-align: center;
+  padding: 8px 10px;
+  border-radius: 9px;
+  border: 1px solid #dbe3ef;
+  text-decoration: none;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 700;
+  margin-top: 8px;
+}
+
+.btn.primary {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+.pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pill {
+  background: #f1f5f9;
+  color: #334155;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pill.subject {
+  background: #eef2ff;
+  color: #3730a3;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th {
+  text-align: left;
+  background: #f8fafc;
+  padding: 9px;
+  font-size: 12px;
+  color: #334155;
+}
+
+td {
+  padding: 9px;
+  border-top: 1px solid #e2e8f0;
+  font-size: 13px;
+}
+
+.empty,
+.empty-cell,
+.empty-text {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.empty {
+  grid-column: 1 / -1;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  padding: 18px;
+  border-radius: 12px;
+}
+
+.empty-cell {
+  text-align: center;
+  padding: 18px;
+}
+
+@media (max-width: 900px) {
+  .class-grid,
+  .two-column {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+
+{% endblock %}

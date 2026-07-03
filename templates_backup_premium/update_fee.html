@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container">
+
+```
+<div class="page-header">
+    <h2>Update Fee Payment</h2>
+    <a href="{{ url_for('fees') }}" class="btn-secondary">← Back to Fees</a>
+</div>
+
+<!-- STUDENT SUMMARY -->
+
+<div class="card">
+    <h3>{{ fee.first_name }} {{ fee.last_name }}</h3>
+
+    <div class="summary-grid">
+        <div>
+            <label>Student Number</label>
+            <p>{{ fee.student_number }}</p>
+        </div>
+
+        <div>
+            <label>Class</label>
+            <p>{{ fee.class_name }}</p>
+        </div>
+
+        <div>
+            <label>Term</label>
+            <p>{{ fee.term_name }}</p>
+        </div>
+
+        <div>
+            <label>Status</label>
+            <p>
+                <span class="badge {{ fee.status|lower|replace(' ','-') }}">
+                    {{ fee.status }}
+                </span>
+            </p>
+        </div>
+    </div>
+
+    <div class="totals-grid">
+
+        <div class="total-box">
+            <small>Total Fee</small>
+            <h3>${{ "%.2f"|format(fee.amount or 0) }}</h3>
+        </div>
+
+        <div class="total-box paid">
+            <small>Paid</small>
+            <h3>${{ "%.2f"|format(fee.paid_amount or 0) }}</h3>
+        </div>
+
+        <div class="total-box balance">
+            <small>Balance</small>
+            <h3>${{ "%.2f"|format(fee.balance or 0) }}</h3>
+        </div>
+
+    </div>
+</div>
+
+<!-- PAYMENT FORM -->
+
+<div class="card">
+
+    <h3>Add Payment</h3>
+
+    <form method="POST">
+
+        <div class="form-grid">
+
+            <div>
+                <label>Payment Date</label>
+                <input type="date"
+                       name="payment_date"
+                       value="{{ today }}">
+            </div>
+
+            <div>
+                <label>Receipt Number</label>
+                <input type="text"
+                       name="receipt_number"
+                       placeholder="Receipt Number">
+            </div>
+
+            <div>
+                <label>Amount Paid</label>
+                <input type="number"
+                       step="0.01"
+                       min="0"
+                       name="additional_payment"
+                       required>
+            </div>
+
+            <div>
+                <label>Description</label>
+                <input type="text"
+                       name="details"
+                       placeholder="School Fees, Registration, Levy, Exam Fee...">
+            </div>
+            <div>
+                <label style="display:flex; gap:8px; align-items:center; margin-bottom:15px;">
+    <input type="checkbox" name="carry_forward" checked>
+    Automatically apply extra payment to next term
+</label>
+            </div>
+        </div>
+
+        <button type="submit" class="btn-primary">
+            Save Payment
+        </button>
+
+    </form>
+
+</div>
+
+<!-- PAYMENT HISTORY -->
+
+<div class="card">
+
+    <h3>Payment History</h3>
+
+    <table>
+
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Receipt</th>
+                <th>Description</th>
+                <th>Amount</th>
+                <th>Receipt</th>
+            </tr>
+        </thead>
+
+        <tbody>
+
+        {% for payment in payment_history %}
+
+            <tr>
+
+                <td>{{ payment.payment_date }}</td>
+
+                <td>{{ payment.receipt_number }}</td>
+
+                <td>
+                    {{ payment.details or "-" }}
+                </td>
+
+                <td>
+                    ${{ "%.2f"|format(payment.amount_paid or 0) }}
+                </td>
+
+                <td>
+                    <a href="{{ url_for('print_fee_receipt', payment_id=payment.id) }}"
+                       class="btn-small">
+                        Print
+                    </a>
+                </td>
+
+            </tr>
+
+        {% else %}
+
+            <tr>
+                <td colspan="5">
+                    No payments recorded.
+                </td>
+            </tr>
+
+        {% endfor %}
+
+        </tbody>
+
+    </table>
+
+</div>
+```
+
+</div>
+
+<style>
+
+.container{
+    max-width:1100px;
+    margin:auto;
+    padding:20px;
+}
+
+.page-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:20px;
+}
+
+.card{
+    background:white;
+    border-radius:12px;
+    padding:20px;
+    margin-bottom:20px;
+    box-shadow:0 2px 10px rgba(0,0,0,.05);
+}
+
+.summary-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:15px;
+}
+
+.totals-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:15px;
+    margin-top:20px;
+}
+
+.total-box{
+    background:#f8fafc;
+    padding:15px;
+    border-radius:10px;
+}
+
+.total-box.paid{
+    background:#dcfce7;
+}
+
+.total-box.balance{
+    background:#fee2e2;
+}
+
+.form-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:15px;
+    margin-bottom:20px;
+}
+
+input{
+    width:100%;
+    padding:10px;
+    border:1px solid #ddd;
+    border-radius:8px;
+}
+
+.btn-primary{
+    background:#2563eb;
+    color:white;
+    border:none;
+    padding:10px 16px;
+    border-radius:8px;
+    cursor:pointer;
+}
+
+.btn-secondary{
+    text-decoration:none;
+    background:#e5e7eb;
+    color:#111;
+    padding:10px 14px;
+    border-radius:8px;
+}
+
+.btn-small{
+    background:#16a34a;
+    color:white;
+    padding:6px 10px;
+    border-radius:6px;
+    text-decoration:none;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+th,td{
+    padding:10px;
+    border-bottom:1px solid #eee;
+    text-align:left;
+}
+
+.badge{
+    padding:4px 10px;
+    border-radius:6px;
+}
+
+.badge.paid{
+    background:#dcfce7;
+}
+
+.badge.partially-paid{
+    background:#fef3c7;
+}
+
+.badge.pending{
+    background:#fee2e2;
+}
+
+</style>
+
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}School Settings{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h2 class="page-title">School Settings</h2>
+        <p class="page-subtitle">Manage branding and report information for the school</p>
+    </div>
+</div>
+
+<div class="form-card">
+    <form method="POST">
+        {% if session.get('role') == 'super_admin' %}
+        <label for="school_id">School</label>
+        <select name="school_id" required>
+            <option value="">Select School</option>
+            {% for school in schools %}
+            <option value="{{ school.id }}" {% if selected_school_id|string == school.id|string %}selected{% endif %}>
+                {{ school.school_name }}
+            </option>
+            {% endfor %}
+        </select>
+        {% endif %}
+
+        <div class="form-grid">
+            <div>
+                <label for="display_name">Display Name</label>
+                <input type="text" name="display_name" value="{{ settings.display_name if settings else '' }}" placeholder="School display name">
+            </div>
+
+            <div>
+                <label for="phone">Phone</label>
+                <input type="text" name="phone" value="{{ settings.phone if settings else '' }}" placeholder="School phone number">
+            </div>
+
+            <div>
+                <label for="email">Email</label>
+                <input type="email" name="email" value="{{ settings.email if settings else '' }}" placeholder="School email">
+            </div>
+
+            <div>
+                <label for="logo_url">Logo URL</label>
+                <input type="text" name="logo_url" value="{{ settings.logo_url if settings else '' }}" placeholder="Optional logo image URL">
+            </div>
+        </div>
+
+        <label for="address">Address</label>
+        <textarea name="address" rows="3" placeholder="School address">{{ settings.address if settings else '' }}</textarea>
+
+        <label for="report_header">Report Header Text</label>
+        <textarea name="report_header" rows="2" placeholder="Printed report header">{{ settings.report_header if settings else '' }}</textarea>
+
+        <button type="submit" class="btn btn-primary">Save Settings</button>
+    </form>
+</div>
+{% endblock %}

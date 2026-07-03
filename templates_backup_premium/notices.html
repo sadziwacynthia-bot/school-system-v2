@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Notices{% endblock %}
+
+{% block content %}
+
+<div style="padding:25px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <div>
+            <h2>School Notices</h2>
+            <p style="color:#6b7280;">Manage announcements shown to parents.</p>
+        </div>
+
+        <a href="{{ url_for('add_notice') }}" class="btn btn-primary">
+            + Add Notice
+        </a>
+    </div>
+
+    {% if notices %}
+        {% for notice in notices %}
+        <div style="background:white; padding:18px; border-radius:14px; margin-bottom:14px; box-shadow:0 4px 12px rgba(0,0,0,0.06);">
+            <h3 style="margin:0 0 8px;">{{ notice.title }}</h3>
+
+            {% if notice.school_name %}
+                <p style="margin:0 0 8px; color:#6b7280;">
+                    School: {{ notice.school_name }}
+                </p>
+            {% endif %}
+
+            <p style="color:#374151;">{{ notice.message }}</p>
+
+            <p style="font-size:13px; color:#9ca3af;">
+                Posted on {{ notice.date }} by {{ notice.created_by or 'System' }}
+            </p>
+
+            <div style="display:flex; gap:10px;">
+                <a href="{{ url_for('edit_notice', notice_id=notice.id) }}" class="btn btn-secondary">
+                    Edit
+                </a>
+
+                <form method="POST"
+                      action="{{ url_for('delete_notice', notice_id=notice.id) }}"
+                      onsubmit="return confirm('Are you sure you want to delete this notice?');">
+                    <button type="submit" class="btn btn-danger">
+                        Delete
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div style="background:white; padding:20px; border-radius:14px; color:#6b7280;">
+            No notices posted yet.
+        </div>
+    {% endif %}
+</div>
+
+{% endblock %}

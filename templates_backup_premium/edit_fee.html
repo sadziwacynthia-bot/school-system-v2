@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Edit Fee{% endblock %}
+
+{% block content %}
+
+<div class="form-page">
+  <div class="page-header">
+    <div>
+      <p class="eyebrow">Fee Management</p>
+      <h1>Edit Fee Record</h1>
+      <p class="muted">
+        {{ fee.first_name }} {{ fee.last_name }} —
+        {{ fee.student_number }} —
+        {{ fee.class_name }}
+      </p>
+    </div>
+
+    <a href="{{ url_for('fees') }}" class="btn">Back to Fees</a>
+  </div>
+
+  <div class="form-card">
+    <form method="POST">
+
+      <div class="form-group">
+        <label>Term</label>
+        <input type="text" name="term_name" value="{{ fee.term_name }}" required>
+      </div>
+
+      <div class="form-group">
+        <label>Total Fee Amount</label>
+        <input type="number" step="0.01" name="amount" value="{{ fee.amount }}" required>
+      </div>
+
+      <div class="form-group">
+        <label>Paid Amount</label>
+        <input type="number" step="0.01" name="paid_amount" value="{{ fee.paid_amount }}" required>
+      </div>
+
+      <div class="form-group">
+        <label>Due Date</label>
+        <input type="date" name="due_date" value="{{ fee.due_date }}">
+      </div>
+
+      <button type="submit" class="btn primary">Save Changes</button>
+
+    </form>
+  </div>
+</div>
+
+<style>
+.form-page {
+  max-width: 850px;
+  margin: auto;
+  padding: 16px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.eyebrow {
+  margin: 0;
+  color: #2563eb;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.page-header h1 {
+  margin: 4px 0;
+  color: #0f172a;
+}
+
+.muted {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.form-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 18px;
+}
+
+.form-group {
+  margin-bottom: 14px;
+}
+
+label {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: #334155;
+}
+
+input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+}
+
+.btn {
+  text-decoration: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  border: 1px solid #dbe3ef;
+  background: white;
+  color: #0f172a;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn.primary {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+</style>
+
+{% endblock %}

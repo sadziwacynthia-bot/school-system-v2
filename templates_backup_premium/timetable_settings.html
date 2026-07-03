@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Timetable Settings{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h2 class="page-title">Timetable Settings</h2>
+        <p class="page-subtitle">Define the daily timetable structure for the school</p>
+    </div>
+</div>
+
+<div class="form-card">
+    <form method="POST">
+        {% if session.get('role') == 'super_admin' %}
+        <label for="school_id">School</label>
+        <select name="school_id" required>
+            <option value="">Select School</option>
+            {% for school in schools %}
+            <option value="{{ school.id }}">{{ school.school_name }}</option>
+            {% endfor %}
+        </select>
+        {% endif %}
+
+        <div class="form-grid">
+            <div>
+                <label for="start_time">School Start Time</label>
+                <input type="time" name="start_time" value="{{ settings.start_time if settings else '' }}" required>
+            </div>
+
+            <div>
+                <label for="period_length">Period Length (minutes)</label>
+                <input type="number" name="period_length" value="{{ settings.period_length if settings else 35 }}" required>
+            </div>
+
+            <div>
+                <label for="periods_per_day">Periods Per Day</label>
+                <input type="number" name="periods_per_day" value="{{ settings.periods_per_day if settings else 8 }}" required>
+            </div>
+
+            <div>
+                <label for="break_after_period">Break After Period</label>
+                <input type="number" name="break_after_period" value="{{ settings.break_after_period if settings else 3 }}" required>
+            </div>
+
+            <div>
+                <label for="break_duration">Break Duration (minutes)</label>
+                <input type="number" name="break_duration" value="{{ settings.break_duration if settings else 20 }}" required>
+            </div>
+
+            <div>
+                <label for="lunch_after_period">Lunch After Period</label>
+                <input type="number" name="lunch_after_period" value="{{ settings.lunch_after_period if settings else 5 }}" required>
+            </div>
+
+            <div>
+                <label for="lunch_duration">Lunch Duration (minutes)</label>
+                <input type="number" name="lunch_duration" value="{{ settings.lunch_duration if settings else 40 }}" required>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save Settings</button>
+    </form>
+</div>
+{% endblock %}

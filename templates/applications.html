@@ -1,344 +1,60 @@
-{% extends "base.html" %}
+{% extends "base_premium.html" %}
+{% block title %}Applications{% endblock %}
+
 {% block content %}
-
-<div class="applications-page">
-
-  <div class="page-header">
-    <div>
-      <p class="eyebrow">Admissions</p>
-      <h1>Waiting List Applications</h1>
-      <p class="muted">
-        Manage student applications for upcoming enrollment.
-      </p>
-    </div>
-
-    <a href="{{ url_for('add_application') }}" class="btn primary">
-      + Add Application
-    </a>
-  </div>
-
-  <div class="table-card">
-
-    <div class="table-header">
-      <h2>Applications</h2>
-      <span>{{ applications|length }} application(s)</span>
-    </div>
-
-    <table>
-
-      <thead>
-        <tr>
-          <th>Student</th>
-          <th>Applied Class</th>
-          <th>Year</th>
-          <th>Guardian</th>
-          <th>Status</th>
-          <th>Actions</th>
-
-          {% if session.get("role") == "super_admin" %}
-          <th>School</th>
-          {% endif %}
-        </tr>
-      </thead>
-
-      <tbody>
-
-        {% for a in applications %}
-        <tr>
-
-          <td>
-            <div class="student-info">
-              <strong>{{ a.first_name }} {{ a.last_name }}</strong>
-              <small>{{ a.gender or "-" }}</small>
-            </div>
-          </td>
-
-          <td>{{ a.applied_class }}</td>
-
-          <td>{{ a.applied_year }}</td>
-
-          <td>
-            <div class="guardian-info">
-              <strong>{{ a.guardian_name or "-" }}</strong>
-              <small>{{ a.guardian_phone or "-" }}</small>
-            </div>
-          </td>
-
-          <td>
-            {% if a.status == "Approved" %}
-              <span class="badge approved">Approved</span>
-
-            {% elif a.status == "Rejected" %}
-              <span class="badge rejected">Rejected</span>
-
-            {% elif a.status == "Enrolled" %}
-              <span class="badge enrolled">Enrolled</span>
-
-            {% else %}
-              <span class="badge pending">Pending</span>
-            {% endif %}
-          </td>
-
-          <td>
-
-            <div class="actions">
-
-              {% if a.status == "Pending" %}
-
-              <form method="POST"
-                    action="{{ url_for('approve_application', application_id=a.id) }}">
-
-                <button type="submit" class="btn small success">
-                  Approve
-                </button>
-
-              </form>
-
-              <form method="POST"
-                    action="{{ url_for('reject_application', application_id=a.id) }}"
-                    onsubmit="return confirm('Reject this application?')">
-
-                <button type="submit" class="btn small danger">
-                  Reject
-                </button>
-
-              </form>
-
-              {% endif %}
-
-              {% if a.status == "Approved" %}
-
-              <form method="POST"
-                    action="{{ url_for('enroll_application', application_id=a.id) }}"
-                    onsubmit="return confirm('Enroll this student now?')">
-
-                <button type="submit" class="btn small primary">
-                  Enroll
-                </button>
-
-              </form>
-
-              {% endif %}
-
-              {% if a.status == "Enrolled" %}
-                <span class="muted">Completed</span>
-              {% endif %}
-
-            </div>
-
-          </td>
-
-          {% if session.get("role") == "super_admin" %}
-          <td>{{ a.school_name or "-" }}</td>
-          {% endif %}
-
-        </tr>
-
-        {% else %}
-
-        <tr>
-          <td colspan="{% if session.get('role') == 'super_admin' %}7{% else %}6{% endif %}"
-              class="empty">
-            No applications found.
-          </td>
-        </tr>
-
-        {% endfor %}
-
-      </tbody>
-
-    </table>
-
-  </div>
-
+<div class="page-header-card">
+  <h1>Applications</h1>
+  <p>Review waiting list applications, uploaded documents, and admissions status.</p>
 </div>
 
-<style>
-.applications-page {
-  max-width: 1250px;
-  margin: auto;
-  padding: 16px;
-}
+<div class="premium-grid">
+  <div class="stat-card card-blue">
+    <span>Total Applications</span>
+    <strong>{{ total_applications or 0 }}</strong>
+  </div>
+  <div class="stat-card card-orange">
+    <span>Pending</span>
+    <strong>{{ pending_count or 0 }}</strong>
+  </div>
+  <div class="stat-card card-green">
+    <span>Approved</span>
+    <strong>{{ approved_count or 0 }}</strong>
+  </div>
+  <div class="stat-card card-purple">
+    <span>Documents</span>
+    <strong>{{ document_count or 0 }}</strong>
+  </div>
+</div>
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 18px;
-  gap: 12px;
-}
+<div class="premium-card">
+  <div class="section-title">
+    <h2>Application Records</h2>
+    <a href="#" class="premium-btn">+ New Application</a>
+  </div>
 
-.eyebrow {
-  font-size: 11px;
-  color: #2563eb;
-  font-weight: 800;
-  text-transform: uppercase;
-  margin: 0;
-}
-
-.page-header h1 {
-  margin: 4px 0;
-  font-size: 26px;
-  color: #0f172a;
-}
-
-.muted {
-  color: #64748b;
-  font-size: 13px;
-}
-
-.btn {
-  text-decoration: none;
-  border-radius: 10px;
-  padding: 9px 14px;
-  border: 1px solid #dbe3ef;
-  background: white;
-  color: #0f172a;
-  font-weight: 700;
-  font-size: 13px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.btn.primary {
-  background: #2563eb;
-  color: white;
-  border-color: #2563eb;
-}
-
-.btn.small {
-  padding: 7px 10px;
-  font-size: 12px;
-}
-
-.btn.success {
-  background: #16a34a;
-  color: white;
-  border-color: #16a34a;
-}
-
-.btn.danger {
-  background: #dc2626;
-  color: white;
-  border-color: #dc2626;
-}
-
-.table-card {
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  overflow: hidden;
-}
-
-.table-header {
-  padding: 16px;
-  border-bottom: 1px solid #e2e8f0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.table-header h2 {
-  margin: 0;
-  font-size: 18px;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th {
-  background: #f8fafc;
-  text-align: left;
-  padding: 12px;
-  font-size: 12px;
-  text-transform: uppercase;
-  color: #475569;
-}
-
-td {
-  padding: 12px;
-  border-top: 1px solid #e2e8f0;
-  font-size: 13px;
-  vertical-align: top;
-}
-
-.student-info,
-.guardian-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.student-info strong,
-.guardian-info strong {
-  color: #0f172a;
-}
-
-.student-info small,
-.guardian-info small {
-  color: #64748b;
-  margin-top: 2px;
-}
-
-.badge {
-  padding: 5px 10px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.badge.pending {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.badge.approved {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.badge.rejected {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.badge.enrolled {
-  background: #dbeafe;
-  color: #1d4ed8;
-}
-
-.actions {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.actions form {
-  margin: 0;
-}
-
-.empty {
-  text-align: center;
-  padding: 24px;
-  color: #64748b;
-}
-
-@media (max-width: 900px) {
-
-  .page-header,
-  .table-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  table {
-    display: block;
-    overflow-x: auto;
-  }
-}
-</style>
-
+  {% if applications %}
+  <table class="premium-table">
+    <thead>
+      <tr>
+        <th>Applicant</th>
+        <th>Class</th>
+        <th>Guardian</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for app in applications %}
+      <tr>
+        <td><strong>{{ app.student_name or app.name or '-' }}</strong></td>
+        <td>{{ app.class_name or '-' }}</td>
+        <td>{{ app.guardian_name or app.parent_name or '-' }}</td>
+        <td><span class="badge badge-warning">{{ app.status or 'Pending' }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-box">No applications found yet.</div>
+  {% endif %}
+</div>
 {% endblock %}

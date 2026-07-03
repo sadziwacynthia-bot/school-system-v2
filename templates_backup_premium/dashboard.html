@@ -1,0 +1,159 @@
+{% extends "base_premium.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+
+<div class="premium-topbar">
+  <div class="premium-title">
+    <h1>Good day, {{ session.get('username', 'Admin') }} 👋</h1>
+    <p>Your complete school command center.</p>
+  </div>
+
+  <a href="{{ url_for('students') }}" class="premium-btn">+ Add Student</a>
+</div>
+
+<div class="top-info-grid">
+  <div class="info-pill">
+    <span>Date</span>
+    <strong>{{ current_date or 'Today' }}</strong>
+  </div>
+
+  <div class="info-pill">
+    <span>Logged in as</span>
+    <strong>{{ session.get('role', 'Admin') }}</strong>
+  </div>
+
+  <div class="info-pill">
+    <span>System</span>
+    <strong>Online</strong>
+  </div>
+
+  <div class="info-pill">
+    <span>Notifications</span>
+    <strong>{{ pending_count or 0 }} Pending</strong>
+  </div>
+</div>
+
+<div class="hero-card">
+  <h2>School Suite Premium</h2>
+  <p>Students, fees, attendance, applications, teachers, and reports in one premium platform.</p>
+
+  <div class="hero-stats">
+    <div class="hero-mini">
+      <span>Today</span>
+      <strong>Live</strong>
+    </div>
+
+    <div class="hero-mini">
+      <span>Attendance</span>
+      <strong>{{ attendance_today or 0 }}%</strong>
+    </div>
+
+    <div class="hero-mini">
+      <span>Applications</span>
+      <strong>{{ pending_count or 0 }}</strong>
+    </div>
+
+    <div class="hero-mini">
+      <span>School</span>
+      <strong>Premium</strong>
+    </div>
+  </div>
+</div>
+
+<div class="premium-grid">
+  <div class="stat-card card-blue">
+    <span>Total Students</span>
+    <strong>{{ total_students or 0 }}</strong>
+  </div>
+
+  <div class="stat-card card-green">
+    <span>Total Teachers</span>
+    <strong>{{ total_teachers or 0 }}</strong>
+  </div>
+
+  <div class="stat-card card-purple">
+    <span>Classes</span>
+    <strong>{{ total_classes or 0 }}</strong>
+  </div>
+
+  <div class="stat-card card-orange">
+    <span>Outstanding Fees</span>
+    <strong>${{ outstanding_fees or 0 }}</strong>
+  </div>
+</div>
+
+<div class="dashboard-layout">
+
+  <div class="premium-card">
+    <div class="section-title">
+      <h2>Quick Actions</h2>
+    </div>
+
+    <div class="quick-action-grid">
+      <a href="{{ url_for('students') }}" class="quick-tile">🎓 Manage Students</a>
+      <a href="{{ url_for('teachers') }}" class="quick-tile">👨‍🏫 Manage Teachers</a>
+      <a href="{{ url_for('fees') }}" class="quick-tile">💰 Fees & Payments</a>
+      <a href="{{ url_for('attendance') }}" class="quick-tile">📋 Attendance</a>
+      <a href="{{ url_for('applications') }}" class="quick-tile">📝 Applications</a>
+      <a href="{{ url_for('cashbook') }}" class="quick-tile">📒 Cashbook</a>
+    </div>
+  </div>
+
+  <div class="premium-card">
+    <div class="section-title">
+      <h2>Recent Activity</h2>
+    </div>
+
+    <div class="activity-item">✅ Dashboard opened successfully</div>
+    <div class="activity-item">🎓 Student records available</div>
+    <div class="activity-item">💰 Fees module ready</div>
+    <div class="activity-item">📋 Attendance tools active</div>
+    <div class="activity-item">📝 {{ pending_count or 0 }} applications pending</div>
+  </div>
+
+</div>
+
+<br>
+
+<div class="dashboard-layout">
+
+  <div class="premium-card">
+    <div class="section-title">
+      <h2>Recent Payments</h2>
+      <a href="{{ url_for('fees') }}" class="premium-btn premium-btn-light">View Fees</a>
+    </div>
+
+    <table class="premium-table">
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>Amount</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Latest payment</td>
+          <td>$0</td>
+          <td>Ready</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="premium-card">
+    <div class="section-title">
+      <h2>System Health</h2>
+    </div>
+
+    <div class="activity-item">🟢 Database connected</div>
+    <div class="activity-item">🟢 User permissions active</div>
+    <div class="activity-item">🟢 School modules ready</div>
+    <div class="activity-item">🟢 Premium UI active</div>
+  </div>
+
+</div>
+
+{% endblock %}

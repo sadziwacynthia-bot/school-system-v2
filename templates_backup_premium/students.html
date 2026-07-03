@@ -1,0 +1,61 @@
+{% extends "base_premium.html" %}
+
+{% block title %}Students{% endblock %}
+
+{% block content %}
+
+<div class="page-header-card">
+  <h1>Students</h1>
+  <p>Manage student records, guardians, classes, documents, and profiles.</p>
+</div>
+
+<div class="premium-card">
+  <div class="section-title">
+    <h2>Student Records</h2>
+
+    <div>
+      <a href="{{ url_for('add_student') }}" class="premium-btn">+ Add Student</a>
+    </div>
+  </div>
+
+  <input class="premium-input" placeholder="Search students by name, class, or guardian..." style="margin-bottom:18px;">
+
+  {% if students %}
+  <table class="premium-table">
+    <thead>
+      <tr>
+        <th>Student</th>
+        <th>Class</th>
+        <th>Gender</th>
+        <th>Guardian</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for student in students %}
+      <tr>
+        <td>
+          <strong>{{ student.name or student.full_name }}</strong><br>
+          <span style="color:#64748b;">ID: {{ student.id }}</span>
+        </td>
+        <td>{{ student.class_name or student.class or 'Not assigned' }}</td>
+        <td>{{ student.gender or '-' }}</td>
+        <td>{{ student.guardian_name or student.parent_name or '-' }}</td>
+        <td><span class="badge badge-success">Active</span></td>
+        <td>
+          <a href="#" class="premium-btn premium-btn-light">View</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-box">
+    No students found yet.
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}
