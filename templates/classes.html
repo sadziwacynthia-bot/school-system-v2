@@ -38,7 +38,15 @@
           <strong>{{ cls.class_name or cls.name or cls[1] or 'Class' }}</strong>
         </td>
 
-        <td>{{ cls.teacher_name or cls.class_teacher or cls[2] or '-' }}</td>
+        <td>
+  {{ cls.class_teacher_name
+     or cls.teacher_name
+     or cls.assigned_teacher
+     or cls.teacher_full_name
+     or cls.full_name
+     or cls.class_teacher
+     or '-' }}
+</td>
 
         <td>
           <a href="{{ url_for('students') }}?class_id={{ cls.id or cls[0] }}" class="table-link">
