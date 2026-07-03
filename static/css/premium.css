@@ -794,3 +794,10 @@ main a {
     grid-template-columns: 1fr;
   }
 }
+.premium-table a strong {
+  color: #0f172a;
+}
+
+.premium-table a:hover strong {
+  color: #2563eb;
+}

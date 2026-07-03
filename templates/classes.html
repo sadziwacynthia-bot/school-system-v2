@@ -44,7 +44,11 @@
     <tbody>
       {% for class in classes %}
       <tr>
-        <td><strong>{{ class.name or class.class_name }}</strong></td>
+        <td>
+  <a href="{{ url_for('students') }}?class_id={{ class.id }}" style="text-decoration:none; color:#0f172a;">
+    <strong>{{ class.class_name or class.name or 'Class' }}</strong>
+  </a>
+</td>
         <td>{{ class.teacher_name or '-' }}</td>
         <td>{{ class.student_count or 0 }}</td>
         <td><span class="badge badge-success">Active</span></td>

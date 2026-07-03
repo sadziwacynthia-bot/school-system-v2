@@ -36,7 +36,17 @@
     <tbody>
       {% for student in students %}
       <tr>
-        <td><strong>{{ student.name or student.full_name }}</strong></td>
+        <td>
+  <strong>
+    {{ student.full_name 
+       or student.name 
+       or ((student.first_name or '') ~ ' ' ~ (student.last_name or '')) 
+       or student.student_name 
+       or 'Student' }}
+  </strong>
+  <br>
+  <span style="color:#64748b;">ID: {{ student.id }}</span>
+</td>
         <td>{{ student.class_name or student.class or 'Not assigned' }}</td>
         <td>{{ student.gender or '-' }}</td>
         <td>{{ student.guardian_name or student.parent_name or '-' }}</td>
