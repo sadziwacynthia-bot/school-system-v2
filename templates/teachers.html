@@ -1,3 +1,9 @@
+{% extends "base_premium.html" %}
+
+{% block title %}Teachers{% endblock %}
+
+{% block content %}
+
 <div class="page-header-card">
   <h1>Teachers</h1>
   <p>Manage staff profiles, subjects, class teacher roles, and account status.</p>
@@ -14,3 +20,36 @@
       <a href="{{ url_for('assign_class_teacher') }}" class="premium-btn premium-btn-light">🏫 Class Teacher</a>
     </div>
   </div>
+
+  {% if teachers %}
+  <table class="premium-table">
+    <thead>
+      <tr>
+        <th>Teacher</th>
+        <th>Email</th>
+        <th>Subject</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for teacher in teachers %}
+      <tr>
+        <td>
+          <strong>
+            {{ teacher.full_name or teacher.name or teacher.username or 'Teacher' }}
+          </strong>
+        </td>
+        <td>{{ teacher.email or '-' }}</td>
+        <td>{{ teacher.subject or teacher.subject_name or '-' }}</td>
+        <td><span class="badge badge-success">Active</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-box">No teachers found yet.</div>
+  {% endif %}
+</div>
+
+{% endblock %}
