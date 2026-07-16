@@ -1,0 +1,257 @@
+{% extends "base_premium.html" %}
+
+{% block title %}Payments Received Report | EduTrack{% endblock %}
+
+{% block content %}
+
+<div class="page-header-card reports-header">
+  <div>
+    <span class="page-eyebrow">FINANCE REPORT</span>
+    <h1>Payments Received</h1>
+    <p>Review student fee payments by class, term, name, or student number.</p>
+  </div>
+
+  <div class="reports-header-icon">💳</div>
+</div>
+
+<div class="report-summary-grid">
+
+  <div class="report-summary-card">
+    <div class="summary-icon summary-blue">🎓</div>
+    <div>
+      <span>Students Who Paid</span>
+      <strong>{{ summary.student_count or 0 }}</strong>
+    </div>
+  </div>
+
+  <div class="report-summary-card">
+    <div class="summary-icon summary-purple">🧾</div>
+    <div>
+      <span>Payment Records</span>
+      <strong>{{ summary.payment_count or 0 }}</strong>
+    </div>
+  </div>
+
+  <div class="report-summary-card">
+    <div class="summary-icon summary-green">💵</div>
+    <div>
+      <span>Total Received</span>
+      <strong>${{ "%.2f"|format(summary.total_received or 0) }}</strong>
+    </div>
+  </div>
+
+  <div class="report-summary-card">
+    <div class="summary-icon summary-orange">📌</div>
+    <div>
+      <span>Remaining Balance</span>
+      <strong>${{ "%.2f"|format(summary.remaining_balance or 0) }}</strong>
+    </div>
+  </div>
+
+</div>
+
+<div class="premium-card report-filter-card">
+
+  <form
+    method="GET"
+    action="{{ url_for('payments_received_report') }}"
+    class="report-filter-form"
+  >
+
+    <div class="report-filter-field report-search-field">
+      <label for="search">Search student</label>
+      <input
+        type="text"
+        id="search"
+        name="search"
+        value="{{ search }}"
+        placeholder="Name or student number"
+      >
+    </div>
+
+    <div class="report-filter-field">
+      <label for="class_name">Class</label>
+
+      <select id="class_name" name="class_name">
+        <option value="">All classes</option>
+
+        {% for item in classes %}
+          {% set value = item.class_name or item[0] %}
+          <option
+            value="{{ value }}"
+            {% if selected_class == value %}selected{% endif %}
+          >
+            {{ value }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="report-filter-field">
+      <label for="term_name">Term</label>
+
+      <select id="term_name" name="term_name">
+        <option value="">All terms</option>
+
+        {% for item in terms %}
+          {% set value = item.term_name or item[0] %}
+          <option
+            value="{{ value }}"
+            {% if selected_term == value %}selected{% endif %}
+          >
+            {{ value }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="report-filter-actions">
+      <button type="submit" class="premium-btn">
+        Generate Report
+      </button>
+
+      <a
+        href="{{ url_for('payments_received_report') }}"
+        class="premium-btn premium-btn-light"
+      >
+        Clear
+      </a>
+    </div>
+
+  </form>
+
+</div>
+
+<div class="premium-card">
+
+  <div class="section-title">
+    <div>
+      <h2>Received Payments</h2>
+      <p class="section-description">
+        Fee records where the amount paid is greater than zero.
+      </p>
+    </div>
+
+    <div class="action-row">
+      <button
+        type="button"
+        class="premium-btn premium-btn-light"
+        onclick="window.print()"
+      >
+        🖨 Print
+      </button>
+
+      <a
+        href="{{ url_for('outstanding_fees_report') }}"
+        class="premium-btn premium-btn-light"
+      >
+        Outstanding Fees
+      </a>
+    </div>
+  </div>
+
+  {% if payment_records %}
+
+  <div class="table-responsive">
+    <table class="premium-table report-table">
+
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Student</th>
+          <th>Student Number</th>
+          <th>Class</th>
+          <th>Term</th>
+          <th>Expected</th>
+          <th>Received</th>
+          <th>Balance</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for record in payment_records %}
+        <tr>
+          <td>{{ loop.index }}</td>
+
+          <td>
+            <strong>{{ record.first_name }} {{ record.last_name }}</strong>
+          </td>
+
+          <td>{{ record.student_number or "-" }}</td>
+
+          <td>
+            <span class="report-class-badge">
+              {{ record.class_name or "Unassigned" }}
+            </span>
+          </td>
+
+          <td>{{ record.term_name or "-" }}</td>
+
+          <td>${{ "%.2f"|format(record.amount or 0) }}</td>
+
+          <td class="report-paid-amount">
+            ${{ "%.2f"|format(record.paid_amount or 0) }}
+          </td>
+
+          <td class="report-balance-amount">
+            ${{ "%.2f"|format(record.balance or 0) }}
+          </td>
+
+          <td>
+            {% if record.status == "Paid" %}
+              <span class="badge badge-success">Paid</span>
+            {% elif record.status == "Partially Paid" %}
+              <span class="badge badge-warning">Partially Paid</span>
+            {% else %}
+              <span class="badge badge-danger">
+                {{ record.status or "Pending" }}
+              </span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+
+      <tfoot>
+        <tr>
+          <td colspan="5"><strong>Report Total</strong></td>
+
+          <td>
+            <strong>
+              ${{ "%.2f"|format(summary.total_expected or 0) }}
+            </strong>
+          </td>
+
+          <td>
+            <strong class="report-paid-amount">
+              ${{ "%.2f"|format(summary.total_received or 0) }}
+            </strong>
+          </td>
+
+          <td>
+            <strong class="report-balance-amount">
+              ${{ "%.2f"|format(summary.remaining_balance or 0) }}
+            </strong>
+          </td>
+
+          <td></td>
+        </tr>
+      </tfoot>
+
+    </table>
+  </div>
+
+  {% else %}
+
+  <div class="empty-box">
+    <div class="report-empty-icon">💳</div>
+    <h3>No payments found</h3>
+    <p>No received payments match the selected filters.</p>
+  </div>
+
+  {% endif %}
+
+</div>
+
+{% endblock %}

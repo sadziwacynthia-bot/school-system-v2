@@ -1,61 +1,213 @@
 {% extends "base_premium.html" %}
 
-{% block title %}Upload Resource{% endblock %}
+{% block title %}Upload Resource | EduTrack{% endblock %}
 
 {% block content %}
 
-<div style="padding:25px; background:#f4f6f9; min-height:100vh;">
-    <div style="background:white; padding:25px; border-radius:16px; max-width:850px; box-shadow:0 4px 12px rgba(0,0,0,0.06);">
-        <h2>Upload Teaching Resource</h2>
-        <p style="color:#6b7280;">Upload notes, PowerPoints, test papers, homework, and study guides.</p>
+<div class="page-header-card">
+  <div>
+    <span class="page-eyebrow">TEACHING RESOURCES</span>
+    <h1>Upload Teaching Resource</h1>
+    <p>
+      Share notes, presentations, test papers, homework, and study guides with assigned classes.
+    </p>
+  </div>
+</div>
 
-        <form method="POST" enctype="multipart/form-data">
+<div class="resource-page-grid">
 
-            <label>Title</label>
-            <input type="text" name="title" required style="width:100%; padding:11px; margin-bottom:14px;">
+  <div class="premium-card resource-upload-card">
 
-            <label>Class</label>
-            <select name="class_name" required style="width:100%; padding:11px; margin-bottom:14px;">
-                <option value="">Select Class</option>
-                {% for class in class_options %}
-                    <option value="{{ class }}">{{ class }}</option>
-                {% endfor %}
-            </select>
+    {% if role == "teacher" and (not class_options or not subjects) %}
 
-            <label>Subject</label>
-            <select name="subject" required style="width:100%; padding:11px; margin-bottom:14px;">
-                <option value="">Select Subject</option>
-                {% for subject in subjects %}
-                    <option value="{{ subject }}">{{ subject }}</option>
-                {% endfor %}
-            </select>
+    <div class="empty-box">
+      <div class="report-empty-icon">📚</div>
 
-            <label>Term</label>
-            <select name="term" required style="width:100%; padding:11px; margin-bottom:14px;">
-                <option value="Term 1">Term 1</option>
-                <option value="Term 2">Term 2</option>
-                <option value="Term 3">Term 3</option>
-            </select>
+      <h3>No teaching assignments found</h3>
 
-            <label>Resource Type</label>
-            <select name="resource_type" required style="width:100%; padding:11px; margin-bottom:14px;">
-                <option value="">Select Type</option>
-                <option value="Notes">Notes</option>
-                <option value="PowerPoint">PowerPoint</option>
-                <option value="Test Paper">Test Paper</option>
-                <option value="Homework">Homework</option>
-                <option value="Study Guide">Study Guide</option>
-                <option value="Other">Other</option>
-            </select>
-
-            <label>Upload File</label>
-            <input type="file" name="resource_file" required style="width:100%; padding:11px; margin-bottom:18px;">
-
-            <button type="submit" class="btn btn-primary">Upload Resource</button>
-            <a href="{{ url_for('teacher_resources') }}" class="btn btn-secondary">View Resources</a>
-
-        </form>
+      <p>
+        This teacher account does not currently have an assigned class and subject.
+        Ask the school administrator to complete the teacher assignments first.
+      </p>
     </div>
+
+    {% else %}
+
+    <div class="section-title">
+      <div>
+        <h2>Resource Details</h2>
+        <p class="section-description">
+          Complete the form below and choose the file you want to share.
+        </p>
+      </div>
+
+      <a
+        href="{{ url_for('teacher_resources') }}"
+        class="premium-btn premium-btn-light"
+      >
+        View Resources
+      </a>
+    </div>
+
+    <form
+      method="POST"
+      enctype="multipart/form-data"
+      class="resource-upload-form"
+    >
+
+      <div class="form-group resource-full-width">
+        <label for="title">Resource Title</label>
+
+        <input
+          type="text"
+          id="title"
+          name="title"
+          placeholder="Example: Form 2 Mathematics Revision Notes"
+          required
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="class_name">Class</label>
+
+        <select id="class_name" name="class_name" required>
+          <option value="">Select class</option>
+
+          {% for class_name in class_options %}
+          <option value="{{ class_name }}">
+            {{ class_name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="subject">Subject</label>
+
+        <select id="subject" name="subject" required>
+          <option value="">Select subject</option>
+
+          {% for subject in subjects %}
+          <option value="{{ subject }}">
+            {{ subject }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="term">Term</label>
+
+        <select id="term" name="term" required>
+          <option value="">Select term</option>
+          <option value="Term 1">Term 1</option>
+          <option value="Term 2">Term 2</option>
+          <option value="Term 3">Term 3</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="resource_type">Resource Type</label>
+
+        <select
+          id="resource_type"
+          name="resource_type"
+          required
+        >
+          <option value="">Select type</option>
+          <option value="Notes">Notes</option>
+          <option value="PowerPoint">PowerPoint</option>
+          <option value="Test Paper">Test Paper</option>
+          <option value="Homework">Homework</option>
+          <option value="Study Guide">Study Guide</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+
+      <div class="form-group resource-full-width">
+        <label for="resource_file">Choose File</label>
+
+        <div class="resource-file-drop">
+          <div class="resource-file-icon">☁️</div>
+
+          <div>
+            <strong>Select a file to upload</strong>
+            <p>
+              PDF, Word, PowerPoint, Excel, PNG or JPG
+            </p>
+          </div>
+
+          <input
+            type="file"
+            id="resource_file"
+            name="resource_file"
+            accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg"
+            required
+          >
+        </div>
+      </div>
+
+      <div class="resource-upload-actions resource-full-width">
+
+        <a
+          href="{{ url_for('teacher_resources') }}"
+          class="premium-btn premium-btn-light"
+        >
+          Cancel
+        </a>
+
+        <button type="submit" class="premium-btn">
+          Upload Resource
+        </button>
+
+      </div>
+
+    </form>
+
+    {% endif %}
+
+  </div>
+
+  <div class="premium-card resource-info-card">
+
+    <div class="resource-info-icon">💡</div>
+
+    <h2>Upload Guidelines</h2>
+
+    <div class="resource-guideline">
+      <span>1</span>
+      <div>
+        <strong>Use clear titles</strong>
+        <p>Help students identify the correct resource quickly.</p>
+      </div>
+    </div>
+
+    <div class="resource-guideline">
+      <span>2</span>
+      <div>
+        <strong>Select the right class</strong>
+        <p>Only students in that class should receive the resource.</p>
+      </div>
+    </div>
+
+    <div class="resource-guideline">
+      <span>3</span>
+      <div>
+        <strong>Choose the correct term</strong>
+        <p>This keeps teaching materials organized throughout the year.</p>
+      </div>
+    </div>
+
+    <div class="resource-guideline">
+      <span>4</span>
+      <div>
+        <strong>Upload safe files</strong>
+        <p>Only approved document and image formats are accepted.</p>
+      </div>
+    </div>
+
+  </div>
+
 </div>
 
 {% endblock %}

@@ -1,0 +1,320 @@
+{% extends "base_premium.html" %}
+
+{% block title %}Outstanding Fees Report | EduTrack{% endblock %}
+
+{% block content %}
+
+<div class="page-header-card reports-header">
+  <div>
+    <span class="page-eyebrow">FINANCE REPORT</span>
+    <h1>Outstanding Fees</h1>
+
+    <p>
+      Review unpaid and partially paid student fee balances by class and term.
+    </p>
+  </div>
+
+  <div class="reports-header-icon">💰</div>
+</div>
+
+<div class="report-summary-grid">
+
+  <div class="report-summary-card">
+    <div class="summary-icon summary-blue">🎓</div>
+
+    <div>
+      <span>Students Owing</span>
+      <strong>{{ summary.student_count or 0 }}</strong>
+    </div>
+  </div>
+
+  <div class="report-summary-card">
+    <div class="summary-icon summary-purple">📄</div>
+
+    <div>
+      <span>Outstanding Records</span>
+      <strong>{{ summary.record_count or 0 }}</strong>
+    </div>
+  </div>
+
+  <div class="report-summary-card">
+    <div class="summary-icon summary-green">✓</div>
+
+    <div>
+      <span>Total Paid</span>
+      <strong>${{ "%.2f"|format(summary.total_paid or 0) }}</strong>
+    </div>
+  </div>
+
+  <div class="report-summary-card">
+    <div class="summary-icon summary-orange">!</div>
+
+    <div>
+      <span>Total Outstanding</span>
+      <strong>${{ "%.2f"|format(summary.total_outstanding or 0) }}</strong>
+    </div>
+  </div>
+
+</div>
+
+<div class="premium-card report-filter-card">
+
+  <form method="GET"
+        action="{{ url_for('outstanding_fees_report') }}"
+        class="report-filter-form">
+
+    <div class="report-filter-field report-search-field">
+      <label for="search">Search student</label>
+
+      <input
+        type="text"
+        id="search"
+        name="search"
+        value="{{ search }}"
+        placeholder="Name or student number"
+      >
+    </div>
+
+    <div class="report-filter-field">
+      <label for="class_name">Class</label>
+
+      <select id="class_name" name="class_name">
+        <option value="">All classes</option>
+
+        {% for class_item in classes %}
+        {% set class_value = class_item.class_name or class_item[0] %}
+
+        <option
+          value="{{ class_value }}"
+          {% if selected_class == class_value %}selected{% endif %}
+        >
+          {{ class_value }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="report-filter-field">
+      <label for="term_name">Term</label>
+
+      <select id="term_name" name="term_name">
+        <option value="">All terms</option>
+
+        {% for term in terms %}
+        {% set term_value = term.term_name or term[0] %}
+
+        <option
+          value="{{ term_value }}"
+          {% if selected_term == term_value %}selected{% endif %}
+        >
+          {{ term_value }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="report-filter-actions">
+      <button type="submit" class="premium-btn">
+        Generate Report
+      </button>
+
+      <a
+        href="{{ url_for('outstanding_fees_report') }}"
+        class="premium-btn premium-btn-light"
+      >
+        Clear
+      </a>
+    </div>
+
+  </form>
+
+</div>
+
+<div class="premium-card">
+
+  <div class="section-title">
+    <div>
+      <h2>Outstanding Balances</h2>
+
+      <p class="section-description">
+        Showing students with a fee balance greater than zero.
+      </p>
+    </div>
+
+    <div class="action-row">
+      <button
+        type="button"
+        class="premium-btn premium-btn-light"
+        onclick="window.print()"
+      >
+        🖨 Print
+      </button>
+
+      <a
+        href="{{ url_for('fee_analytics') }}"
+        class="premium-btn premium-btn-light"
+      >
+        📊 Fee Analytics
+      </a>
+    </div>
+  </div>
+
+  {% if outstanding_records %}
+
+  <div class="table-responsive">
+    <table class="premium-table report-table">
+
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Student</th>
+          <th>Student Number</th>
+          <th>Class</th>
+          <th>Term</th>
+          <th>Expected</th>
+          <th>Paid</th>
+          <th>Balance</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for record in outstanding_records %}
+        <tr>
+
+          <td>
+            {{ ((page - 1) * per_page) + loop.index }}
+          </td>
+
+          <td>
+            <strong>
+              {{ record.first_name }} {{ record.last_name }}
+            </strong>
+          </td>
+
+          <td>
+            {{ record.student_number or "-" }}
+          </td>
+
+          <td>
+            <span class="report-class-badge">
+              {{ record.class_name or "Unassigned" }}
+            </span>
+          </td>
+
+          <td>
+            {{ record.term_name or "-" }}
+          </td>
+
+          <td>
+            ${{ "%.2f"|format(record.amount or 0) }}
+          </td>
+
+          <td class="report-paid-amount">
+            ${{ "%.2f"|format(record.paid_amount or 0) }}
+          </td>
+
+          <td class="report-balance-amount">
+            ${{ "%.2f"|format(record.balance or 0) }}
+          </td>
+
+          <td>
+            {% if record.status == "Partially Paid" %}
+              <span class="badge badge-warning">
+                Partially Paid
+              </span>
+            {% else %}
+              <span class="badge badge-danger">
+                {{ record.status or "Pending" }}
+              </span>
+            {% endif %}
+          </td>
+
+        </tr>
+        {% endfor %}
+      </tbody>
+
+      <tfoot>
+        <tr>
+          <td colspan="5">
+            <strong>Report Total</strong>
+          </td>
+
+          <td>
+            <strong>
+              ${{ "%.2f"|format(summary.total_expected or 0) }}
+            </strong>
+          </td>
+
+          <td>
+            <strong>
+              ${{ "%.2f"|format(summary.total_paid or 0) }}
+            </strong>
+          </td>
+
+          <td>
+            <strong class="report-balance-amount">
+              ${{ "%.2f"|format(summary.total_outstanding or 0) }}
+            </strong>
+          </td>
+
+          <td></td>
+        </tr>
+      </tfoot>
+
+    </table>
+  </div>
+
+  <div class="report-pagination">
+
+    {% if page > 1 %}
+    <a
+      href="{{ url_for(
+        'outstanding_fees_report',
+        page=page-1,
+        search=search,
+        class_name=selected_class,
+        term_name=selected_term
+      ) }}"
+      class="premium-btn premium-btn-light"
+    >
+      ← Previous
+    </a>
+    {% endif %}
+
+    <span>Page {{ page }}</span>
+
+    {% if outstanding_records|length == per_page %}
+    <a
+      href="{{ url_for(
+        'outstanding_fees_report',
+        page=page+1,
+        search=search,
+        class_name=selected_class,
+        term_name=selected_term
+      ) }}"
+      class="premium-btn premium-btn-light"
+    >
+      Next →
+    </a>
+    {% endif %}
+
+  </div>
+
+  {% else %}
+
+  <div class="empty-box">
+    <div class="report-empty-icon">🎉</div>
+
+    <h3>No outstanding fees found</h3>
+
+    <p>
+      No fee balances match the selected filters.
+    </p>
+  </div>
+
+  {% endif %}
+
+</div>
+
+{% endblock %}

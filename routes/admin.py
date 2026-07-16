@@ -719,7 +719,10 @@ def register_admin_routes(app):
         flash("School activated successfully.", "success")
         return redirect(url_for("schools"))
 
-
+    @app.route("/reports")
+    def reports():
+        return render_template("reports.html")
+    
     @app.route("/subscription_expired")
     def subscription_expired():
         school = None

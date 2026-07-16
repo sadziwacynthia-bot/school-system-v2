@@ -1,0 +1,286 @@
+{% extends "base_premium.html" %}
+
+{% block title %}Report Center | EduTrack{% endblock %}
+
+{% block content %}
+
+<div class="page-header-card reports-header">
+  <div>
+    <span class="page-eyebrow">EDUTRACK ANALYTICS</span>
+    <h1>Report Center</h1>
+    <p>
+      Generate, review, and print important school reports from one organized workspace.
+    </p>
+  </div>
+
+  <div class="reports-header-icon">📊</div>
+</div>
+
+<div class="report-summary-grid">
+
+  <div class="report-summary-card">
+    <div class="summary-icon summary-blue">🎓</div>
+
+    <div>
+      <span>Student Reports</span>
+      <strong>5 Reports</strong>
+    </div>
+  </div>
+
+  <div class="report-summary-card">
+    <div class="summary-icon summary-green">💰</div>
+
+    <div>
+      <span>Finance Reports</span>
+      <strong>5 Reports</strong>
+    </div>
+  </div>
+
+  <div class="report-summary-card">
+    <div class="summary-icon summary-purple">📚</div>
+
+    <div>
+      <span>Academic Reports</span>
+      <strong>5 Reports</strong>
+    </div>
+  </div>
+
+  <div class="report-summary-card">
+    <div class="summary-icon summary-orange">📋</div>
+
+    <div>
+      <span>Attendance Reports</span>
+      <strong>4 Reports</strong>
+    </div>
+  </div>
+
+</div>
+
+<div class="reports-section-heading">
+  <h2>Choose a report category</h2>
+  <p>Select a category and open the report you need.</p>
+</div>
+
+<div class="report-category-grid">
+
+  <!-- STUDENT REPORTS -->
+  <div class="report-category-card">
+
+    <div class="report-category-top">
+      <div class="report-category-icon report-icon-blue">🎓</div>
+      <span class="report-arrow">→</span>
+    </div>
+
+    <h3>Student Reports</h3>
+
+    <p>
+      Student profiles, class lists, fee statements, attendance, and progress reports.
+    </p>
+
+    <div class="report-tags">
+      <span>Student List</span>
+      <span>Profiles</span>
+      <span>Progress</span>
+    </div>
+
+    <div class="report-card-actions">
+      <a href="{{ url_for('students') }}">
+        Open Students
+      </a>
+    </div>
+
+  </div>
+
+  <!-- FINANCE REPORTS -->
+  <div class="report-category-card">
+
+    <div class="report-category-top">
+      <div class="report-category-icon report-icon-green">💰</div>
+      <span class="report-arrow">→</span>
+    </div>
+
+    <h3>Finance Reports</h3>
+
+    <p>
+      Outstanding fees, payments received, cashbook activity, and income summaries.
+    </p>
+
+    <div class="report-tags">
+      <span>Fees</span>
+      <span>Payments</span>
+      <span>Cashbook</span>
+    </div>
+
+    <div class="report-card-actions">
+      <a href="{{ url_for('outstanding_fees_report') }}">
+        Outstanding Fees
+      </a>
+
+      <a href="{{ url_for('payments_received_report') }}">
+        Payments Received
+      </a>
+
+      <a href="{{ url_for('fee_analytics') }}">
+        Fee Analytics
+      </a>
+
+      <a href="{{ url_for('cashbook_report') }}">
+  Cashbook Report
+</a>
+    </div>
+
+  </div>
+
+  <!-- ACADEMIC REPORTS -->
+  <div class="report-category-card">
+
+    <div class="report-category-top">
+      <div class="report-category-icon report-icon-purple">📚</div>
+      <span class="report-arrow">→</span>
+    </div>
+
+    <h3>Academic Reports</h3>
+
+    <p>
+      Class results, subject performance, merit lists, averages, and pass-rate analysis.
+    </p>
+
+    <div class="report-tags">
+      <span>Results</span>
+      <span>Merit List</span>
+      <span>Pass Rate</span>
+    </div>
+
+    <div class="report-card-actions">
+      <a href="{{ url_for('results') }}">
+        Open Results
+      </a>
+    </div>
+
+  </div>
+
+  <!-- TEACHER REPORTS -->
+  <div class="report-category-card">
+
+    <div class="report-category-top">
+      <div class="report-category-icon report-icon-cyan">👨‍🏫</div>
+      <span class="report-arrow">→</span>
+    </div>
+
+    <h3>Teacher Reports</h3>
+
+    <p>
+      Teacher lists, subject allocations, class-teacher assignments, and workloads.
+    </p>
+
+    <div class="report-tags">
+      <span>Staff List</span>
+      <span>Workload</span>
+      <span>Allocation</span>
+    </div>
+
+    <div class="report-card-actions">
+      <a href="{{ url_for('teachers') }}">
+        Open Teachers
+      </a>
+
+      <a href="{{ url_for('teacher_assignments_page') }}">
+        Teacher Assignments
+      </a>
+    </div>
+
+  </div>
+
+  <!-- ATTENDANCE REPORTS -->
+  <div class="report-category-card">
+
+    <div class="report-category-top">
+      <div class="report-category-icon report-icon-orange">📋</div>
+      <span class="report-arrow">→</span>
+    </div>
+
+    <h3>Attendance Reports</h3>
+
+    <p>
+      Daily, monthly, class-level, and individual student attendance summaries.
+    </p>
+
+    <div class="report-tags">
+      <span>Daily</span>
+      <span>Monthly</span>
+      <span>By Class</span>
+    </div>
+
+    <div class="report-card-actions">
+      <a href="{{ url_for('attendance') }}">
+        Open Attendance
+      </a>
+    </div>
+
+  </div>
+
+  <!-- ADMINISTRATIVE REPORTS -->
+  <div class="report-category-card">
+
+    <div class="report-category-top">
+      <div class="report-category-icon report-icon-red">🛡️</div>
+      <span class="report-arrow">→</span>
+    </div>
+
+    <h3>Administrative Reports</h3>
+
+    <p>
+      Applications, admissions, user activity, system changes, and audit records.
+    </p>
+
+    <div class="report-tags">
+      <span>Admissions</span>
+      <span>Users</span>
+      <span>Audit</span>
+    </div>
+
+    <div class="report-card-actions">
+      <a href="{{ url_for('applications') }}">
+        Applications
+      </a>
+
+      <a href="{{ url_for('audit_logs') }}">
+        Audit Trail
+      </a>
+    </div>
+
+  </div>
+
+</div>
+
+<div class="premium-card report-coming-next">
+
+  <div>
+    <span class="page-eyebrow">FINANCE REPORTS</span>
+
+    <h2>Outstanding Fees and Payments</h2>
+
+    <p>
+      Review unpaid balances or view payments already received from students.
+    </p>
+  </div>
+
+  <div class="action-row">
+    <a
+      href="{{ url_for('outstanding_fees_report') }}"
+      class="premium-btn"
+    >
+      Outstanding Fees
+    </a>
+
+    <a
+      href="{{ url_for('payments_received_report') }}"
+      class="premium-btn premium-btn-light"
+    >
+      Payments Received
+    </a>
+  </div>
+
+</div>
+
+{% endblock %}

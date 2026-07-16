@@ -3065,7 +3065,195 @@ def cashbook():
         total_expense=total_expense,
         net_balance=net_balance
     )
+@app.route("/reports/cashbook")
+@login_required
+@roles_required("school_admin", "super_admin")
+def cashbook_report():
+    school_id = session.get("school_id")
+    role = session.get("role")
 
+    entry_type = request.args.get("entry_type", "").strip()
+    category = request.args.get("category", "").strip()
+    source = request.args.get("source", "").strip()
+    start_date = request.args.get("start_date", "").strip()
+    end_date = request.args.get("end_date", "").strip()
+
+    query = "SELECT * FROM cashbook WHERE 1=1"
+    params = []
+
+    if role != "super_admin":
+        query += " AND school_id = ?"
+        params.append(school_id)
+
+    if entry_type:
+        query += " AND entry_type = ?"
+        params.append(entry_type)
+
+    if category:
+        query += " AND category = ?"
+        params.append(category)
+
+    if source == "auto_fees":
+        query += " AND category = ?"
+        params.append("School Fees")
+
+    elif source == "manual":
+        query += " AND category != ?"
+        params.append("School Fees")
+
+    if start_date:
+        query += " AND entry_date >= ?"
+        params.append(start_date)
+
+    if end_date:
+        query += " AND entry_date <= ?"
+        params.append(end_date)
+
+    query += " ORDER BY entry_date ASC, id ASC"
+
+    entries = fetch_all(query, tuple(params))
+
+    total_income = 0
+    total_expense = 0
+    running_balance = 0
+    processed_entries = []
+
+    for entry in entries:
+        amount = float(entry["amount"] or 0)
+
+        if entry["entry_type"] == "income":
+            total_income += amount
+            running_balance += amount
+        else:
+            total_expense += amount
+            running_balance -= amount
+
+        processed_entries.append({
+            "id": entry["id"],
+            "entry_date": entry["entry_date"],
+            "entry_type": entry["entry_type"],
+            "category": entry["category"],
+            "description": entry["description"],
+            "amount": amount,
+            "payment_method": entry["payment_method"],
+            "reference_number": entry["reference_number"],
+            "created_by": entry["created_by"],
+            "running_balance": running_balance
+        })
+
+    net_balance = total_income - total_expense
+
+    category_query = """
+        SELECT DISTINCT category
+        FROM cashbook
+        WHERE category IS NOT NULL
+          AND TRIM(category) != ''
+    """
+    category_params = []
+
+    if role != "super_admin":
+        category_query += " AND school_id = ?"
+        category_params.append(school_id)
+
+    category_query += " ORDER BY category"
+
+    categories = fetch_all(
+        category_query,
+        tuple(category_params)
+    )
+
+    return render_template(
+        "reports/cashbook_report.html",
+        entries=processed_entries,
+        categories=categories,
+        entry_type=entry_type,
+        category=category,
+        source=source,
+        start_date=start_date,
+        end_date=end_date,
+        total_income=total_income,
+        total_expense=total_expense,
+        net_balance=net_balance
+    )
+@app.route("/reports/student-list")
+@login_required
+@roles_required("school_admin", "super_admin")
+def student_list_report():
+
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    search = request.args.get("search","").strip()
+    class_name = request.args.get("class_name","").strip()
+    status = request.args.get("status","").strip()
+
+    query = """
+        SELECT *,
+        COALESCE(current_status,'Active') AS status
+        FROM students
+        WHERE 1=1
+    """
+
+    params=[]
+
+    if role!="super_admin":
+        query+=" AND school_id=?"
+        params.append(school_id)
+
+    if search:
+        query+="""
+        AND(
+            first_name LIKE ?
+            OR last_name LIKE ?
+            OR student_number LIKE ?
+        )
+        """
+        like=f"%{search}%"
+        params.extend([like,like,like])
+
+    if class_name:
+        query+=" AND class_name=?"
+        params.append(class_name)
+
+    if status:
+        query+=" AND COALESCE(current_status,'Active')=?"
+        params.append(status)
+
+    query+=" ORDER BY class_name,last_name,first_name"
+
+    students=fetch_all(query,tuple(params))
+
+    class_query="""
+    SELECT DISTINCT class_name
+    FROM students
+    WHERE class_name IS NOT NULL
+    """
+
+    class_params=[]
+
+    if role!="super_admin":
+        class_query+=" AND school_id=?"
+        class_params.append(school_id)
+
+    class_query+=" ORDER BY class_name"
+
+    classes=fetch_all(class_query,tuple(class_params))
+
+    total_students=len(students)
+    active=sum(1 for s in students if (s["status"] or "Active")=="Active")
+    inactive=total_students-active
+
+    return render_template(
+        "reports/student_list.html",
+        students=students,
+        classes=classes,
+        search=search,
+        selected_class=class_name,
+        selected_status=status,
+        total_students=total_students,
+        active_students=active,
+        inactive_students=inactive
+    )
 
 @app.route("/add_cashbook_entry", methods=["GET", "POST"])
 @login_required
@@ -4386,16 +4574,20 @@ def upload_resource():
     class_options = []
     subjects = []
 
+    # =====================================================
+    # LOAD TEACHER ASSIGNMENTS
+    # =====================================================
     if role == "teacher":
         teacher = fetch_one("""
             SELECT *
             FROM teachers
-            WHERE user_id = ? AND school_id = ?
+            WHERE user_id = ?
+              AND school_id = ?
             LIMIT 1
         """, (user_id, school_id))
 
         if not teacher:
-            flash("No teacher profile linked to this account.", "danger")
+            flash("No teacher profile is linked to this account.", "danger")
             return redirect(url_for("teacher_dashboard"))
 
         assignments = fetch_all("""
@@ -4406,14 +4598,28 @@ def upload_resource():
             ORDER BY class_name, subject
         """, (teacher["id"], school_id))
 
-        class_options = sorted(list(set([a["class_name"] for a in assignments])))
-        subjects = sorted(list(set([a["subject"] for a in assignments])))
+        class_options = sorted({
+            row["class_name"]
+            for row in assignments
+            if row["class_name"]
+        })
 
+        subjects = sorted({
+            row["subject"]
+            for row in assignments
+            if row["subject"]
+        })
+
+    # =====================================================
+    # LOAD ADMIN OPTIONS
+    # =====================================================
     else:
         class_rows = fetch_all("""
             SELECT DISTINCT class_name
             FROM school_classes
             WHERE school_id = ?
+              AND class_name IS NOT NULL
+              AND TRIM(class_name) != ''
             ORDER BY class_name
         """, (school_id,))
 
@@ -4421,12 +4627,24 @@ def upload_resource():
             SELECT subject_name
             FROM subjects
             WHERE school_id = ?
+              AND subject_name IS NOT NULL
+              AND TRIM(subject_name) != ''
             ORDER BY subject_name
         """, (school_id,))
 
-        class_options = [c["class_name"] for c in class_rows]
-        subjects = [s["subject_name"] for s in subject_rows]
+        class_options = [
+            row["class_name"]
+            for row in class_rows
+        ]
 
+        subjects = [
+            row["subject_name"]
+            for row in subject_rows
+        ]
+
+    # =====================================================
+    # HANDLE UPLOAD
+    # =====================================================
     if request.method == "POST":
         class_name = request.form.get("class_name", "").strip()
         subject = request.form.get("subject", "").strip()
@@ -4435,55 +4653,117 @@ def upload_resource():
         resource_type = request.form.get("resource_type", "").strip()
         file = request.files.get("resource_file")
 
-        if not class_name or not subject or not term or not title or not resource_type or not file:
-            flash("All fields and file upload are required.", "danger")
+        if (
+            not class_name
+            or not subject
+            or not term
+            or not title
+            or not resource_type
+            or not file
+            or not file.filename
+        ):
+            flash("All fields and a file are required.", "danger")
             return redirect(url_for("upload_resource"))
+
+        if role == "teacher":
+            if class_name not in class_options or subject not in subjects:
+                flash(
+                    "You can only upload resources for your assigned classes and subjects.",
+                    "danger"
+                )
+                return redirect(url_for("upload_resource"))
 
         if not allowed_resource_file(file.filename):
-            flash("Invalid file type. Allowed: PDF, Word, PowerPoint, Excel, PNG, JPG.", "danger")
+            flash(
+                "Invalid file type. Allowed files: PDF, Word, PowerPoint, Excel, PNG and JPG.",
+                "danger"
+            )
             return redirect(url_for("upload_resource"))
 
-        uploaded = upload_to_supabase(file, folder=f"resources/school_{school_id}")
+        try:
+            uploaded = upload_to_supabase(
+                file,
+                folder=f"resources/school_{school_id}"
+            )
 
-        saved_filename = uploaded["url"]
-        original_filename = uploaded["original_filename"]
+            if not uploaded:
+                raise RuntimeError("Storage returned no upload result.")
+
+            saved_filename = uploaded.get("url")
+            original_filename = uploaded.get("original_filename") or file.filename
+
+            if not saved_filename:
+                raise RuntimeError("Storage did not return a file URL.")
+
+        except Exception:
+            app.logger.exception("Teacher resource upload failed")
+
+            flash(
+                "The file could not be uploaded right now. "
+                "Please check the storage settings or try again later.",
+                "danger"
+            )
+
+            return redirect(url_for("upload_resource"))
 
         teacher_id = teacher["id"] if teacher else None
 
-        execute_commit("""
-            INSERT INTO teacher_resources (
-                school_id, teacher_id, class_name, subject, term,
-                title, resource_type, filename, original_filename, uploaded_by
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            school_id,
-            teacher_id,
-            class_name,
-            subject,
-            term,
-            title,
-            resource_type,
-            saved_filename,
-            original_filename,
-            session.get("full_name", "System")
-        ))
+        try:
+            execute_commit("""
+                INSERT INTO teacher_resources (
+                    school_id,
+                    teacher_id,
+                    class_name,
+                    subject,
+                    term,
+                    title,
+                    resource_type,
+                    filename,
+                    original_filename,
+                    uploaded_by
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                school_id,
+                teacher_id,
+                class_name,
+                subject,
+                term,
+                title,
+                resource_type,
+                saved_filename,
+                original_filename,
+                session.get("full_name") or session.get("username") or "System"
+            ))
 
-        log_audit(
-            "Uploaded teacher resource",
-            "teacher_resources",
-            None,
-            f"{title} - {class_name} - {subject}"
-        )
+            log_audit(
+                "Uploaded teacher resource",
+                "teacher_resources",
+                None,
+                f"{title} - {class_name} - {subject}"
+            )
+
+        except Exception:
+            app.logger.exception("Saving teacher resource record failed")
+
+            flash(
+                "The file uploaded, but EduTrack could not save its record. "
+                "Please contact the administrator.",
+                "danger"
+            )
+
+            return redirect(url_for("upload_resource"))
 
         flash("Resource uploaded successfully.", "success")
         return redirect(url_for("teacher_resources"))
 
     return render_template(
-        "upload_resource.html",
-        class_options=class_options,
-        subjects=subjects
-    )
+    "upload_resource.html",
+    class_options=class_options,
+    subjects=subjects,
+    role=role
+)
+
 @app.route("/teacher_resources")
 @login_required
 @roles_required("teacher", "school_admin", "super_admin", "parent")

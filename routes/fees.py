@@ -676,6 +676,286 @@ Thank you.
             top_balances=top_balances,
             class_summary=class_summary
         )
+    @app.route("/reports/outstanding-fees")
+    @login_required
+    @roles_required("school_admin", "super_admin", "director", "admin")
+    def outstanding_fees_report():
+        school_id = session.get("school_id")
+        role = session.get("role")
+
+        search = request.args.get("search", "").strip()
+        class_name = request.args.get("class_name", "").strip()
+        term_name = request.args.get("term_name", "").strip()
+
+        page = max(int(request.args.get("page", 1) or 1), 1)
+        per_page = 50
+        offset = (page - 1) * per_page
+
+        conditions = ["f.balance > 0"]
+        params = []
+
+        if role != "super_admin":
+            conditions.append("f.school_id = ?")
+            params.append(school_id)
+
+        if search:
+            conditions.append("""
+                (
+                    s.first_name LIKE ?
+                    OR s.last_name LIKE ?
+                    OR s.student_number LIKE ?
+                )
+            """)
+            like = f"%{search}%"
+            params.extend([like, like, like])
+
+        if class_name:
+            conditions.append("s.class_name = ?")
+            params.append(class_name)
+
+        if term_name:
+            conditions.append("f.term_name = ?")
+            params.append(term_name)
+
+        where_clause = " WHERE " + " AND ".join(conditions)
+
+        report_query = f"""
+            SELECT
+                f.id AS fee_id,
+                f.student_id,
+                f.amount,
+                f.paid_amount,
+                f.balance,
+                f.status,
+                f.term_name,
+                s.first_name,
+                s.last_name,
+                s.student_number,
+                s.class_name
+            FROM fees f
+            JOIN students s ON f.student_id = s.id
+            {where_clause}
+            ORDER BY
+                s.class_name,
+                s.first_name,
+                s.last_name,
+                f.term_name
+            LIMIT ? OFFSET ?
+        """
+
+        report_params = params.copy()
+        report_params.extend([per_page, offset])
+
+        outstanding_records = fetch_all(
+            report_query,
+            tuple(report_params)
+        )
+
+        summary = fetch_one(
+            f"""
+            SELECT
+                COUNT(*) AS record_count,
+                COUNT(DISTINCT f.student_id) AS student_count,
+                COALESCE(SUM(f.amount), 0) AS total_expected,
+                COALESCE(SUM(f.paid_amount), 0) AS total_paid,
+                COALESCE(SUM(f.balance), 0) AS total_outstanding
+            FROM fees f
+            JOIN students s ON f.student_id = s.id
+            {where_clause}
+            """,
+            tuple(params)
+        )
+
+        classes_where = []
+        classes_params = []
+
+        if role != "super_admin":
+            classes_where.append("school_id = ?")
+            classes_params.append(school_id)
+
+        classes_query = """
+            SELECT DISTINCT class_name
+            FROM students
+        """
+
+        if classes_where:
+            classes_query += " WHERE " + " AND ".join(classes_where)
+
+        classes_query += """
+            AND class_name IS NOT NULL
+            AND TRIM(class_name) != ''
+        """ if classes_where else """
+            WHERE class_name IS NOT NULL
+            AND TRIM(class_name) != ''
+        """
+
+        classes_query += " ORDER BY class_name"
+
+        classes = fetch_all(classes_query, tuple(classes_params))
+
+        terms_conditions = ["balance > 0"]
+        terms_params = []
+
+        if role != "super_admin":
+            terms_conditions.append("school_id = ?")
+            terms_params.append(school_id)
+
+        terms = fetch_all(
+            f"""
+            SELECT DISTINCT term_name
+            FROM fees
+            WHERE {" AND ".join(terms_conditions)}
+            AND term_name IS NOT NULL
+            AND TRIM(term_name) != ''
+            ORDER BY term_name
+            """,
+            tuple(terms_params)
+        )
+    
+        return render_template(
+            "reports/outstanding_fees.html",
+            outstanding_records=outstanding_records,
+            summary=summary,
+            classes=classes,
+            terms=terms,
+            search=search,
+            selected_class=class_name,
+            selected_term=term_name,
+            page=page,
+            per_page=per_page
+        )
+    
+    @app.route("/reports/payments-received")
+    @login_required
+    @roles_required("school_admin", "super_admin", "director", "admin")
+    def payments_received_report():
+        school_id = session.get("school_id")
+        role = session.get("role")
+
+        search = request.args.get("search", "").strip()
+        class_name = request.args.get("class_name", "").strip()
+        term_name = request.args.get("term_name", "").strip()
+
+        conditions = ["f.paid_amount > 0"]
+        params = []
+
+        if role != "super_admin":
+            conditions.append("f.school_id = ?")
+            params.append(school_id)
+
+        if search:
+            conditions.append("""
+                (
+                    s.first_name LIKE ?
+                    OR s.last_name LIKE ?
+                    OR s.student_number LIKE ?
+                )
+            """)
+            like = f"%{search}%"
+            params.extend([like, like, like])
+
+        if class_name:
+            conditions.append("s.class_name = ?")
+            params.append(class_name)
+
+        if term_name:
+            conditions.append("f.term_name = ?")
+            params.append(term_name)
+
+        where_clause = " WHERE " + " AND ".join(conditions)
+
+        payment_records = fetch_all(
+            f"""
+            SELECT
+                f.id AS fee_id,
+                f.student_id,
+                f.amount,
+                f.paid_amount,
+                f.balance,
+                f.status,
+                f.term_name,
+                s.first_name,
+                s.last_name,
+                s.student_number,
+                s.class_name
+            FROM fees f
+            JOIN students s ON f.student_id = s.id
+            {where_clause}
+            ORDER BY
+                s.class_name,
+                s.first_name,
+                s.last_name,
+                f.term_name
+            """,
+            tuple(params)
+        )
+
+        summary = fetch_one(
+            f"""
+            SELECT
+                COUNT(*) AS payment_count,
+                COUNT(DISTINCT f.student_id) AS student_count,
+                COALESCE(SUM(f.amount), 0) AS total_expected,
+                COALESCE(SUM(f.paid_amount), 0) AS total_received,
+                COALESCE(SUM(f.balance), 0) AS remaining_balance
+            FROM fees f
+            JOIN students s ON f.student_id = s.id
+            {where_clause}
+            """,
+            tuple(params)
+        )
+
+        classes_conditions = [
+            "class_name IS NOT NULL",
+            "TRIM(class_name) != ''"
+        ]
+        classes_params = []
+
+        if role != "super_admin":
+            classes_conditions.append("school_id = ?")
+            classes_params.append(school_id)
+
+        classes = fetch_all(
+            f"""
+            SELECT DISTINCT class_name
+            FROM students
+            WHERE {" AND ".join(classes_conditions)}
+            ORDER BY class_name
+            """,
+            tuple(classes_params)
+        )
+
+        terms_conditions = [
+            "paid_amount > 0",
+            "term_name IS NOT NULL",
+            "TRIM(term_name) != ''"
+        ]
+        terms_params = []
+
+        if role != "super_admin":
+            terms_conditions.append("school_id = ?")
+            terms_params.append(school_id)
+
+        terms = fetch_all(
+            f"""
+            SELECT DISTINCT term_name
+            FROM fees
+            WHERE {" AND ".join(terms_conditions)}
+            ORDER BY term_name
+            """,
+            tuple(terms_params)
+        )
+
+        return render_template(
+            "reports/payments_received.html",
+            payment_records=payment_records,
+            summary=summary,
+            classes=classes,
+            terms=terms,
+            search=search,
+            selected_class=class_name,
+            selected_term=term_name
+        )
 
     @app.route("/print_fee_receipt/<int:payment_id>")
     @login_required

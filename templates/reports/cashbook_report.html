@@ -1,0 +1,326 @@
+{% extends "base_premium.html" %}
+
+{% block title %}Cashbook Report | EduTrack{% endblock %}
+
+{% block content %}
+
+<div class="page-header-card reports-header">
+  <div>
+    <span class="page-eyebrow">FINANCE REPORT</span>
+
+    <h1>Cashbook Report</h1>
+
+    <p>
+      Review school income, expenses, transactions, and running balances.
+    </p>
+  </div>
+
+  <div class="reports-header-icon">📒</div>
+</div>
+
+<div class="report-summary-grid">
+
+  <div class="report-summary-card">
+    <div class="summary-icon summary-green">⬆</div>
+
+    <div>
+      <span>Total Income</span>
+      <strong>${{ "%.2f"|format(total_income or 0) }}</strong>
+    </div>
+  </div>
+
+  <div class="report-summary-card">
+    <div class="summary-icon summary-orange">⬇</div>
+
+    <div>
+      <span>Total Expenses</span>
+      <strong>${{ "%.2f"|format(total_expense or 0) }}</strong>
+    </div>
+  </div>
+
+  <div class="report-summary-card">
+    <div class="summary-icon summary-blue">💰</div>
+
+    <div>
+      <span>Net Balance</span>
+      <strong>${{ "%.2f"|format(net_balance or 0) }}</strong>
+    </div>
+  </div>
+
+  <div class="report-summary-card">
+    <div class="summary-icon summary-purple">🧾</div>
+
+    <div>
+      <span>Transactions</span>
+      <strong>{{ entries|length }}</strong>
+    </div>
+  </div>
+
+</div>
+
+<div class="premium-card report-filter-card">
+
+  <form
+    method="GET"
+    action="{{ url_for('cashbook_report') }}"
+    class="cashbook-report-filters"
+  >
+
+    <div class="report-filter-field">
+      <label for="entry_type">Transaction Type</label>
+
+      <select id="entry_type" name="entry_type">
+        <option value="">All types</option>
+
+        <option
+          value="income"
+          {% if entry_type == "income" %}selected{% endif %}
+        >
+          Income
+        </option>
+
+        <option
+          value="expense"
+          {% if entry_type == "expense" %}selected{% endif %}
+        >
+          Expense
+        </option>
+      </select>
+    </div>
+
+    <div class="report-filter-field">
+      <label for="category">Category</label>
+
+      <select id="category" name="category">
+        <option value="">All categories</option>
+
+        {% for item in categories %}
+          {% set value = item.category or item[0] %}
+
+          <option
+            value="{{ value }}"
+            {% if category == value %}selected{% endif %}
+          >
+            {{ value }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="report-filter-field">
+      <label for="source">Source</label>
+
+      <select id="source" name="source">
+        <option value="">All sources</option>
+
+        <option
+          value="auto_fees"
+          {% if source == "auto_fees" %}selected{% endif %}
+        >
+          School Fees
+        </option>
+
+        <option
+          value="manual"
+          {% if source == "manual" %}selected{% endif %}
+        >
+          Manual Entries
+        </option>
+      </select>
+    </div>
+
+    <div class="report-filter-field">
+      <label for="start_date">Start Date</label>
+
+      <input
+        type="date"
+        id="start_date"
+        name="start_date"
+        value="{{ start_date }}"
+      >
+    </div>
+
+    <div class="report-filter-field">
+      <label for="end_date">End Date</label>
+
+      <input
+        type="date"
+        id="end_date"
+        name="end_date"
+        value="{{ end_date }}"
+      >
+    </div>
+
+    <div class="report-filter-actions">
+      <button type="submit" class="premium-btn">
+        Generate Report
+      </button>
+
+      <a
+        href="{{ url_for('cashbook_report') }}"
+        class="premium-btn premium-btn-light"
+      >
+        Clear
+      </a>
+    </div>
+
+  </form>
+
+</div>
+
+<div class="premium-card">
+
+  <div class="section-title">
+
+    <div>
+      <h2>Cashbook Transactions</h2>
+
+      <p class="section-description">
+        Income and expense records matching the selected filters.
+      </p>
+    </div>
+
+    <div class="action-row">
+
+      <button
+        type="button"
+        class="premium-btn premium-btn-light"
+        onclick="window.print()"
+      >
+        🖨 Print
+      </button>
+
+      <a
+        href="{{ url_for('cashbook') }}"
+        class="premium-btn premium-btn-light"
+      >
+        Open Cashbook
+      </a>
+
+    </div>
+
+  </div>
+
+  {% if entries %}
+
+  <div class="table-responsive">
+
+    <table class="premium-table report-table">
+
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Date</th>
+          <th>Type</th>
+          <th>Category</th>
+          <th>Description</th>
+          <th>Payment Method</th>
+          <th>Reference</th>
+          <th>Amount</th>
+          <th>Balance</th>
+        </tr>
+      </thead>
+
+      <tbody>
+
+        {% for entry in entries %}
+        <tr>
+
+          <td>{{ loop.index }}</td>
+
+          <td>{{ entry.entry_date or "-" }}</td>
+
+          <td>
+            {% if entry.entry_type == "income" %}
+              <span class="badge badge-success">Income</span>
+            {% else %}
+              <span class="badge badge-danger">Expense</span>
+            {% endif %}
+          </td>
+
+          <td>
+            <span class="report-class-badge">
+              {{ entry.category or "Uncategorized" }}
+            </span>
+          </td>
+
+          <td>{{ entry.description or "-" }}</td>
+
+          <td>{{ entry.payment_method or "-" }}</td>
+
+          <td>{{ entry.reference_number or "-" }}</td>
+
+          <td>
+            {% if entry.entry_type == "income" %}
+              <span class="report-paid-amount">
+                +${{ "%.2f"|format(entry.amount or 0) }}
+              </span>
+            {% else %}
+              <span class="report-balance-amount">
+                -${{ "%.2f"|format(entry.amount or 0) }}
+              </span>
+            {% endif %}
+          </td>
+
+          <td>
+            <strong>
+              ${{ "%.2f"|format(entry.running_balance or 0) }}
+            </strong>
+          </td>
+
+        </tr>
+        {% endfor %}
+
+      </tbody>
+
+      <tfoot>
+        <tr>
+          <td colspan="7">
+            <strong>Report Totals</strong>
+          </td>
+
+          <td>
+            <div class="cashbook-total-line">
+              Income:
+              <strong class="report-paid-amount">
+                ${{ "%.2f"|format(total_income or 0) }}
+              </strong>
+            </div>
+
+            <div class="cashbook-total-line">
+              Expenses:
+              <strong class="report-balance-amount">
+                ${{ "%.2f"|format(total_expense or 0) }}
+              </strong>
+            </div>
+          </td>
+
+          <td>
+            <strong>
+              ${{ "%.2f"|format(net_balance or 0) }}
+            </strong>
+          </td>
+        </tr>
+      </tfoot>
+
+    </table>
+
+  </div>
+
+  {% else %}
+
+  <div class="empty-box">
+    <div class="report-empty-icon">📒</div>
+
+    <h3>No cashbook entries found</h3>
+
+    <p>
+      No transactions match the selected report filters.
+    </p>
+  </div>
+
+  {% endif %}
+
+</div>
+
+{% endblock %}
