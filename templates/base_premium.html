@@ -1,149 +1,339 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}EduTrack Premium{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/premium.css') }}">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    {% block title %}EduTrack Premium{% endblock %}
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="{{ url_for('static', filename='css/premium.css') }}"
+  >
 </head>
 
 <body>
+
 <div class="premium-shell">
 
   {% if session.get('user_id') %}
+
   <aside class="premium-sidebar">
 
     <div class="premium-logo">
-     {% if session.get("logo_url") %}
-    <img
+
+      {% if session.get("logo_url") %}
+
+      <img
         src="{{ session.get('logo_url') }}"
         class="school-logo"
         alt="School Logo"
-    >
-{% else %}
-    <img
-        src="{{ url_for('static', filename='images/default-school.png') }}"
-        class="school-logo"
-        alt="School Logo"
-    >
-{% endif %}
+      >
+
       {% else %}
-      <div class="premium-logo-circle">E</div>
+
+      <div class="premium-logo-circle">
+        E
+      </div>
+
       {% endif %}
 
       <div class="premium-logo-text">
-        <strong>{{ session.get("school_name", "EduTrack") }}</strong>
-        <span>Premium School Suite</span>
+        <strong>
+          {{ session.get("school_name", "EduTrack") }}
+        </strong>
+
+        <span>
+          Premium School Suite
+        </span>
       </div>
+
     </div>
 
     <nav class="premium-nav">
+
       {% set role = session.get('role') %}
 
       {% if role in ['super_admin', 'school_admin', 'director', 'admin'] %}
-      <a href="{{ url_for('dashboard') }}">🏠 Dashboard</a>
 
-      <div class="nav-section">SCHOOL</div>
-      <a href="{{ url_for('students') }}">🎓 Students</a>
-      <a href="{{ url_for('teachers') }}">👨‍🏫 Teachers</a>
-      <a href="{{ url_for('classes') }}">🏫 Classes</a>
-      <a href="{{ url_for('applications') }}">📝 Applications</a>
-      <a href="{{ url_for('users') }}">👥 Users</a>
+      <a href="{{ url_for('dashboard') }}">
+        🏠 Dashboard
+      </a>
 
-      <div class="nav-section">ACADEMICS</div>
-      <a href="{{ url_for('subjects') }}">📚 Subjects</a>
-      <a href="{{ url_for('timetable') }}">🕒 Timetable</a>
-      <a href="{{ url_for('assignments') }}">📘 Assignments</a>
-      <a href="{{ url_for('results') }}">📊 Results</a>
-      <a href="{{ url_for('attendance') }}">📋 Attendance</a>
+      <div class="nav-section">
+        SCHOOL
+      </div>
 
-      <div class="nav-section">FINANCE</div>
-      <a href="{{ url_for('fees') }}">💰 Fees</a>
-      <a href="{{ url_for('cashbook') }}">📒 Cashbook</a>
-      <a href="{{ url_for('fee_analytics') }}">📈 Analytics</a>
+      <a href="{{ url_for('students') }}">
+        🎓 Students
+      </a>
 
-      <div class="nav-section">COMMUNICATION</div>
-      <a href="{{ url_for('teacher_resources') }}">📁 Resources</a>
-      <a href="{{ url_for('fee_reminders') }}">🔔 Reminders</a>
+      <a href="{{ url_for('teachers') }}">
+        👨‍🏫 Teachers
+      </a>
 
-      <div class="nav-section">REPORTS</div>
-      <a href="{{ url_for('reports') }}">📊 Report Center</a>
-      <a href="{{ url_for('audit_logs') }}">🛡️ Audit Trail</a>
-      <a href="{{ url_for('year_end_promotion') }}">🎯 Year-End</a>
+      <a href="{{ url_for('classes') }}">
+        🏫 Classes
+      </a>
+
+      <a href="{{ url_for('applications') }}">
+        📝 Applications
+      </a>
+
+      <a href="{{ url_for('users') }}">
+        👥 Users
+      </a>
+
+      <div class="nav-section">
+        ACADEMICS
+      </div>
+
+      <a href="{{ url_for('subjects') }}">
+        📚 Subjects
+      </a>
+
+      <a href="{{ url_for('timetable') }}">
+        🕒 Timetable
+      </a>
+
+      <a href="{{ url_for('assignments') }}">
+        📘 Assignments
+      </a>
+
+      <a href="{{ url_for('results') }}">
+        📊 Results
+      </a>
+
+      <a href="{{ url_for('attendance') }}">
+        📋 Attendance
+      </a>
+
+      <div class="nav-section">
+        FINANCE
+      </div>
+
+      <a href="{{ url_for('fees') }}">
+        💰 Fees
+      </a>
+
+      <a href="{{ url_for('cashbook') }}">
+        📒 Cashbook
+      </a>
+
+      <a href="{{ url_for('fee_analytics') }}">
+        📈 Analytics
+      </a>
+
+      <div class="nav-section">
+        COMMUNICATION
+      </div>
+
+      <a href="{{ url_for('teacher_resources') }}">
+        📁 Resources
+      </a>
+
+      <a href="{{ url_for('fee_reminders') }}">
+        🔔 Reminders
+      </a>
+
+      <div class="nav-section">
+        REPORTS
+      </div>
+
+      <a href="{{ url_for('reports') }}">
+        📊 Report Center
+      </a>
+
+      <a href="{{ url_for('audit_logs') }}">
+        🛡️ Audit Trail
+      </a>
+
+      <a href="{{ url_for('year_end_promotion') }}">
+        🎯 Year-End
+      </a>
+
       {% endif %}
 
       {% if role == 'super_admin' %}
-      <div class="nav-section">PLATFORM</div>
-      <a href="{{ url_for('schools') }}">🏢 Schools</a>
-      <a href="{{ url_for('add_school_admin') }}">👤 Add School Admin</a>
-      <a href="{{ url_for('billing_dashboard') }}">💳 Billing</a>
+
+      <div class="nav-section">
+        PLATFORM
+      </div>
+
+      <a href="{{ url_for('schools') }}">
+        🏢 Schools
+      </a>
+
+      <a href="{{ url_for('add_school_admin') }}">
+        👤 Add School Admin
+      </a>
+
+      <a href="{{ url_for('billing_dashboard') }}">
+        💳 Billing
+      </a>
+
       {% endif %}
 
       {% if role == 'teacher' %}
-      <a href="{{ url_for('teacher_dashboard') }}">🏠 Dashboard</a>
 
-      <div class="nav-section">TEACHER PORTAL</div>
-      <a href="{{ url_for('attendance') }}">📋 Attendance</a>
-      <a href="{{ url_for('results') }}">📊 Results</a>
-      <a href="{{ url_for('assignments') }}">📘 Assignments</a>
-      <a href="{{ url_for('timetable') }}">🕒 Timetable</a>
-      <a href="{{ url_for('teacher_resources') }}">📁 Resources</a>
-      <a href="{{ url_for('upload_resource') }}">☁️ Upload Resource</a>
+      <a href="{{ url_for('teacher_dashboard') }}">
+        🏠 Dashboard
+      </a>
+
+      <div class="nav-section">
+        TEACHER PORTAL
+      </div>
+
+      <a href="{{ url_for('attendance') }}">
+        📋 Attendance
+      </a>
+
+      <a href="{{ url_for('results') }}">
+        📊 Results
+      </a>
+
+      <a href="{{ url_for('assignments') }}">
+        📘 Assignments
+      </a>
+
+      <a href="{{ url_for('timetable') }}">
+        🕒 Timetable
+      </a>
+
+      <a href="{{ url_for('teacher_resources') }}">
+        📁 Resources
+      </a>
+
+      <a href="{{ url_for('upload_resource') }}">
+        ☁️ Upload Resource
+      </a>
+
       {% endif %}
 
       {% if role == 'parent' %}
-      <a href="{{ url_for('parent_dashboard') }}">🏠 Dashboard</a>
 
-      <div class="nav-section">PARENT PORTAL</div>
-      <a href="{{ url_for('parent_fees') }}">💰 Fees</a>
-      <a href="{{ url_for('parent_results') }}">📊 Results</a>
-      <a href="{{ url_for('parent_attendance') }}">📋 Attendance</a>
-      <a href="{{ url_for('parent_assignments') }}">📘 Assignments</a>
-      <a href="{{ url_for('teacher_resources') }}">📁 Resources</a>
+      <a href="{{ url_for('parent_dashboard') }}">
+        🏠 Dashboard
+      </a>
+
+      <div class="nav-section">
+        PARENT PORTAL
+      </div>
+
+      <a href="{{ url_for('parent_fees') }}">
+        💰 Fees
+      </a>
+
+      <a href="{{ url_for('parent_results') }}">
+        📊 Results
+      </a>
+
+      <a href="{{ url_for('parent_attendance') }}">
+        📋 Attendance
+      </a>
+
+      <a href="{{ url_for('parent_assignments') }}">
+        📘 Assignments
+      </a>
+
+      <a href="{{ url_for('teacher_resources') }}">
+        📁 Resources
+      </a>
+
       {% endif %}
 
-      <div class="nav-section">ACCOUNT</div>
-      <a href="{{ url_for('logout') }}">🚪 Logout</a>
+      <div class="nav-section">
+        ACCOUNT
+      </div>
+
+      <a href="{{ url_for('logout') }}">
+        🚪 Logout
+      </a>
+
     </nav>
 
   </aside>
+
   {% endif %}
 
   <main class="premium-main">
 
     {% if session.get('user_id') %}
+
     <div class="premium-topbar">
+
       <div class="premium-title">
-        <h1>{{ session.get("school_name", "EduTrack") }}</h1>
-        <p>Smart School Management System</p>
+        <h1>
+          {{ session.get("school_name", "EduTrack") }}
+        </h1>
+
+        <p>
+          Smart School Management System
+        </p>
       </div>
 
       {% if session.get('role') in ['super_admin', 'school_admin', 'director', 'admin'] %}
-      <form action="{{ url_for('global_search') }}" method="GET" class="premium-search">
-        <input type="text" name="q" placeholder="Search students, teachers..." required>
+
+      <form
+        action="{{ url_for('global_search') }}"
+        method="GET"
+        class="premium-search"
+      >
+        <input
+          type="text"
+          name="q"
+          placeholder="Search students, teachers..."
+          required
+        >
       </form>
+
       {% endif %}
 
       <div class="premium-user">
-        <span>{{ session.get('role', 'user')|replace('_', ' ')|title }}</span>
-        <strong>{{ session.get('full_name') or session.get('username') }}</strong>
+
+        <span>
+          {{ session.get('role', 'user')|replace('_', ' ')|title }}
+        </span>
+
+        <strong>
+          {{ session.get('full_name') or session.get('username') }}
+        </strong>
+
       </div>
+
     </div>
+
     {% endif %}
 
     {% with messages = get_flashed_messages(with_categories=true) %}
+
       {% if messages %}
+
         {% for category, message in messages %}
+
         <div class="premium-alert premium-alert-{{ category }}">
           {{ message }}
         </div>
+
         {% endfor %}
+
       {% endif %}
+
     {% endwith %}
 
-    {% block content %}{% endblock %}
+    {% block content %}
+    {% endblock %}
+
   </main>
 
 </div>
+
 </body>
 </html>

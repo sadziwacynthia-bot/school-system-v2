@@ -4775,46 +4775,70 @@ def teacher_resources():
     class_filter = request.args.get("class_name", "").strip()
     subject_filter = request.args.get("subject", "").strip()
     term_filter = request.args.get("term", "").strip()
+    search = request.args.get("search", "").strip()
 
     query = """
-        SELECT tr.*, t.full_name AS teacher_name
+        SELECT
+            tr.*,
+            t.full_name AS teacher_name
         FROM teacher_resources tr
         LEFT JOIN teachers t ON tr.teacher_id = t.id
         WHERE 1=1
     """
+
     params = []
+    teacher = None
+    parent_student = None
 
     if role != "super_admin":
         query += " AND tr.school_id = ?"
         params.append(school_id)
 
+    # Teachers see resources they uploaded
     if role == "teacher":
         teacher = fetch_one("""
             SELECT *
             FROM teachers
-            WHERE user_id = ? AND school_id = ?
+            WHERE user_id = ?
+              AND school_id = ?
             LIMIT 1
         """, (user_id, school_id))
 
         if teacher:
             query += " AND tr.teacher_id = ?"
             params.append(teacher["id"])
+        else:
+            query += " AND 1=0"
 
+    # Parents see resources for their child's class
     if role == "parent":
-        student = fetch_one("""
+        parent_student = fetch_one("""
             SELECT s.*
             FROM students s
             JOIN guardians g ON s.id = g.student_id
             WHERE g.parent_user_id = ?
               AND s.school_id = ?
+            ORDER BY s.first_name, s.last_name
             LIMIT 1
         """, (user_id, school_id))
 
-        if student:
+        if parent_student:
             query += " AND tr.class_name = ?"
-            params.append(student["class_name"])
+            params.append(parent_student["class_name"])
         else:
             query += " AND 1=0"
+
+    if search:
+        query += """
+            AND (
+                tr.title LIKE ?
+                OR tr.resource_type LIKE ?
+                OR tr.subject LIKE ?
+                OR tr.uploaded_by LIKE ?
+            )
+        """
+        like = f"%{search}%"
+        params.extend([like, like, like, like])
 
     if class_filter:
         query += " AND tr.class_name = ?"
@@ -4828,12 +4852,59 @@ def teacher_resources():
         query += " AND tr.term = ?"
         params.append(term_filter)
 
-    query += " ORDER BY tr.uploaded_at DESC"
+    query += " ORDER BY tr.uploaded_at DESC, tr.id DESC"
 
     resources = fetch_all(query, tuple(params))
 
-    class_options = sorted(list(set([r["class_name"] for r in resources if r["class_name"]])))
-    subjects = sorted(list(set([r["subject"] for r in resources if r["subject"]])))
+    # =====================================================
+    # FILTER OPTIONS
+    # =====================================================
+    option_conditions = []
+    option_params = []
+
+    if role != "super_admin":
+        option_conditions.append("school_id = ?")
+        option_params.append(school_id)
+
+    if role == "teacher" and teacher:
+        option_conditions.append("teacher_id = ?")
+        option_params.append(teacher["id"])
+
+    if role == "parent" and parent_student:
+        option_conditions.append("class_name = ?")
+        option_params.append(parent_student["class_name"])
+
+    option_where = ""
+
+    if option_conditions:
+        option_where = " WHERE " + " AND ".join(option_conditions)
+
+    class_rows = fetch_all(
+        f"""
+        SELECT DISTINCT class_name
+        FROM teacher_resources
+        {option_where}
+        {"AND" if option_where else "WHERE"} class_name IS NOT NULL
+          AND TRIM(class_name) != ''
+        ORDER BY class_name
+        """,
+        tuple(option_params)
+    )
+
+    subject_rows = fetch_all(
+        f"""
+        SELECT DISTINCT subject
+        FROM teacher_resources
+        {option_where}
+        {"AND" if option_where else "WHERE"} subject IS NOT NULL
+          AND TRIM(subject) != ''
+        ORDER BY subject
+        """,
+        tuple(option_params)
+    )
+
+    class_options = [row["class_name"] for row in class_rows]
+    subjects = [row["subject"] for row in subject_rows]
 
     return render_template(
         "teacher_resources.html",
@@ -4842,8 +4913,11 @@ def teacher_resources():
         subjects=subjects,
         class_filter=class_filter,
         subject_filter=subject_filter,
-        term_filter=term_filter
+        term_filter=term_filter,
+        search=search,
+        role=role
     )
+
 @app.route("/fix_fee_payment_details")
 @login_required
 @roles_required("super_admin")

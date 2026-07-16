@@ -1,75 +1,306 @@
 {% extends "base_premium.html" %}
 
-{% block title %}Teacher Resources{% endblock %}
+{% block title %}Teacher Resources | EduTrack{% endblock %}
 
 {% block content %}
 
-<div style="padding:25px; background:#f4f6f9; min-height:100vh;">
+<div class="page-header-card resources-page-header">
+  <div>
+    <span class="page-eyebrow">LEARNING MATERIALS</span>
 
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-        <div>
-            <h2>Teacher Resources</h2>
-            <p style="color:#6b7280;">View and download uploaded notes, PowerPoints, and test papers.</p>
-        </div>
+    <h1>Teacher Resources</h1>
 
-        {% if session.get('role') in ['teacher', 'school_admin', 'super_admin'] %}
-        <a href="{{ url_for('upload_resource') }}" class="btn btn-primary">+ Upload Resource</a>
-        {% endif %}
+    <p>
+      Find notes, presentations, homework, test papers,
+      study guides, and other learning materials.
+    </p>
+  </div>
+
+  {% if session.get("role") in ["teacher", "school_admin", "super_admin"] %}
+  <a
+    href="{{ url_for('upload_resource') }}"
+    class="premium-btn"
+  >
+    ＋ Upload Resource
+  </a>
+  {% endif %}
+</div>
+
+<div class="resources-summary-grid">
+
+  <div class="resource-summary-box">
+    <div class="resource-summary-icon resource-summary-blue">📚</div>
+
+    <div>
+      <span>Resources Found</span>
+      <strong>{{ resources|length }}</strong>
     </div>
+  </div>
 
-    <div style="background:white; padding:18px; border-radius:14px; margin-bottom:20px;">
-        <form method="GET" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px;">
-            <select name="class_name">
-                <option value="">All Classes</option>
-                {% for class in class_options %}
-                <option value="{{ class }}" {% if class_filter == class %}selected{% endif %}>{{ class }}</option>
-                {% endfor %}
-            </select>
+  <div class="resource-summary-box">
+    <div class="resource-summary-icon resource-summary-purple">🏫</div>
 
-            <select name="subject">
-                <option value="">All Subjects</option>
-                {% for subject in subjects %}
-                <option value="{{ subject }}" {% if subject_filter == subject %}selected{% endif %}>{{ subject }}</option>
-                {% endfor %}
-            </select>
-
-            <select name="term">
-                <option value="">All Terms</option>
-                <option value="Term 1" {% if term_filter == 'Term 1' %}selected{% endif %}>Term 1</option>
-                <option value="Term 2" {% if term_filter == 'Term 2' %}selected{% endif %}>Term 2</option>
-                <option value="Term 3" {% if term_filter == 'Term 3' %}selected{% endif %}>Term 3</option>
-            </select>
-
-            <button type="submit" class="btn btn-primary">Filter</button>
-        </form>
+    <div>
+      <span>Classes</span>
+      <strong>{{ class_options|length }}</strong>
     </div>
+  </div>
 
-    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px;">
-        {% for r in resources %}
-        <div style="background:white; padding:18px; border-radius:14px; box-shadow:0 4px 12px rgba(0,0,0,0.06);">
-            <h3 style="margin:0 0 8px;">{{ r.title }}</h3>
+  <div class="resource-summary-box">
+    <div class="resource-summary-icon resource-summary-green">📖</div>
 
-            <p style="color:#6b7280; margin:4px 0;">{{ r.resource_type }} • {{ r.term }}</p>
-            <p style="color:#374151; margin:4px 0;">{{ r.class_name }} — {{ r.subject }}</p>
-            <p style="color:#6b7280; margin:4px 0;">Uploaded by {{ r.uploaded_by or r.teacher_name or 'Teacher' }}</p>
-
-            {% if r.filename and r.filename.startswith('http') %}
-                <a href="{{ r.filename }}" target="_blank" class="btn btn-primary" style="display:inline-block; margin-top:10px;">
-                    Open File
-                </a>
-            {% else %}
-                <div style="margin-top:10px; padding:10px; background:#fff7ed; color:#c2410c; border-radius:8px;">
-                    Old file missing - please re-upload
-                </div>
-            {% endif %}
-        </div>
-        {% else %}
-        <div style="background:white; padding:25px; border-radius:14px; color:#6b7280;">
-            No resources found.
-        </div>
-        {% endfor %}
+    <div>
+      <span>Subjects</span>
+      <strong>{{ subjects|length }}</strong>
     </div>
+  </div>
 
 </div>
+
+<div class="premium-card resources-filter-card">
+
+  <form
+    method="GET"
+    action="{{ url_for('teacher_resources') }}"
+    class="resources-filter-form"
+  >
+
+    <div class="report-filter-field resources-search-field">
+      <label for="search">Search resources</label>
+
+      <input
+        type="text"
+        id="search"
+        name="search"
+        value="{{ search }}"
+        placeholder="Title, type, subject, or uploader"
+      >
+    </div>
+
+    <div class="report-filter-field">
+      <label for="class_name">Class</label>
+
+      <select id="class_name" name="class_name">
+        <option value="">All classes</option>
+
+        {% for class_name in class_options %}
+        <option
+          value="{{ class_name }}"
+          {% if class_filter == class_name %}selected{% endif %}
+        >
+          {{ class_name }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="report-filter-field">
+      <label for="subject">Subject</label>
+
+      <select id="subject" name="subject">
+        <option value="">All subjects</option>
+
+        {% for subject in subjects %}
+        <option
+          value="{{ subject }}"
+          {% if subject_filter == subject %}selected{% endif %}
+        >
+          {{ subject }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="report-filter-field">
+      <label for="term">Term</label>
+
+      <select id="term" name="term">
+        <option value="">All terms</option>
+
+        <option
+          value="Term 1"
+          {% if term_filter == "Term 1" %}selected{% endif %}
+        >
+          Term 1
+        </option>
+
+        <option
+          value="Term 2"
+          {% if term_filter == "Term 2" %}selected{% endif %}
+        >
+          Term 2
+        </option>
+
+        <option
+          value="Term 3"
+          {% if term_filter == "Term 3" %}selected{% endif %}
+        >
+          Term 3
+        </option>
+      </select>
+    </div>
+
+    <div class="resources-filter-actions">
+      <button type="submit" class="premium-btn">
+        Apply Filters
+      </button>
+
+      <a
+        href="{{ url_for('teacher_resources') }}"
+        class="premium-btn premium-btn-light"
+      >
+        Clear
+      </a>
+    </div>
+
+  </form>
+
+</div>
+
+{% if resources %}
+
+<div class="resources-card-grid">
+
+  {% for resource in resources %}
+
+  {% set filename = resource.original_filename or resource.filename or "" %}
+  {% set extension = filename.rsplit(".", 1)[-1]|lower if "." in filename else "" %}
+
+  <article class="resource-card">
+
+    <div class="resource-card-top">
+
+      <div class="resource-file-type-icon">
+
+        {% if extension == "pdf" %}
+          📕
+        {% elif extension in ["doc", "docx"] %}
+          📘
+        {% elif extension in ["ppt", "pptx"] %}
+          📙
+        {% elif extension in ["xls", "xlsx"] %}
+          📗
+        {% elif extension in ["png", "jpg", "jpeg"] %}
+          🖼️
+        {% else %}
+          📄
+        {% endif %}
+
+      </div>
+
+      <span class="resource-type-badge">
+        {{ resource.resource_type or "Resource" }}
+      </span>
+
+    </div>
+
+    <div class="resource-card-body">
+
+      <h3>{{ resource.title }}</h3>
+
+      <p class="resource-filename">
+        {{ resource.original_filename or "Uploaded file" }}
+      </p>
+
+      <div class="resource-meta-list">
+
+        <div class="resource-meta-row">
+          <span>Class</span>
+          <strong>{{ resource.class_name or "All classes" }}</strong>
+        </div>
+
+        <div class="resource-meta-row">
+          <span>Subject</span>
+          <strong>{{ resource.subject or "-" }}</strong>
+        </div>
+
+        <div class="resource-meta-row">
+          <span>Term</span>
+          <strong>{{ resource.term or "-" }}</strong>
+        </div>
+
+        <div class="resource-meta-row">
+          <span>Uploaded by</span>
+          <strong>
+            {{ resource.uploaded_by or resource.teacher_name or "Teacher" }}
+          </strong>
+        </div>
+
+        {% if resource.uploaded_at %}
+        <div class="resource-meta-row">
+          <span>Uploaded</span>
+          <strong>{{ resource.uploaded_at }}</strong>
+        </div>
+        {% endif %}
+
+      </div>
+
+    </div>
+
+    <div class="resource-card-actions">
+
+      {% if resource.filename and resource.filename.startswith("http") %}
+
+      <a
+        href="{{ resource.filename }}"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="premium-btn"
+      >
+        Open File
+      </a>
+
+      <a
+        href="{{ resource.filename }}"
+        download
+        class="premium-btn premium-btn-light"
+      >
+        Download
+      </a>
+
+      {% else %}
+
+      <div class="resource-missing-file">
+        Old file unavailable. Please upload it again.
+      </div>
+
+      {% endif %}
+
+    </div>
+
+  </article>
+
+  {% endfor %}
+
+</div>
+
+{% else %}
+
+<div class="premium-card">
+
+  <div class="empty-box resource-empty-state">
+
+    <div class="report-empty-icon">📂</div>
+
+    <h3>No resources found</h3>
+
+    <p>
+      No teaching resources match the selected filters.
+    </p>
+
+    {% if session.get("role") in ["teacher", "school_admin", "super_admin"] %}
+    <a
+      href="{{ url_for('upload_resource') }}"
+      class="premium-btn"
+    >
+      Upload First Resource
+    </a>
+    {% endif %}
+
+  </div>
+
+</div>
+
+{% endif %}
 
 {% endblock %}
