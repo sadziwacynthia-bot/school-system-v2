@@ -14,8 +14,19 @@
   <aside class="premium-sidebar">
 
     <div class="premium-logo">
-      {% if session.get("logo_url") %}
-      <img src="{{ url_for('static', filename=session.get('logo_url')) }}" alt="School Logo" class="sidebar-logo">
+     {% if session.get("logo_url") %}
+    <img
+        src="{{ session.get('logo_url') }}"
+        class="school-logo"
+        alt="School Logo"
+    >
+{% else %}
+    <img
+        src="{{ url_for('static', filename='images/default-school.png') }}"
+        class="school-logo"
+        alt="School Logo"
+    >
+{% endif %}
       {% else %}
       <div class="premium-logo-circle">E</div>
       {% endif %}
