@@ -1208,25 +1208,133 @@ def save_result():
 def results():
     school_id = session.get("school_id")
     role = session.get("role")
+    user_id = session.get("user_id")
 
-    if role == "super_admin":
-        result_records = fetch_all("""
-            SELECT r.*, s.first_name, s.last_name, s.student_number
-            FROM results r
-            JOIN students s ON r.student_id = s.id
-            ORDER BY s.first_name, s.last_name, r.subject
+    class_filter = request.args.get("class_name", "").strip()
+    term_filter = request.args.get("term", "").strip()
+    search = request.args.get("search", "").strip()
+
+    conditions = []
+    params = []
+
+    query = """
+        SELECT
+            r.student_id,
+            r.class_name,
+            r.term,
+            s.student_number,
+            s.first_name,
+            s.last_name,
+            COUNT(r.id) AS subject_count,
+            COALESCE(SUM(r.marks), 0) AS total_marks,
+            COALESCE(AVG(r.marks), 0) AS average_marks
+        FROM results r
+        JOIN students s ON r.student_id = s.id
+    """
+
+    if role != "super_admin":
+        conditions.append("r.school_id = ?")
+        params.append(school_id)
+
+    if role == "teacher":
+        teacher = fetch_one("""
+            SELECT id
+            FROM teachers
+            WHERE user_id = ?
+              AND school_id = ?
+            LIMIT 1
+        """, (user_id, school_id))
+
+        if not teacher:
+            conditions.append("1 = 0")
+        else:
+            conditions.append("""
+                EXISTS (
+                    SELECT 1
+                    FROM teacher_assignments ta
+                    WHERE ta.teacher_id = ?
+                      AND ta.school_id = r.school_id
+                      AND ta.class_name = r.class_name
+                      AND ta.subject = r.subject
+                )
+            """)
+            params.append(teacher["id"])
+
+    if class_filter:
+        conditions.append("r.class_name = ?")
+        params.append(class_filter)
+
+    if term_filter:
+        conditions.append("r.term = ?")
+        params.append(term_filter)
+
+    if search:
+        conditions.append("""
+            (
+                s.first_name LIKE ?
+                OR s.last_name LIKE ?
+                OR s.student_number LIKE ?
+            )
         """)
+        like = f"%{search}%"
+        params.extend([like, like, like])
+
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+
+    query += """
+        GROUP BY
+            r.student_id,
+            r.class_name,
+            r.term,
+            s.student_number,
+            s.first_name,
+            s.last_name
+        ORDER BY
+            r.class_name,
+            s.last_name,
+            s.first_name,
+            r.term
+    """
+
+    result_groups = fetch_all(query, tuple(params))
+
+    class_conditions = []
+    class_params = []
+
+    if role != "super_admin":
+        class_conditions.append("school_id = ?")
+        class_params.append(school_id)
+
+    class_query = """
+        SELECT DISTINCT class_name
+        FROM results
+    """
+
+    if class_conditions:
+        class_query += " WHERE " + " AND ".join(class_conditions)
+        class_query += """
+            AND class_name IS NOT NULL
+            AND TRIM(class_name) != ''
+        """
     else:
-        result_records = fetch_all("""
-            SELECT r.*, s.first_name, s.last_name, s.student_number
-            FROM results r
-            JOIN students s ON r.student_id = s.id
-            WHERE r.school_id = ?
-            ORDER BY s.first_name, s.last_name, r.subject
-        """, (school_id,))
+        class_query += """
+            WHERE class_name IS NOT NULL
+              AND TRIM(class_name) != ''
+        """
 
-    return render_template("results.html", result_records=result_records)
+    class_query += " ORDER BY class_name"
 
+    classes = fetch_all(class_query, tuple(class_params))
+
+    return render_template(
+        "results.html",
+        result_groups=result_groups,
+        classes=classes,
+        class_filter=class_filter,
+        term_filter=term_filter,
+        search=search
+    )
 
 # =========================================================
 # ATTENDANCE
@@ -1239,9 +1347,21 @@ def attendance():
     role = session.get("role")
     user_id = session.get("user_id")
 
-    selected_class = request.args.get("class_name", "").strip()
+    selected_class = (
+        request.form.get("class_name", "").strip()
+        if request.method == "POST"
+        else request.args.get("class_name", "").strip()
+    )
+
+    attendance_date = (
+        request.form.get("attendance_date", "").strip()
+        if request.method == "POST"
+        else datetime.now().strftime("%Y-%m-%d")
+    )
+
     students_list = []
     class_options = []
+    teacher = None
 
     # =====================================================
     # TEACHER VIEW
@@ -1250,45 +1370,46 @@ def attendance():
         teacher = fetch_one("""
             SELECT *
             FROM teachers
-            WHERE user_id = ? AND school_id = ?
+            WHERE user_id = ?
+              AND school_id = ?
             LIMIT 1
         """, (user_id, school_id))
 
         if not teacher:
             flash("No teacher profile is linked to this account.", "danger")
+
             return render_template(
                 "attendance.html",
                 class_options=[],
                 selected_class="",
                 students=[],
-                today=datetime.now().strftime("%Y-%m-%d")
+                today=attendance_date
             )
 
-        # Only classes where this teacher is the official class teacher
         class_teacher_rows = fetch_all("""
             SELECT class_name
             FROM school_classes
             WHERE class_teacher_id = ?
-            AND school_id = ?
+              AND school_id = ?
             ORDER BY class_name
         """, (teacher["id"], school_id))
 
-        class_options = [row["class_name"] for row in class_teacher_rows]
+        class_options = [
+            row["class_name"]
+            for row in class_teacher_rows
+            if row["class_name"]
+        ]
 
         if not selected_class and len(class_options) == 1:
             selected_class = class_options[0]
 
-        if selected_class and selected_class in class_options:
-            students_list = fetch_all("""
-                SELECT *
-                FROM students
-                WHERE school_id = ?
-                AND class_name = ?
-                AND COALESCE(current_status, 'Active') = 'Active'
-                ORDER BY first_name, last_name
-            """, (school_id, selected_class))
-        else:
-            students_list = []
+        if selected_class and selected_class not in class_options:
+            flash(
+                "You can only take attendance for your assigned class.",
+                "danger"
+            )
+            selected_class = ""
+
     # =====================================================
     # SUPER ADMIN VIEW
     # =====================================================
@@ -1296,19 +1417,15 @@ def attendance():
         class_rows = fetch_all("""
             SELECT DISTINCT class_name
             FROM school_classes
+            WHERE class_name IS NOT NULL
+              AND TRIM(class_name) != ''
             ORDER BY class_name
         """)
 
-        class_options = [row["class_name"] for row in class_rows] or CLASS_OPTIONS
-
-        if selected_class:
-            students_list = fetch_all("""
-                SELECT *
-                FROM students
-                WHERE class_name = ?
-                  AND COALESCE(current_status, 'Active') = 'Active'
-                ORDER BY first_name, last_name
-            """, (selected_class,))
+        class_options = [
+            row["class_name"]
+            for row in class_rows
+        ] or CLASS_OPTIONS
 
     # =====================================================
     # SCHOOL ADMIN VIEW
@@ -1318,12 +1435,29 @@ def attendance():
             SELECT DISTINCT class_name
             FROM school_classes
             WHERE school_id = ?
+              AND class_name IS NOT NULL
+              AND TRIM(class_name) != ''
             ORDER BY class_name
         """, (school_id,))
 
-        class_options = [row["class_name"] for row in class_rows] or CLASS_OPTIONS
+        class_options = [
+            row["class_name"]
+            for row in class_rows
+        ] or CLASS_OPTIONS
 
-        if selected_class:
+    # =====================================================
+    # LOAD ACTIVE STUDENTS
+    # =====================================================
+    if selected_class:
+        if role == "super_admin":
+            students_list = fetch_all("""
+                SELECT *
+                FROM students
+                WHERE class_name = ?
+                  AND COALESCE(current_status, 'Active') = 'Active'
+                ORDER BY first_name, last_name
+            """, (selected_class,))
+        else:
             students_list = fetch_all("""
                 SELECT *
                 FROM students
@@ -1333,12 +1467,179 @@ def attendance():
                 ORDER BY first_name, last_name
             """, (school_id, selected_class))
 
+    # =====================================================
+    # SAVE ATTENDANCE
+    # =====================================================
+    if request.method == "POST":
+        if not selected_class:
+            flash("Please select a class.", "danger")
+            return redirect(url_for("attendance"))
+
+        if not attendance_date:
+            flash("Attendance date is required.", "danger")
+            return redirect(
+                url_for("attendance", class_name=selected_class)
+            )
+
+        if not students_list:
+            flash(
+                "No active students were found in the selected class.",
+                "warning"
+            )
+            return redirect(
+                url_for("attendance", class_name=selected_class)
+            )
+
+        allowed_statuses = {
+            "Present",
+            "Absent",
+            "Late",
+            "Excused"
+        }
+
+        conn = get_db()
+        cursor = conn.cursor()
+
+        try:
+            for student in students_list:
+                student_id = student["id"]
+
+                status = request.form.get(
+                    f"status_{student_id}",
+                    "Present"
+                ).strip()
+
+                if status not in allowed_statuses:
+                    status = "Present"
+
+                # Prevent duplicate attendance for the same student/date.
+                if role == "super_admin":
+                    cursor.execute(
+                        convert_query("""
+                            DELETE FROM attendance
+                            WHERE student_id = ?
+                              AND class_name = ?
+                              AND date = ?
+                        """),
+                        (
+                            student_id,
+                            selected_class,
+                            attendance_date
+                        )
+                    )
+                else:
+                    cursor.execute(
+                        convert_query("""
+                            DELETE FROM attendance
+                            WHERE school_id = ?
+                              AND student_id = ?
+                              AND class_name = ?
+                              AND date = ?
+                        """),
+                        (
+                            school_id,
+                            student_id,
+                            selected_class,
+                            attendance_date
+                        )
+                    )
+
+                record_school_id = (
+                    student["school_id"]
+                    if role == "super_admin"
+                    else school_id
+                )
+
+                cursor.execute(
+                    convert_query("""
+                        INSERT INTO attendance (
+                            school_id,
+                            student_id,
+                            class_name,
+                            date,
+                            status
+                        )
+                        VALUES (?, ?, ?, ?, ?)
+                    """),
+                    (
+                        record_school_id,
+                        student_id,
+                        selected_class,
+                        attendance_date,
+                        status
+                    )
+                )
+
+            conn.commit()
+
+            log_audit(
+                "Recorded attendance",
+                "attendance",
+                None,
+                f"{selected_class} attendance for {attendance_date}"
+            )
+
+            flash(
+                f"Attendance for {selected_class} was saved successfully.",
+                "success"
+            )
+
+            return redirect(
+                url_for(
+                    "attendance",
+                    class_name=selected_class,
+                    date=attendance_date
+                )
+            )
+
+        except Exception as error:
+            conn.rollback()
+            app.logger.exception("Attendance saving failed")
+
+            flash(
+                f"Attendance could not be saved: {str(error)}",
+                "danger"
+            )
+
+        finally:
+            conn.close()
+
+    # =====================================================
+    # LOAD EXISTING ATTENDANCE
+    # =====================================================
+    existing_attendance = {}
+
+    if selected_class and students_list:
+        attendance_params = [selected_class, attendance_date]
+
+        attendance_query = """
+            SELECT student_id, status
+            FROM attendance
+            WHERE class_name = ?
+              AND date = ?
+        """
+
+        if role != "super_admin":
+            attendance_query += " AND school_id = ?"
+            attendance_params.append(school_id)
+
+        attendance_rows = fetch_all(
+            attendance_query,
+            tuple(attendance_params)
+        )
+
+        existing_attendance = {
+            row["student_id"]: row["status"]
+            for row in attendance_rows
+        }
+
     return render_template(
         "attendance.html",
         class_options=class_options,
         selected_class=selected_class,
         students=students_list,
-        today=datetime.now().strftime("%Y-%m-%d")
+        today=attendance_date,
+        existing_attendance=existing_attendance
     )
     
 @app.route("/save_attendance", methods=["POST"])

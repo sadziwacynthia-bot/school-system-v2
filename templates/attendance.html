@@ -5,8 +5,13 @@
 {% block content %}
 
 <div class="page-header-card">
-  <h1>Attendance</h1>
-  <p>Select a class, view its students, and mark today’s attendance.</p>
+  <div>
+    <span class="page-eyebrow">STUDENT ATTENDANCE</span>
+    <h1>Attendance Register</h1>
+    <p>
+      Select a class, mark each student’s attendance, and save the register.
+    </p>
+  </div>
 </div>
 
 <div class="premium-card report-filter-card">
@@ -16,10 +21,15 @@
     action="{{ url_for('attendance') }}"
     class="attendance-class-form"
   >
+
     <div class="report-filter-field">
       <label for="class_name">Select Class</label>
 
-      <select id="class_name" name="class_name" required>
+      <select
+        id="class_name"
+        name="class_name"
+        required
+      >
         <option value="">Choose a class</option>
 
         {% for class_name in class_options %}
@@ -35,9 +45,17 @@
 
     <div class="report-filter-actions">
       <button type="submit" class="premium-btn">
-        Open Attendance Register
+        Open Register
       </button>
+
+      <a
+        href="{{ url_for('attendance') }}"
+        class="premium-btn premium-btn-light"
+      >
+        Clear
+      </a>
     </div>
+
   </form>
 
 </div>
@@ -45,19 +63,23 @@
 {% if not class_options %}
 
 <div class="premium-card">
+
   <div class="empty-box">
     <div class="report-empty-icon">🏫</div>
+
     <h3>No class is assigned</h3>
+
     <p>
-      This teacher account is not currently linked to an official class.
+      This account does not currently have a class available for attendance.
       Ask the school administrator to assign the teacher as a class teacher.
     </p>
   </div>
+
 </div>
 
 {% elif selected_class %}
 
-<div class="premium-grid attendance-summary-grid">
+<div class="attendance-summary-grid">
 
   <div class="stat-card card-blue">
     <span>Selected Class</span>
@@ -79,20 +101,46 @@
 <div class="premium-card">
 
   <div class="section-title">
+
     <div>
-      <h2>{{ selected_class }} Attendance Register</h2>
+      <h2>{{ selected_class }} Register</h2>
+
       <p class="section-description">
         Mark each learner as present, absent, late, or excused.
       </p>
     </div>
+
+    <div class="action-row">
+      <button
+        type="button"
+        class="premium-btn premium-btn-light"
+        onclick="markAllPresent()"
+      >
+        Mark All Present
+      </button>
+    </div>
+
   </div>
 
   {% if students %}
 
-  <form method="POST" action="{{ url_for('attendance', class_name=selected_class) }}">
+  <form
+    method="POST"
+    action="{{ url_for('attendance') }}"
+    id="attendance-form"
+  >
 
-    <input type="hidden" name="class_name" value="{{ selected_class }}">
-    <input type="hidden" name="attendance_date" value="{{ today }}">
+    <input
+      type="hidden"
+      name="class_name"
+      value="{{ selected_class }}"
+    >
+
+    <input
+      type="hidden"
+      name="attendance_date"
+      value="{{ today }}"
+    >
 
     <div class="table-responsive">
 
@@ -113,12 +161,17 @@
         <tbody>
 
           {% for student in students %}
+
+          {% set saved_status = existing_attendance.get(student.id, "Present") %}
+
           <tr>
 
             <td>{{ loop.index }}</td>
 
             <td>
-              <strong>{{ student.student_number or "-" }}</strong>
+              <strong>
+                {{ student.student_number or "-" }}
+              </strong>
             </td>
 
             <td>
@@ -133,43 +186,67 @@
             </td>
 
             <td class="attendance-choice">
-              <input
-                type="radio"
-                name="status_{{ student.id }}"
-                value="Present"
-                checked
-                aria-label="Mark {{ student.first_name }} present"
-              >
+              <label class="attendance-option attendance-present">
+
+                <input
+                  type="radio"
+                  name="status_{{ student.id }}"
+                  value="Present"
+                  {% if saved_status == "Present" %}checked{% endif %}
+                >
+
+                <span>✓</span>
+
+              </label>
             </td>
 
             <td class="attendance-choice">
-              <input
-                type="radio"
-                name="status_{{ student.id }}"
-                value="Absent"
-                aria-label="Mark {{ student.first_name }} absent"
-              >
+              <label class="attendance-option attendance-absent">
+
+                <input
+                  type="radio"
+                  name="status_{{ student.id }}"
+                  value="Absent"
+                  {% if saved_status == "Absent" %}checked{% endif %}
+                >
+
+                <span>✕</span>
+
+              </label>
             </td>
 
             <td class="attendance-choice">
-              <input
-                type="radio"
-                name="status_{{ student.id }}"
-                value="Late"
-                aria-label="Mark {{ student.first_name }} late"
-              >
+              <label class="attendance-option attendance-late">
+
+                <input
+                  type="radio"
+                  name="status_{{ student.id }}"
+                  value="Late"
+                  {% if saved_status == "Late" %}checked{% endif %}
+                >
+
+                <span>⏱</span>
+
+              </label>
             </td>
 
             <td class="attendance-choice">
-              <input
-                type="radio"
-                name="status_{{ student.id }}"
-                value="Excused"
-                aria-label="Mark {{ student.first_name }} excused"
-              >
+              <label class="attendance-option attendance-excused">
+
+                <input
+                  type="radio"
+                  name="status_{{ student.id }}"
+                  value="Excused"
+                  {% if saved_status == "Excused" %}checked{% endif %}
+                >
+
+                <span>○</span>
+
+              </label>
             </td>
 
           </tr>
+
           {% endfor %}
 
         </tbody>
@@ -179,6 +256,7 @@
     </div>
 
     <div class="attendance-save-row">
+
       <a
         href="{{ url_for('attendance') }}"
         class="premium-btn premium-btn-light"
@@ -186,9 +264,13 @@
         Cancel
       </a>
 
-      <button type="submit" class="premium-btn">
+      <button
+        type="submit"
+        class="premium-btn"
+      >
         Save Attendance
       </button>
+
     </div>
 
   </form>
@@ -197,7 +279,9 @@
 
   <div class="empty-box">
     <div class="report-empty-icon">🎓</div>
+
     <h3>No active students found</h3>
+
     <p>
       There are no active students assigned to {{ selected_class }}.
     </p>
@@ -210,15 +294,31 @@
 {% else %}
 
 <div class="premium-card">
+
   <div class="empty-box">
     <div class="report-empty-icon">📋</div>
+
     <h3>Select a class</h3>
+
     <p>
       Choose a class above to open its attendance register.
     </p>
   </div>
+
 </div>
 
 {% endif %}
+
+<script>
+  function markAllPresent() {
+    const presentInputs = document.querySelectorAll(
+      'input[type="radio"][value="Present"]'
+    );
+
+    presentInputs.forEach(function (input) {
+      input.checked = true;
+    });
+  }
+</script>
 
 {% endblock %}

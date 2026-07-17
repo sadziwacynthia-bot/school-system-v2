@@ -1,242 +1,565 @@
 {% extends "base_premium.html" %}
 
-{% block title %}Student Profile{% endblock %}
+{% block title %}Child Profile | EduTrack{% endblock %}
 
 {% block content %}
 
-<style>
-.profile-page {
-    padding: 25px;
-    background: #f4f6f9;
-    min-height: 100vh;
-}
+<div class="student-hero">
 
-.profile-header {
-    background: linear-gradient(135deg, #1e3a8a, #2563eb);
-    color: white;
-    padding: 24px;
-    border-radius: 18px;
-    margin-bottom: 22px;
-}
+  <div class="student-avatar">
+    {{ student.first_name[0]|upper if student.first_name else "S" }}
+  </div>
 
-.profile-header h1 {
-    margin: 0;
-}
+  <div class="student-hero-details">
+    <span class="page-eyebrow">STUDENT 360</span>
 
-.profile-header p {
-    margin: 6px 0 0;
-    opacity: 0.9;
-}
+    <h1>{{ student.first_name }} {{ student.last_name }}</h1>
 
-.actions {
-    margin-top: 15px;
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-}
+    <div class="student-hero-meta">
+      <span>🎓 {{ student.student_number or "No student number" }}</span>
+      <span>🏫 {{ student.class_name or "Unassigned" }}</span>
+      <span>👤 {{ student.gender or "Not specified" }}</span>
 
-.btn {
-    padding: 10px 14px;
-    border-radius: 9px;
-    border: none;
-    text-decoration: none;
-    font-weight: 700;
-    cursor: pointer;
-    font-size: 14px;
-}
+      {% if student.status == "Active" %}
+        <span class="badge badge-success">Active</span>
+      {% else %}
+        <span class="badge badge-danger">
+          {{ student.status or "Inactive" }}
+        </span>
+      {% endif %}
+    </div>
+  </div>
 
-.btn-primary {
-    background: #2563eb;
-    color: white;
-}
+  <div class="student-hero-actions">
 
-.btn-secondary {
-    background: #374151;
-    color: white;
-}
+    {% if session.get("role") in ["school_admin", "super_admin"] %}
+    <a
+      href="{{ url_for('edit_student', id=student.id) }}"
+      class="premium-btn"
+    >
+      Edit Student
+    </a>
+    {% endif %}
 
-.info-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 18px;
-}
+    <a
+      href="{{ url_for('student_progress', student_id=student.id) }}"
+      class="premium-btn premium-btn-light"
+    >
+      Progress Report
+    </a>
 
-.card {
-    background: white;
-    padding: 20px;
-    border-radius: 16px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-}
+    {% if session.get("role") in ["school_admin", "super_admin", "parent"] %}
+    <a
+      href="{{ url_for('fee_statement', student_id=student.id) }}"
+      class="premium-btn premium-btn-light"
+    >
+      Fee Statement
+    </a>
+    {% endif %}
 
-.card h3 {
-    margin: 0 0 12px;
-    color: #1f2937;
-}
+    <button
+      type="button"
+      onclick="window.print()"
+      class="premium-btn premium-btn-light"
+    >
+      Print Profile
+    </button>
 
-.info-item {
-    margin-bottom: 10px;
-}
+  </div>
 
-.info-item span {
-    color: #6b7280;
-    font-size: 14px;
-}
+</div>
 
-.info-item strong {
-    display: block;
-    color: #111827;
-}
+<nav class="profile-tabs">
+  <a href="#overview">👤 Overview</a>
+  <a href="#results">📊 Results</a>
+  <a href="#attendance">📋 Attendance</a>
 
-.badge {
-    padding: 5px 10px;
-    border-radius: 20px;
-    font-weight: 700;
-    font-size: 13px;
-}
+  {% if session.get("role") in ["school_admin", "super_admin", "parent"] %}
+  <a href="#fees">💰 Fees</a>
+  {% endif %}
 
-.badge-active {
-    background: #dcfce7;
-    color: #166534;
-}
+  <a href="#medical">🩺 Medical</a>
+  <a href="#guardians">👨‍👩‍👧 Guardians</a>
+</nav>
 
-.badge-inactive {
-    background: #fee2e2;
-    color: #991b1b;
-}
+<div class="profile-summary-grid">
 
-@media (max-width: 800px) {
-    .info-grid {
-        grid-template-columns: 1fr;
-    }
-}
-</style>
+  <div class="profile-summary-card profile-summary-green">
+    <div class="profile-summary-icon">📋</div>
 
-<div class="profile-page">
+    <div>
+      <span>Attendance</span>
+      <strong>{{ attendance_rate or 0 }}%</strong>
+      <small>
+        {{ attendance_summary.present_count or 0 }} days present
+      </small>
+    </div>
+  </div>
 
-    <div class="profile-header">
-        <h1>{{ student.first_name }} {{ student.last_name }}</h1>
-        <p>Class: {{ student.class_name or '-' }} | Student No: {{ student.student_number or '-' }}</p>
+  <div class="profile-summary-card profile-summary-blue">
+    <div class="profile-summary-icon">📊</div>
 
-        <div class="actions">
-            <a href="{{ url_for('student_progress', student_id=student.id) }}" class="btn btn-primary">
-                📊 Progress Report
-            </a>
+    <div>
+      <span>Academic Average</span>
+      <strong>
+        {{ "%.1f"|format(academic_summary.average_marks or 0) }}%
+      </strong>
+      <small>
+        {{ academic_summary.subject_count or 0 }} subjects recorded
+      </small>
+    </div>
+  </div>
 
-            <a href="{{ url_for('edit_student', id=student.id) }}" class="btn btn-secondary">
-                Edit Student
-            </a>
+  {% if session.get("role") in ["school_admin", "super_admin", "parent"] %}
+  <div class="profile-summary-card profile-summary-orange">
+    <div class="profile-summary-icon">💰</div>
 
-            <a href="{{ url_for('students') }}" class="btn btn-secondary">
-                Back to Students
-            </a>
-        </div>
+    <div>
+      <span>Outstanding Fees</span>
+      <strong>
+        ${{ "%.2f"|format(fee_summary.total_balance or 0) }}
+      </strong>
+      <small>
+        ${{ "%.2f"|format(fee_summary.total_paid or 0) }} paid
+      </small>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="profile-summary-card profile-summary-purple">
+    <div class="profile-summary-icon">👤</div>
+
+    <div>
+      <span>Student Status</span>
+      <strong>{{ student.status or "Active" }}</strong>
+      <small>{{ student.class_name or "No class assigned" }}</small>
+    </div>
+  </div>
+
+</div>
+
+<div class="student-profile-grid">
+
+  <section class="premium-card" id="overview">
+
+    <div class="section-title">
+      <h2>Student Information</h2>
     </div>
 
-    <div class="info-grid">
+    <div class="student-info-grid">
 
-        <div class="card">
-            <h3>Student Information</h3>
+      <div class="student-info-item">
+        <span>Full Name</span>
+        <strong>{{ student.first_name }} {{ student.last_name }}</strong>
+      </div>
 
-            <div class="info-item">
-                <span>Full Name</span>
-                <strong>{{ student.first_name }} {{ student.last_name }}</strong>
-            </div>
+      <div class="student-info-item">
+        <span>Student Number</span>
+        <strong>{{ student.student_number or "-" }}</strong>
+      </div>
 
-            <div class="info-item">
-                <span>Gender</span>
-                <strong>{{ student.gender or '-' }}</strong>
-            </div>
+      <div class="student-info-item">
+        <span>Date of Birth</span>
+        <strong>{{ student.birthday or "-" }}</strong>
+      </div>
 
-            <div class="info-item">
-                <span>Date of Birth</span>
-                <strong>{{ student.birthday or '-' }}</strong>
-            </div>
+      <div class="student-info-item">
+        <span>Gender</span>
+        <strong>{{ student.gender or "-" }}</strong>
+      </div>
 
-            <div class="info-item">
-                <span>Enrollment Date</span>
-                <strong>{{ student.enrollment_date or '-' }}</strong>
-            </div>
+      <div class="student-info-item">
+        <span>Enrollment Date</span>
+        <strong>{{ student.enrollment_date or "-" }}</strong>
+      </div>
 
-            <div class="info-item">
-                <span>Boarding Status</span>
-                <strong>{{ student.boarding_status or '-' }}</strong>
-            </div>
+      <div class="student-info-item">
+        <span>Leaving Year</span>
+        <strong>{{ student.leaving_year or "-" }}</strong>
+      </div>
 
-            <div class="info-item">
-                <span>Status</span>
-                <strong>
-                    {% if (student.current_status or 'Active') == 'Active' %}
-                        <span class="badge badge-active">Active</span>
-                    {% else %}
-                        <span class="badge badge-inactive">Inactive</span>
-                    {% endif %}
-                </strong>
-            </div>
-        </div>
+      <div class="student-info-item">
+        <span>Class</span>
+        <strong>{{ student.class_name or "-" }}</strong>
+      </div>
 
-        <div class="card">
-            <h3>Guardian Information</h3>
+      <div class="student-info-item">
+        <span>Boarding Status</span>
+        <strong>{{ student.boarding_status or "-" }}</strong>
+      </div>
 
-            <div class="info-item">
-                <span>Guardian Name</span>
-                <strong>{{ student.guardian1_name or '-' }}</strong>
-            </div>
+      <div class="student-info-item">
+        <span>Student Phone</span>
+        <strong>{{ student.student_phone or "-" }}</strong>
+      </div>
 
-            <div class="info-item">
-                <span>Relationship</span>
-                <strong>{{ student.guardian1_relationship or '-' }}</strong>
-            </div>
+      <div class="student-info-item">
+        <span>Status</span>
+        <strong>{{ student.status or "Active" }}</strong>
+      </div>
 
-            <div class="info-item">
-                <span>Phone</span>
-                <strong>{{ student.guardian1_phone or '-' }}</strong>
-            </div>
+      <div class="student-info-item student-info-wide">
+        <span>Home Address</span>
+        <strong>{{ student.home_address or "-" }}</strong>
+      </div>
 
-            <div class="info-item">
-                <span>WhatsApp</span>
-                <strong>{{ student.guardian1_whatsapp or '-' }}</strong>
-            </div>
-
-            <div class="info-item">
-                <span>Email</span>
-                <strong>{{ student.guardian1_email or '-' }}</strong>
-            </div>
-        </div>
-
-        <div class="card">
-            <h3>Contact & Address</h3>
-
-            <div class="info-item">
-                <span>Student Phone</span>
-                <strong>{{ student.student_phone or '-' }}</strong>
-            </div>
-
-            <div class="info-item">
-                <span>Home Address</span>
-                <strong>{{ student.home_address or '-' }}</strong>
-            </div>
-
-            <div class="info-item">
-                <span>Mailing Address</span>
-                <strong>{{ student.mailing_address or '-' }}</strong>
-            </div>
-        </div>
-
-        <div class="card">
-            <h3>Medical & Emergency</h3>
-
-            <div class="info-item">
-                <span>Medical Info</span>
-                <strong>{{ student.medical_info or '-' }}</strong>
-            </div>
-
-            <div class="info-item">
-                <span>Emergency Contact</span>
-                <strong>{{ student.emergency_contact or '-' }}</strong>
-            </div>
-        </div>
+      <div class="student-info-item student-info-wide">
+        <span>Mailing Address</span>
+        <strong>{{ student.mailing_address or "-" }}</strong>
+      </div>
 
     </div>
+
+  </section>
+
+  <section class="premium-card" id="guardians">
+
+    <div class="section-title">
+      <h2>Guardian Information</h2>
+    </div>
+
+    <div class="guardian-block">
+      <h3>Primary Guardian</h3>
+
+      <div class="student-info-item">
+        <span>Name</span>
+        <strong>{{ student.guardian1_name or "-" }}</strong>
+      </div>
+
+      <div class="student-info-item">
+        <span>Relationship</span>
+        <strong>{{ student.guardian1_relationship or "-" }}</strong>
+      </div>
+
+      <div class="student-info-item">
+        <span>Phone</span>
+        <strong>{{ student.guardian1_phone or "-" }}</strong>
+      </div>
+
+      <div class="student-info-item">
+        <span>WhatsApp</span>
+        <strong>{{ student.guardian1_whatsapp or "-" }}</strong>
+      </div>
+
+      <div class="student-info-item">
+        <span>Email</span>
+        <strong>{{ student.guardian1_email or "-" }}</strong>
+      </div>
+    </div>
+
+    {% if student.guardian2_name or student.guardian2_phone %}
+
+    <div class="guardian-block guardian-secondary">
+      <h3>Secondary Guardian</h3>
+
+      <div class="student-info-item">
+        <span>Name</span>
+        <strong>{{ student.guardian2_name or "-" }}</strong>
+      </div>
+
+      <div class="student-info-item">
+        <span>Relationship</span>
+        <strong>{{ student.guardian2_relationship or "-" }}</strong>
+      </div>
+
+      <div class="student-info-item">
+        <span>Phone</span>
+        <strong>{{ student.guardian2_phone or "-" }}</strong>
+      </div>
+
+      <div class="student-info-item">
+        <span>WhatsApp</span>
+        <strong>{{ student.guardian2_whatsapp or "-" }}</strong>
+      </div>
+
+      <div class="student-info-item">
+        <span>Email</span>
+        <strong>{{ student.guardian2_email or "-" }}</strong>
+      </div>
+    </div>
+
+    {% endif %}
+
+  </section>
+
+</div>
+
+<div class="student-profile-grid">
+
+  <section class="premium-card" id="results">
+
+    <div class="section-title">
+
+      <div>
+        <h2>Recent Results</h2>
+        <p class="section-description">
+          Latest academic records for this student.
+        </p>
+      </div>
+
+      <a
+        href="{{ url_for('student_progress', student_id=student.id) }}"
+        class="premium-btn premium-btn-light"
+      >
+        Full Progress
+      </a>
+
+    </div>
+
+    {% if recent_results %}
+
+    <div class="table-responsive">
+
+      <table class="premium-table">
+        <thead>
+          <tr>
+            <th>Subject</th>
+            <th>Term</th>
+            <th>Marks</th>
+            <th>Grade</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for result in recent_results %}
+          <tr>
+            <td><strong>{{ result.subject or "-" }}</strong></td>
+            <td>{{ result.term or "-" }}</td>
+            <td>{{ "%.1f"|format(result.marks or 0) }}%</td>
+            <td>
+              <span class="report-class-badge">
+                {{ result.grade or "-" }}
+              </span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+    </div>
+
+    {% else %}
+
+    <div class="student-mini-empty">
+      No results have been recorded for this student.
+    </div>
+
+    {% endif %}
+
+  </section>
+
+  <section class="premium-card" id="attendance">
+
+    <div class="section-title">
+      <h2>Attendance Summary</h2>
+    </div>
+
+    <div class="attendance-mini-grid">
+
+      <div>
+        <span>Present</span>
+        <strong class="text-success">
+          {{ attendance_summary.present_count or 0 }}
+        </strong>
+      </div>
+
+      <div>
+        <span>Absent</span>
+        <strong class="text-danger">
+          {{ attendance_summary.absent_count or 0 }}
+        </strong>
+      </div>
+
+      <div>
+        <span>Late</span>
+        <strong class="text-warning">
+          {{ attendance_summary.late_count or 0 }}
+        </strong>
+      </div>
+
+      <div>
+        <span>Excused</span>
+        <strong>
+          {{ attendance_summary.excused_count or 0 }}
+        </strong>
+      </div>
+
+    </div>
+
+    {% if recent_attendance %}
+
+    <div class="student-timeline">
+
+      {% for record in recent_attendance %}
+
+      <div class="student-timeline-item">
+        <div class="timeline-dot"></div>
+
+        <div>
+          <strong>{{ record.status or "-" }}</strong>
+          <span>
+            {{ record.date or "-" }} · {{ record.class_name or "-" }}
+          </span>
+        </div>
+      </div>
+
+      {% endfor %}
+
+    </div>
+
+    {% else %}
+
+    <div class="student-mini-empty">
+      No attendance records have been saved.
+    </div>
+
+    {% endif %}
+
+  </section>
+
+</div>
+
+<div class="student-profile-grid">
+
+  {% if session.get("role") in ["school_admin", "super_admin", "parent"] %}
+
+  <section class="premium-card" id="fees">
+
+    <div class="section-title">
+
+      <div>
+        <h2>Fee Summary</h2>
+        <p class="section-description">
+          Student fee position and recent term records.
+        </p>
+      </div>
+
+      <a
+        href="{{ url_for('fee_statement', student_id=student.id) }}"
+        class="premium-btn premium-btn-light"
+      >
+        Full Statement
+      </a>
+
+    </div>
+
+    <div class="fee-profile-summary">
+
+      <div>
+        <span>Total Fees</span>
+        <strong>
+          ${{ "%.2f"|format(fee_summary.total_fees or 0) }}
+        </strong>
+      </div>
+
+      <div>
+        <span>Total Paid</span>
+        <strong class="text-success">
+          ${{ "%.2f"|format(fee_summary.total_paid or 0) }}
+        </strong>
+      </div>
+
+      <div>
+        <span>Balance</span>
+        <strong class="text-danger">
+          ${{ "%.2f"|format(fee_summary.total_balance or 0) }}
+        </strong>
+      </div>
+
+    </div>
+
+    {% if fee_records %}
+
+    <div class="table-responsive">
+
+      <table class="premium-table">
+        <thead>
+          <tr>
+            <th>Term</th>
+            <th>Expected</th>
+            <th>Paid</th>
+            <th>Balance</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for fee in fee_records %}
+          <tr>
+            <td>{{ fee.term_name or "-" }}</td>
+            <td>${{ "%.2f"|format(fee.amount or 0) }}</td>
+            <td class="report-paid-amount">
+              ${{ "%.2f"|format(fee.paid_amount or 0) }}
+            </td>
+            <td class="report-balance-amount">
+              ${{ "%.2f"|format(fee.balance or 0) }}
+            </td>
+            <td>{{ fee.status or "-" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+    </div>
+
+    {% else %}
+
+    <div class="student-mini-empty">
+      No fee records have been created for this student.
+    </div>
+
+    {% endif %}
+
+  </section>
+
+  {% endif %}
+
+  <section class="premium-card" id="medical">
+
+    <div class="section-title">
+      <h2>Medical & Emergency</h2>
+    </div>
+
+    <div class="student-info-item student-info-wide">
+      <span>Medical Information</span>
+      <strong>
+        {{ student.medical_info or "No medical information recorded." }}
+      </strong>
+    </div>
+
+    <div class="student-info-item student-info-wide">
+      <span>Emergency Contact</span>
+      <strong>{{ student.emergency_contact or "-" }}</strong>
+    </div>
+
+    <div class="student-profile-actions">
+
+      <a
+        href="{{ url_for('student_progress', student_id=student.id) }}"
+        class="premium-btn"
+      >
+        Academic Progress
+      </a>
+
+      {% if session.get("role") in ["school_admin", "super_admin"] %}
+      <a
+        href="{{ url_for('edit_student', id=student.id) }}"
+        class="premium-btn premium-btn-light"
+      >
+        Edit Record
+      </a>
+      {% endif %}
+
+      <a
+        href="{{ url_for('students') }}"
+        class="premium-btn premium-btn-light"
+      >
+        Back to Students
+      </a>
+
+    </div>
+
+  </section>
 
 </div>
 

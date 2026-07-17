@@ -1,63 +1,332 @@
 {% extends "base_premium.html" %}
-{% block title %}Students{% endblock %}
+
+{% block title %}Students | EduTrack{% endblock %}
 
 {% block content %}
 
-<div class="page-header-card">
-  <h1>Students</h1>
-  <p>Manage learner profiles, guardians, classes, documents, and records.</p>
+<div class="page-header-card resources-page-header">
+  <div>
+    <span class="page-eyebrow">STUDENT MANAGEMENT</span>
+    <h1>Students</h1>
+    <p>
+      Manage learner profiles, guardians, classes, documents, and academic records.
+    </p>
+  </div>
+
+  <a href="{{ url_for('add_student') }}" class="premium-btn">
+    ＋ Add Student
+  </a>
+</div>
+
+<div class="premium-card student-toolbar-card">
+
+  <form
+    method="GET"
+    action="{{ url_for('students') }}"
+    class="student-toolbar"
+  >
+
+    <div class="report-filter-field student-search-field">
+      <label for="search">Search students</label>
+
+      <input
+        type="text"
+        id="search"
+        name="search"
+        value="{{ search or '' }}"
+        placeholder="Name, student number, or class"
+      >
+    </div>
+
+    {% if selected_class %}
+    <input
+      type="hidden"
+      name="class_name"
+      value="{{ selected_class }}"
+    >
+    {% endif %}
+
+    <div class="student-toolbar-actions">
+      <button type="submit" class="premium-btn">
+        Search
+      </button>
+
+      <a
+        href="{{ url_for('students') }}"
+        class="premium-btn premium-btn-light"
+      >
+        Clear
+      </a>
+
+      <a
+        href="{{ url_for('import_students') }}"
+        class="premium-btn premium-btn-light"
+      >
+        Import
+      </a>
+
+      <a
+        href="{{ url_for('applications') }}"
+        class="premium-btn premium-btn-light"
+      >
+        Applications
+      </a>
+    </div>
+
+  </form>
+
+</div>
+
+<div class="student-list-summary">
+
+  <div class="student-list-summary-card">
+    <span>Students displayed</span>
+    <strong>{{ students|length }}</strong>
+  </div>
+
+  <div class="student-list-summary-card">
+    <span>Selected class</span>
+    <strong>{{ selected_class or "All classes" }}</strong>
+  </div>
+
+  <div class="student-list-summary-card">
+    <span>Search</span>
+    <strong>{{ search or "None" }}</strong>
+  </div>
+
 </div>
 
 <div class="premium-card">
-  <div class="module-toolbar">
-    <div class="module-search">
-      <input type="text" placeholder="Search students by name, class, or guardian...">
+
+  <div class="section-title">
+    <div>
+      <h2>Student Records</h2>
+      <p class="section-description">
+        Click a student’s name to open Student 360, or use the action menu.
+      </p>
     </div>
 
-    <div class="module-actions">
-      <a href="{{ url_for('add_student') }}" class="premium-btn">➕ Add Student</a>
-      <a href="{{ url_for('import_students') }}" class="premium-btn premium-btn-light">📥 Import Students</a>
-      <a href="{{ url_for('applications') }}" class="premium-btn premium-btn-light">📝 Applications</a>
-    </div>
+    <a
+      href="{{ url_for('print_all_students') }}"
+      class="premium-btn premium-btn-light"
+      target="_blank"
+    >
+      🖨 Print List
+    </a>
   </div>
 
   {% if students %}
-  <table class="premium-table">
-    <thead>
-      <tr>
-        <th>Student</th>
-        <th>Class</th>
-        <th>Gender</th>
-        <th>Guardian</th>
-        <th>Status</th>
-      </tr>
-    </thead>
 
-    <tbody>
-      {% for student in students %}
-      <tr>
-        <td>
-  <strong>
-    {{ student.full_name 
-       or student.name 
-       or ((student.first_name or '') ~ ' ' ~ (student.last_name or '')) 
-       or student.student_name 
-       or 'Student' }}
-  </strong>
-  <br>
-  <span style="color:#64748b;">ID: {{ student.id }}</span>
-</td>
-        <td>{{ student.class_name or student.class or 'Not assigned' }}</td>
-        <td>{{ student.gender or '-' }}</td>
-        <td>{{ student.guardian_name or student.parent_name or '-' }}</td>
-        <td><span class="badge badge-success">Active</span></td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="table-responsive">
+
+    <table class="premium-table premium-record-table">
+
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>Student Number</th>
+          <th>Class</th>
+          <th>Gender</th>
+          <th>Guardian</th>
+          <th>Status</th>
+          <th class="actions-column">Actions</th>
+        </tr>
+      </thead>
+
+      <tbody>
+
+        {% for student in students %}
+        <tr class="premium-record-row">
+
+          <td>
+            <div class="student-cell">
+
+              <div class="student-table-avatar">
+                {{ student.first_name[0]|upper if student.first_name else "S" }}
+              </div>
+
+              <div>
+                <a
+                  href="{{ url_for('student_profile', id=student.id) }}"
+                  class="student-name-link"
+                >
+                  {{ student.first_name }} {{ student.last_name }}
+                </a>
+
+                <span class="student-row-subtitle">
+                  Open Student 360
+                </span>
+              </div>
+
+            </div>
+          </td>
+
+          <td>
+            <a
+              href="{{ url_for('student_profile', id=student.id) }}"
+              class="student-number-link"
+            >
+              {{ student.student_number or "-" }}
+            </a>
+          </td>
+
+          <td>
+            <a
+              href="{{ url_for('students', class_name=student.class_name) }}"
+              class="report-class-badge"
+            >
+              {{ student.class_name or "Unassigned" }}
+            </a>
+          </td>
+
+          <td>{{ student.gender or "-" }}</td>
+
+          <td>
+            <div class="guardian-table-details">
+              <strong>
+                {{ student.guardian1_name or student.guardian2_name or "-" }}
+              </strong>
+
+              {% if student.guardian1_phone or student.guardian2_phone %}
+              <span>
+                {{ student.guardian1_phone or student.guardian2_phone }}
+              </span>
+              {% endif %}
+            </div>
+          </td>
+
+          <td>
+            {% if student.status == "Active" %}
+              <span class="badge badge-success">Active</span>
+            {% else %}
+              <span class="badge badge-danger">
+                {{ student.status or "Inactive" }}
+              </span>
+            {% endif %}
+          </td>
+
+          <td class="actions-column">
+
+            <details class="record-actions-menu">
+
+              <summary
+                class="record-actions-trigger"
+                aria-label="Open actions for {{ student.first_name }} {{ student.last_name }}"
+              >
+                ⋮
+              </summary>
+
+              <div class="record-actions-dropdown">
+
+                <a href="{{ url_for('student_profile', id=student.id) }}">
+                  <span>👤</span>
+                  Student 360
+                </a>
+
+                <a href="{{ url_for('student_progress', student_id=student.id) }}">
+                  <span>📊</span>
+                  Progress Report
+                </a>
+
+                {% if session.get("role") in ["school_admin", "super_admin"] %}
+
+                <a href="{{ url_for('edit_student', id=student.id) }}">
+                  <span>✏️</span>
+                  Edit Student
+                </a>
+
+                {% if student.status == "Active" %}
+
+                <form
+                  method="POST"
+                  action="{{ url_for('deactivate_student', student_id=student.id) }}"
+                >
+                  <button
+                    type="submit"
+                    class="record-action-warning"
+                    onclick="return confirm('Deactivate this student?')"
+                  >
+                    <span>⏸️</span>
+                    Deactivate
+                  </button>
+                </form>
+
+                {% else %}
+
+                <form
+                  method="POST"
+                  action="{{ url_for('reactivate_student', student_id=student.id) }}"
+                >
+                  <button type="submit">
+                    <span>✅</span>
+                    Reactivate
+                  </button>
+                </form>
+
+                {% endif %}
+                {% endif %}
+
+              </div>
+
+            </details>
+
+          </td>
+
+        </tr>
+        {% endfor %}
+
+      </tbody>
+
+    </table>
+
+  </div>
+
   {% else %}
-  <div class="empty-box">No students found yet.</div>
+
+  <div class="empty-box">
+    <div class="report-empty-icon">🎓</div>
+
+    <h3>No students found</h3>
+
+    <p>No student records match the selected search or class.</p>
+
+    <a href="{{ url_for('add_student') }}" class="premium-btn">
+      Add First Student
+    </a>
+  </div>
+
   {% endif %}
+
 </div>
+
+<script>
+  document.addEventListener("click", function (event) {
+    document
+      .querySelectorAll(".record-actions-menu[open]")
+      .forEach(function (menu) {
+        if (!menu.contains(event.target)) {
+          menu.removeAttribute("open");
+        }
+      });
+  });
+
+  document
+    .querySelectorAll(".record-actions-menu")
+    .forEach(function (menu) {
+      menu.addEventListener("toggle", function () {
+        if (!menu.open) {
+          return;
+        }
+
+        document
+          .querySelectorAll(".record-actions-menu[open]")
+          .forEach(function (otherMenu) {
+            if (otherMenu !== menu) {
+              otherMenu.removeAttribute("open");
+            }
+          });
+      });
+    });
+</script>
 
 {% endblock %}

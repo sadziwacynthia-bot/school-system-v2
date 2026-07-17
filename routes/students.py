@@ -28,13 +28,16 @@ def register_student_routes(app):
     @roles_required("super_admin", "school_admin")
     def students():
         search = request.args.get("search", "").strip()
+        class_name = request.args.get("class_name", "").strip()
+
         school_id = session.get("school_id")
         role = session.get("role")
 
         params = []
+
         query = """
             SELECT *,
-                   COALESCE(current_status, 'Active') AS status
+                COALESCE(current_status, 'Active') AS status
             FROM students
             WHERE 1=1
         """
@@ -52,15 +55,24 @@ def register_student_routes(app):
                     OR class_name LIKE ?
                 )
             """
+
             like = f"%{search}%"
             params.extend([like, like, like, like])
+
+        if class_name:
+            query += " AND class_name = ?"
+            params.append(class_name)
 
         query += " ORDER BY class_name, last_name, first_name"
 
         students_list = fetch_all(query, tuple(params))
-        return render_template("students.html", students=students_list, search=search)
 
-
+        return render_template(
+            "students.html",
+            students=students_list,
+            search=search,
+            selected_class=class_name
+        )
     @app.route("/add_student")
     @login_required
     @roles_required("school_admin", "super_admin")
@@ -295,20 +307,130 @@ def register_student_routes(app):
 
     @app.route("/student_profile/<int:id>")
     @login_required
+    @roles_required("school_admin", "super_admin", "teacher", "parent")
     def student_profile(id):
-        student = fetch_one("""
-            SELECT *,
-                   COALESCE(current_status, 'Active') AS status
-            FROM students
-            WHERE id = ?
-        """, (id,))
+        school_id = session.get("school_id")
+        role = session.get("role")
+        user_id = session.get("user_id")
+
+        # =====================================================
+        # STUDENT ACCESS
+        # =====================================================
+        if role == "super_admin":
+            student = fetch_one("""
+                SELECT *,
+                    COALESCE(current_status, 'Active') AS status
+                FROM students
+                WHERE id = ?
+            """, (id,))
+
+        elif role == "parent":
+            student = fetch_one("""
+                SELECT s.*,
+                    COALESCE(s.current_status, 'Active') AS status
+                FROM students s
+                JOIN guardians g ON s.id = g.student_id
+                WHERE s.id = ?
+                AND s.school_id = ?
+                AND g.parent_user_id = ?
+                LIMIT 1
+            """, (id, school_id, user_id))
+
+        else:
+            student = fetch_one("""
+                SELECT *,
+                    COALESCE(current_status, 'Active') AS status
+                FROM students
+                WHERE id = ?
+                AND school_id = ?
+            """, (id, school_id))
 
         if not student:
-            flash("Student not found.", "danger")
+            flash("Student not found or access denied.", "danger")
             return redirect(url_for("students"))
 
-        return render_template("student_profile.html", student=student)
+        # =====================================================
+        # FEE SUMMARY
+        # =====================================================
+        fee_summary = fetch_one("""
+            SELECT
+                COALESCE(SUM(amount), 0) AS total_fees,
+                COALESCE(SUM(paid_amount), 0) AS total_paid,
+                COALESCE(SUM(balance), 0) AS total_balance
+            FROM fees
+            WHERE student_id = ?
+        """, (id,))
 
+        # =====================================================
+        # ATTENDANCE SUMMARY
+        # =====================================================
+        attendance_summary = fetch_one("""
+            SELECT
+                COUNT(*) AS total_records,
+                SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END) AS present_count,
+                SUM(CASE WHEN status = 'Absent' THEN 1 ELSE 0 END) AS absent_count,
+                SUM(CASE WHEN status = 'Late' THEN 1 ELSE 0 END) AS late_count,
+                SUM(CASE WHEN status = 'Excused' THEN 1 ELSE 0 END) AS excused_count
+            FROM attendance
+            WHERE student_id = ?
+        """, (id,))
+
+        total_attendance = attendance_summary["total_records"] or 0
+        present_count = attendance_summary["present_count"] or 0
+
+        attendance_rate = (
+            round((present_count / total_attendance) * 100, 1)
+            if total_attendance > 0
+            else 0
+        )
+
+        # =====================================================
+        # ACADEMIC SUMMARY
+        # =====================================================
+        academic_summary = fetch_one("""
+            SELECT
+                COUNT(*) AS result_count,
+                COUNT(DISTINCT subject) AS subject_count,
+                COALESCE(AVG(marks), 0) AS average_marks
+            FROM results
+            WHERE student_id = ?
+        """, (id,))
+
+        recent_results = fetch_all("""
+            SELECT subject, term, marks, grade
+            FROM results
+            WHERE student_id = ?
+            ORDER BY id DESC
+            LIMIT 8
+        """, (id,))
+
+        fee_records = fetch_all("""
+            SELECT term_name, amount, paid_amount, balance, status, due_date
+            FROM fees
+            WHERE student_id = ?
+            ORDER BY id DESC
+            LIMIT 6
+        """, (id,))
+
+        recent_attendance = fetch_all("""
+            SELECT date, class_name, status
+            FROM attendance
+            WHERE student_id = ?
+            ORDER BY date DESC, id DESC
+            LIMIT 8
+        """, (id,))
+
+        return render_template(
+            "student_profile.html",
+            student=student,
+            fee_summary=fee_summary,
+            attendance_summary=attendance_summary,
+            academic_summary=academic_summary,
+            attendance_rate=attendance_rate,
+            recent_results=recent_results,
+            fee_records=fee_records,
+            recent_attendance=recent_attendance
+        )
 
     @app.route("/edit_student/<int:id>")
     @login_required
