@@ -1201,6 +1201,7 @@ def save_result():
     flash("Result saved successfully.", "success")
     return redirect(url_for("results"))
 
+
 @app.route("/results")
 @login_required
 @roles_required("school_admin", "super_admin", "teacher")
@@ -1209,20 +1210,32 @@ def results():
     role = session.get("role")
     user_id = session.get("user_id")
 
-    current_year = datetime.now().year
-
     class_filter = request.args.get("class_name", "").strip()
     term_filter = request.args.get("term", "").strip()
-    year_filter = request.args.get("academic_year", "").strip()
-    subject_filter = request.args.get("subject", "").strip()
     search = request.args.get("search", "").strip()
 
-    teacher = None
-    teacher_id = None
+    conditions = []
+    params = []
 
-    # =====================================================
-    # TEACHER PROFILE
-    # =====================================================
+    query = """
+        SELECT
+            r.student_id,
+            r.class_name,
+            r.term,
+            s.student_number,
+            s.first_name,
+            s.last_name,
+            COUNT(r.id) AS subject_count,
+            COALESCE(SUM(r.marks), 0) AS total_marks,
+            COALESCE(AVG(r.marks), 0) AS average_marks
+        FROM results r
+        JOIN students s ON r.student_id = s.id
+    """
+
+    if role != "super_admin":
+        conditions.append("r.school_id = ?")
+        params.append(school_id)
+
     if role == "teacher":
         teacher = fetch_one("""
             SELECT id
@@ -1232,40 +1245,7 @@ def results():
             LIMIT 1
         """, (user_id, school_id))
 
-        if teacher:
-            teacher_id = teacher["id"]
-
-    # =====================================================
-    # MAIN RESULTS QUERY
-    # Results are grouped by student, class, term and year.
-    # =====================================================
-    conditions = []
-    params = []
-
-    query = """
-        SELECT
-            r.student_id,
-            r.class_name,
-            r.term,
-            r.academic_year,
-            s.student_number,
-            s.first_name,
-            s.last_name,
-            COUNT(r.id) AS subject_count,
-            COALESCE(SUM(r.marks), 0) AS total_marks,
-            COALESCE(AVG(r.marks), 0) AS average_marks,
-            MAX(r.updated_at) AS last_updated
-        FROM results r
-        JOIN students s
-          ON r.student_id = s.id
-    """
-
-    if role != "super_admin":
-        conditions.append("r.school_id = ?")
-        params.append(school_id)
-
-    if role == "teacher":
-        if not teacher_id:
+        if not teacher:
             conditions.append("1 = 0")
         else:
             conditions.append("""
@@ -1278,7 +1258,7 @@ def results():
                       AND ta.subject = r.subject
                 )
             """)
-            params.append(teacher_id)
+            params.append(teacher["id"])
 
     if class_filter:
         conditions.append("r.class_name = ?")
@@ -1288,28 +1268,16 @@ def results():
         conditions.append("r.term = ?")
         params.append(term_filter)
 
-    if year_filter:
-        conditions.append("CAST(r.academic_year AS TEXT) = ?")
-        params.append(year_filter)
-
-    if subject_filter:
-        conditions.append("r.subject = ?")
-        params.append(subject_filter)
-
     if search:
         conditions.append("""
             (
                 s.first_name LIKE ?
                 OR s.last_name LIKE ?
                 OR s.student_number LIKE ?
-                OR (
-                    s.first_name || ' ' || s.last_name
-                ) LIKE ?
             )
         """)
-
         like = f"%{search}%"
-        params.extend([like, like, like, like])
+        params.extend([like, like, like])
 
     if conditions:
         query += " WHERE " + " AND ".join(conditions)
@@ -1319,389 +1287,53 @@ def results():
             r.student_id,
             r.class_name,
             r.term,
-            r.academic_year,
             s.student_number,
             s.first_name,
             s.last_name
         ORDER BY
-            r.academic_year DESC,
-            r.term,
             r.class_name,
-            average_marks DESC,
             s.last_name,
-            s.first_name
+            s.first_name,
+            r.term
     """
 
-    raw_result_groups = fetch_all(query, tuple(params))
+    result_groups = fetch_all(query, tuple(params))
 
-    # Convert database rows into editable dictionaries.
-    result_groups = []
-
-    for row in raw_result_groups:
-        result_groups.append({
-            "student_id": row["student_id"],
-            "class_name": row["class_name"],
-            "term": row["term"],
-            "academic_year": row["academic_year"],
-            "student_number": row["student_number"],
-            "first_name": row["first_name"],
-            "last_name": row["last_name"],
-            "subject_count": row["subject_count"] or 0,
-            "total_marks": float(row["total_marks"] or 0),
-            "average_marks": float(row["average_marks"] or 0),
-            "last_updated": row["last_updated"],
-            "position": None,
-            "completion_percentage": 0,
-            "performance_label": "",
-            "performance_class": ""
-        })
-
-    # =====================================================
-    # CALCULATE POSITIONS
-    # Position is calculated separately for each:
-    # class + term + academic year.
-    # =====================================================
-    grouped_students = {}
-
-    for result in result_groups:
-        group_key = (
-            result["class_name"],
-            result["term"],
-            result["academic_year"]
-        )
-
-        grouped_students.setdefault(group_key, []).append(result)
-
-    for group_results in grouped_students.values():
-        sorted_results = sorted(
-            group_results,
-            key=lambda item: item["average_marks"],
-            reverse=True
-        )
-
-        previous_average = None
-        previous_position = 0
-
-        for index, result in enumerate(sorted_results, start=1):
-            rounded_average = round(result["average_marks"], 2)
-
-            if rounded_average == previous_average:
-                result["position"] = previous_position
-            else:
-                result["position"] = index
-                previous_position = index
-                previous_average = rounded_average
-
-    # =====================================================
-    # COMPLETION PERCENTAGES
-    # Uses the highest subject count in each class/term/year
-    # as the expected result count for that group.
-    # =====================================================
-    for group_results in grouped_students.values():
-        expected_subject_count = max(
-            [
-                result["subject_count"]
-                for result in group_results
-            ],
-            default=0
-        )
-
-        for result in group_results:
-            if expected_subject_count:
-                result["completion_percentage"] = round(
-                    (
-                        result["subject_count"]
-                        / expected_subject_count
-                    ) * 100
-                )
-            else:
-                result["completion_percentage"] = 0
-
-    # =====================================================
-    # PERFORMANCE LABELS
-    # =====================================================
-    for result in result_groups:
-        average = result["average_marks"]
-
-        if average >= 80:
-            result["performance_label"] = "Excellent"
-            result["performance_class"] = "excellent"
-
-        elif average >= 70:
-            result["performance_label"] = "Very Good"
-            result["performance_class"] = "very-good"
-
-        elif average >= 60:
-            result["performance_label"] = "Good"
-            result["performance_class"] = "good"
-
-        elif average >= 50:
-            result["performance_label"] = "Pass"
-            result["performance_class"] = "pass"
-
-        else:
-            result["performance_label"] = "Needs Support"
-            result["performance_class"] = "support"
-
-    # =====================================================
-    # SUMMARY STATISTICS
-    # =====================================================
-    student_count = len(result_groups)
-
-    averages = [
-        result["average_marks"]
-        for result in result_groups
-    ]
-
-    overall_average = (
-        round(sum(averages) / len(averages), 1)
-        if averages
-        else 0
-    )
-
-    top_average = (
-        round(max(averages), 1)
-        if averages
-        else 0
-    )
-
-    students_needing_support = sum(
-        1
-        for result in result_groups
-        if result["average_marks"] < 50
-    )
-
-    complete_results = sum(
-        1
-        for result in result_groups
-        if result["completion_percentage"] >= 100
-    )
-
-    incomplete_results = sum(
-        1
-        for result in result_groups
-        if result["completion_percentage"] < 100
-    )
-
-    results_summary = {
-        "student_count": student_count,
-        "overall_average": overall_average,
-        "top_average": top_average,
-        "students_needing_support": students_needing_support,
-        "complete_results": complete_results,
-        "incomplete_results": incomplete_results
-    }
-
-    # =====================================================
-    # TOP PERFORMERS
-    # =====================================================
-    top_performers = sorted(
-        result_groups,
-        key=lambda item: item["average_marks"],
-        reverse=True
-    )[:5]
-
-    # =====================================================
-    # SUBJECT PERFORMANCE
-    # =====================================================
-    subject_conditions = []
-    subject_params = []
-
-    subject_query = """
-        SELECT
-            r.subject,
-            COUNT(r.id) AS result_count,
-            COALESCE(AVG(r.marks), 0) AS average_marks,
-            COALESCE(MAX(r.marks), 0) AS highest_mark,
-            COALESCE(MIN(r.marks), 0) AS lowest_mark
-        FROM results r
-    """
-
-    if role != "super_admin":
-        subject_conditions.append("r.school_id = ?")
-        subject_params.append(school_id)
-
-    if role == "teacher":
-        if not teacher_id:
-            subject_conditions.append("1 = 0")
-        else:
-            subject_conditions.append("""
-                EXISTS (
-                    SELECT 1
-                    FROM teacher_assignments ta
-                    WHERE ta.teacher_id = ?
-                      AND ta.school_id = r.school_id
-                      AND ta.class_name = r.class_name
-                      AND ta.subject = r.subject
-                )
-            """)
-            subject_params.append(teacher_id)
-
-    if class_filter:
-        subject_conditions.append("r.class_name = ?")
-        subject_params.append(class_filter)
-
-    if term_filter:
-        subject_conditions.append("r.term = ?")
-        subject_params.append(term_filter)
-
-    if year_filter:
-        subject_conditions.append(
-            "CAST(r.academic_year AS TEXT) = ?"
-        )
-        subject_params.append(year_filter)
-
-    if subject_filter:
-        subject_conditions.append("r.subject = ?")
-        subject_params.append(subject_filter)
-
-    if subject_conditions:
-        subject_query += (
-            " WHERE " + " AND ".join(subject_conditions)
-        )
-
-    subject_query += """
-        GROUP BY r.subject
-        ORDER BY average_marks DESC, r.subject
-    """
-
-    subject_performance = fetch_all(
-        subject_query,
-        tuple(subject_params)
-    )
-
-    # =====================================================
-    # CLASS OPTIONS
-    # =====================================================
     class_conditions = []
     class_params = []
 
-    class_query = """
-        SELECT DISTINCT r.class_name
-        FROM results r
-    """
-
     if role != "super_admin":
-        class_conditions.append("r.school_id = ?")
+        class_conditions.append("school_id = ?")
         class_params.append(school_id)
 
-    if role == "teacher":
-        if not teacher_id:
-            class_conditions.append("1 = 0")
-        else:
-            class_conditions.append("""
-                EXISTS (
-                    SELECT 1
-                    FROM teacher_assignments ta
-                    WHERE ta.teacher_id = ?
-                      AND ta.school_id = r.school_id
-                      AND ta.class_name = r.class_name
-                )
-            """)
-            class_params.append(teacher_id)
-
-    class_conditions.append("r.class_name IS NOT NULL")
-    class_conditions.append("TRIM(r.class_name) != ''")
-
-    class_query += (
-        " WHERE " + " AND ".join(class_conditions)
-    )
-
-    class_query += " ORDER BY r.class_name"
-
-    classes = fetch_all(
-        class_query,
-        tuple(class_params)
-    )
-
-    # =====================================================
-    # SUBJECT OPTIONS
-    # =====================================================
-    option_subject_conditions = []
-    option_subject_params = []
-
-    subjects_query = """
-        SELECT DISTINCT r.subject
-        FROM results r
-    """
-
-    if role != "super_admin":
-        option_subject_conditions.append("r.school_id = ?")
-        option_subject_params.append(school_id)
-
-    if role == "teacher":
-        if not teacher_id:
-            option_subject_conditions.append("1 = 0")
-        else:
-            option_subject_conditions.append("""
-                EXISTS (
-                    SELECT 1
-                    FROM teacher_assignments ta
-                    WHERE ta.teacher_id = ?
-                      AND ta.school_id = r.school_id
-                      AND ta.class_name = r.class_name
-                      AND ta.subject = r.subject
-                )
-            """)
-            option_subject_params.append(teacher_id)
-
-    option_subject_conditions.append("r.subject IS NOT NULL")
-    option_subject_conditions.append("TRIM(r.subject) != ''")
-
-    subjects_query += (
-        " WHERE " + " AND ".join(option_subject_conditions)
-    )
-
-    subjects_query += " ORDER BY r.subject"
-
-    subjects = fetch_all(
-        subjects_query,
-        tuple(option_subject_params)
-    )
-
-    # =====================================================
-    # ACADEMIC YEAR OPTIONS
-    # =====================================================
-    year_conditions = []
-    year_params = []
-
-    years_query = """
-        SELECT DISTINCT academic_year
+    class_query = """
+        SELECT DISTINCT class_name
         FROM results
     """
 
-    if role != "super_admin":
-        year_conditions.append("school_id = ?")
-        year_params.append(school_id)
+    if class_conditions:
+        class_query += " WHERE " + " AND ".join(class_conditions)
+        class_query += """
+            AND class_name IS NOT NULL
+            AND TRIM(class_name) != ''
+        """
+    else:
+        class_query += """
+            WHERE class_name IS NOT NULL
+              AND TRIM(class_name) != ''
+        """
 
-    year_conditions.append("academic_year IS NOT NULL")
+    class_query += " ORDER BY class_name"
 
-    years_query += (
-        " WHERE " + " AND ".join(year_conditions)
-    )
-
-    years_query += " ORDER BY academic_year DESC"
-
-    academic_years = fetch_all(
-        years_query,
-        tuple(year_params)
-    )
+    classes = fetch_all(class_query, tuple(class_params))
 
     return render_template(
         "results.html",
         result_groups=result_groups,
         classes=classes,
-        subjects=subjects,
-        academic_years=academic_years,
-        subject_performance=subject_performance,
-        top_performers=top_performers,
-        results_summary=results_summary,
         class_filter=class_filter,
         term_filter=term_filter,
-        year_filter=year_filter,
-        subject_filter=subject_filter,
-        search=search,
-        current_year=current_year
+        search=search
     )
 
 # =========================================================

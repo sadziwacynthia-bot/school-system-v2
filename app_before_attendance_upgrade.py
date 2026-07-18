@@ -1201,6 +1201,7 @@ def save_result():
     flash("Result saved successfully.", "success")
     return redirect(url_for("results"))
 
+
 @app.route("/results")
 @login_required
 @roles_required("school_admin", "super_admin", "teacher")
@@ -1209,20 +1210,32 @@ def results():
     role = session.get("role")
     user_id = session.get("user_id")
 
-    current_year = datetime.now().year
-
     class_filter = request.args.get("class_name", "").strip()
     term_filter = request.args.get("term", "").strip()
-    year_filter = request.args.get("academic_year", "").strip()
-    subject_filter = request.args.get("subject", "").strip()
     search = request.args.get("search", "").strip()
 
-    teacher = None
-    teacher_id = None
+    conditions = []
+    params = []
 
-    # =====================================================
-    # TEACHER PROFILE
-    # =====================================================
+    query = """
+        SELECT
+            r.student_id,
+            r.class_name,
+            r.term,
+            s.student_number,
+            s.first_name,
+            s.last_name,
+            COUNT(r.id) AS subject_count,
+            COALESCE(SUM(r.marks), 0) AS total_marks,
+            COALESCE(AVG(r.marks), 0) AS average_marks
+        FROM results r
+        JOIN students s ON r.student_id = s.id
+    """
+
+    if role != "super_admin":
+        conditions.append("r.school_id = ?")
+        params.append(school_id)
+
     if role == "teacher":
         teacher = fetch_one("""
             SELECT id
@@ -1232,40 +1245,7 @@ def results():
             LIMIT 1
         """, (user_id, school_id))
 
-        if teacher:
-            teacher_id = teacher["id"]
-
-    # =====================================================
-    # MAIN RESULTS QUERY
-    # Results are grouped by student, class, term and year.
-    # =====================================================
-    conditions = []
-    params = []
-
-    query = """
-        SELECT
-            r.student_id,
-            r.class_name,
-            r.term,
-            r.academic_year,
-            s.student_number,
-            s.first_name,
-            s.last_name,
-            COUNT(r.id) AS subject_count,
-            COALESCE(SUM(r.marks), 0) AS total_marks,
-            COALESCE(AVG(r.marks), 0) AS average_marks,
-            MAX(r.updated_at) AS last_updated
-        FROM results r
-        JOIN students s
-          ON r.student_id = s.id
-    """
-
-    if role != "super_admin":
-        conditions.append("r.school_id = ?")
-        params.append(school_id)
-
-    if role == "teacher":
-        if not teacher_id:
+        if not teacher:
             conditions.append("1 = 0")
         else:
             conditions.append("""
@@ -1278,7 +1258,7 @@ def results():
                       AND ta.subject = r.subject
                 )
             """)
-            params.append(teacher_id)
+            params.append(teacher["id"])
 
     if class_filter:
         conditions.append("r.class_name = ?")
@@ -1288,28 +1268,16 @@ def results():
         conditions.append("r.term = ?")
         params.append(term_filter)
 
-    if year_filter:
-        conditions.append("CAST(r.academic_year AS TEXT) = ?")
-        params.append(year_filter)
-
-    if subject_filter:
-        conditions.append("r.subject = ?")
-        params.append(subject_filter)
-
     if search:
         conditions.append("""
             (
                 s.first_name LIKE ?
                 OR s.last_name LIKE ?
                 OR s.student_number LIKE ?
-                OR (
-                    s.first_name || ' ' || s.last_name
-                ) LIKE ?
             )
         """)
-
         like = f"%{search}%"
-        params.extend([like, like, like, like])
+        params.extend([like, like, like])
 
     if conditions:
         query += " WHERE " + " AND ".join(conditions)
@@ -1319,394 +1287,55 @@ def results():
             r.student_id,
             r.class_name,
             r.term,
-            r.academic_year,
             s.student_number,
             s.first_name,
             s.last_name
         ORDER BY
-            r.academic_year DESC,
-            r.term,
             r.class_name,
-            average_marks DESC,
             s.last_name,
-            s.first_name
+            s.first_name,
+            r.term
     """
 
-    raw_result_groups = fetch_all(query, tuple(params))
+    result_groups = fetch_all(query, tuple(params))
 
-    # Convert database rows into editable dictionaries.
-    result_groups = []
-
-    for row in raw_result_groups:
-        result_groups.append({
-            "student_id": row["student_id"],
-            "class_name": row["class_name"],
-            "term": row["term"],
-            "academic_year": row["academic_year"],
-            "student_number": row["student_number"],
-            "first_name": row["first_name"],
-            "last_name": row["last_name"],
-            "subject_count": row["subject_count"] or 0,
-            "total_marks": float(row["total_marks"] or 0),
-            "average_marks": float(row["average_marks"] or 0),
-            "last_updated": row["last_updated"],
-            "position": None,
-            "completion_percentage": 0,
-            "performance_label": "",
-            "performance_class": ""
-        })
-
-    # =====================================================
-    # CALCULATE POSITIONS
-    # Position is calculated separately for each:
-    # class + term + academic year.
-    # =====================================================
-    grouped_students = {}
-
-    for result in result_groups:
-        group_key = (
-            result["class_name"],
-            result["term"],
-            result["academic_year"]
-        )
-
-        grouped_students.setdefault(group_key, []).append(result)
-
-    for group_results in grouped_students.values():
-        sorted_results = sorted(
-            group_results,
-            key=lambda item: item["average_marks"],
-            reverse=True
-        )
-
-        previous_average = None
-        previous_position = 0
-
-        for index, result in enumerate(sorted_results, start=1):
-            rounded_average = round(result["average_marks"], 2)
-
-            if rounded_average == previous_average:
-                result["position"] = previous_position
-            else:
-                result["position"] = index
-                previous_position = index
-                previous_average = rounded_average
-
-    # =====================================================
-    # COMPLETION PERCENTAGES
-    # Uses the highest subject count in each class/term/year
-    # as the expected result count for that group.
-    # =====================================================
-    for group_results in grouped_students.values():
-        expected_subject_count = max(
-            [
-                result["subject_count"]
-                for result in group_results
-            ],
-            default=0
-        )
-
-        for result in group_results:
-            if expected_subject_count:
-                result["completion_percentage"] = round(
-                    (
-                        result["subject_count"]
-                        / expected_subject_count
-                    ) * 100
-                )
-            else:
-                result["completion_percentage"] = 0
-
-    # =====================================================
-    # PERFORMANCE LABELS
-    # =====================================================
-    for result in result_groups:
-        average = result["average_marks"]
-
-        if average >= 80:
-            result["performance_label"] = "Excellent"
-            result["performance_class"] = "excellent"
-
-        elif average >= 70:
-            result["performance_label"] = "Very Good"
-            result["performance_class"] = "very-good"
-
-        elif average >= 60:
-            result["performance_label"] = "Good"
-            result["performance_class"] = "good"
-
-        elif average >= 50:
-            result["performance_label"] = "Pass"
-            result["performance_class"] = "pass"
-
-        else:
-            result["performance_label"] = "Needs Support"
-            result["performance_class"] = "support"
-
-    # =====================================================
-    # SUMMARY STATISTICS
-    # =====================================================
-    student_count = len(result_groups)
-
-    averages = [
-        result["average_marks"]
-        for result in result_groups
-    ]
-
-    overall_average = (
-        round(sum(averages) / len(averages), 1)
-        if averages
-        else 0
-    )
-
-    top_average = (
-        round(max(averages), 1)
-        if averages
-        else 0
-    )
-
-    students_needing_support = sum(
-        1
-        for result in result_groups
-        if result["average_marks"] < 50
-    )
-
-    complete_results = sum(
-        1
-        for result in result_groups
-        if result["completion_percentage"] >= 100
-    )
-
-    incomplete_results = sum(
-        1
-        for result in result_groups
-        if result["completion_percentage"] < 100
-    )
-
-    results_summary = {
-        "student_count": student_count,
-        "overall_average": overall_average,
-        "top_average": top_average,
-        "students_needing_support": students_needing_support,
-        "complete_results": complete_results,
-        "incomplete_results": incomplete_results
-    }
-
-    # =====================================================
-    # TOP PERFORMERS
-    # =====================================================
-    top_performers = sorted(
-        result_groups,
-        key=lambda item: item["average_marks"],
-        reverse=True
-    )[:5]
-
-    # =====================================================
-    # SUBJECT PERFORMANCE
-    # =====================================================
-    subject_conditions = []
-    subject_params = []
-
-    subject_query = """
-        SELECT
-            r.subject,
-            COUNT(r.id) AS result_count,
-            COALESCE(AVG(r.marks), 0) AS average_marks,
-            COALESCE(MAX(r.marks), 0) AS highest_mark,
-            COALESCE(MIN(r.marks), 0) AS lowest_mark
-        FROM results r
-    """
-
-    if role != "super_admin":
-        subject_conditions.append("r.school_id = ?")
-        subject_params.append(school_id)
-
-    if role == "teacher":
-        if not teacher_id:
-            subject_conditions.append("1 = 0")
-        else:
-            subject_conditions.append("""
-                EXISTS (
-                    SELECT 1
-                    FROM teacher_assignments ta
-                    WHERE ta.teacher_id = ?
-                      AND ta.school_id = r.school_id
-                      AND ta.class_name = r.class_name
-                      AND ta.subject = r.subject
-                )
-            """)
-            subject_params.append(teacher_id)
-
-    if class_filter:
-        subject_conditions.append("r.class_name = ?")
-        subject_params.append(class_filter)
-
-    if term_filter:
-        subject_conditions.append("r.term = ?")
-        subject_params.append(term_filter)
-
-    if year_filter:
-        subject_conditions.append(
-            "CAST(r.academic_year AS TEXT) = ?"
-        )
-        subject_params.append(year_filter)
-
-    if subject_filter:
-        subject_conditions.append("r.subject = ?")
-        subject_params.append(subject_filter)
-
-    if subject_conditions:
-        subject_query += (
-            " WHERE " + " AND ".join(subject_conditions)
-        )
-
-    subject_query += """
-        GROUP BY r.subject
-        ORDER BY average_marks DESC, r.subject
-    """
-
-    subject_performance = fetch_all(
-        subject_query,
-        tuple(subject_params)
-    )
-
-    # =====================================================
-    # CLASS OPTIONS
-    # =====================================================
     class_conditions = []
     class_params = []
 
-    class_query = """
-        SELECT DISTINCT r.class_name
-        FROM results r
-    """
-
     if role != "super_admin":
-        class_conditions.append("r.school_id = ?")
+        class_conditions.append("school_id = ?")
         class_params.append(school_id)
 
-    if role == "teacher":
-        if not teacher_id:
-            class_conditions.append("1 = 0")
-        else:
-            class_conditions.append("""
-                EXISTS (
-                    SELECT 1
-                    FROM teacher_assignments ta
-                    WHERE ta.teacher_id = ?
-                      AND ta.school_id = r.school_id
-                      AND ta.class_name = r.class_name
-                )
-            """)
-            class_params.append(teacher_id)
-
-    class_conditions.append("r.class_name IS NOT NULL")
-    class_conditions.append("TRIM(r.class_name) != ''")
-
-    class_query += (
-        " WHERE " + " AND ".join(class_conditions)
-    )
-
-    class_query += " ORDER BY r.class_name"
-
-    classes = fetch_all(
-        class_query,
-        tuple(class_params)
-    )
-
-    # =====================================================
-    # SUBJECT OPTIONS
-    # =====================================================
-    option_subject_conditions = []
-    option_subject_params = []
-
-    subjects_query = """
-        SELECT DISTINCT r.subject
-        FROM results r
-    """
-
-    if role != "super_admin":
-        option_subject_conditions.append("r.school_id = ?")
-        option_subject_params.append(school_id)
-
-    if role == "teacher":
-        if not teacher_id:
-            option_subject_conditions.append("1 = 0")
-        else:
-            option_subject_conditions.append("""
-                EXISTS (
-                    SELECT 1
-                    FROM teacher_assignments ta
-                    WHERE ta.teacher_id = ?
-                      AND ta.school_id = r.school_id
-                      AND ta.class_name = r.class_name
-                      AND ta.subject = r.subject
-                )
-            """)
-            option_subject_params.append(teacher_id)
-
-    option_subject_conditions.append("r.subject IS NOT NULL")
-    option_subject_conditions.append("TRIM(r.subject) != ''")
-
-    subjects_query += (
-        " WHERE " + " AND ".join(option_subject_conditions)
-    )
-
-    subjects_query += " ORDER BY r.subject"
-
-    subjects = fetch_all(
-        subjects_query,
-        tuple(option_subject_params)
-    )
-
-    # =====================================================
-    # ACADEMIC YEAR OPTIONS
-    # =====================================================
-    year_conditions = []
-    year_params = []
-
-    years_query = """
-        SELECT DISTINCT academic_year
+    class_query = """
+        SELECT DISTINCT class_name
         FROM results
     """
 
-    if role != "super_admin":
-        year_conditions.append("school_id = ?")
-        year_params.append(school_id)
+    if class_conditions:
+        class_query += " WHERE " + " AND ".join(class_conditions)
+        class_query += """
+            AND class_name IS NOT NULL
+            AND TRIM(class_name) != ''
+        """
+    else:
+        class_query += """
+            WHERE class_name IS NOT NULL
+              AND TRIM(class_name) != ''
+        """
 
-    year_conditions.append("academic_year IS NOT NULL")
+    class_query += " ORDER BY class_name"
 
-    years_query += (
-        " WHERE " + " AND ".join(year_conditions)
-    )
-
-    years_query += " ORDER BY academic_year DESC"
-
-    academic_years = fetch_all(
-        years_query,
-        tuple(year_params)
-    )
+    classes = fetch_all(class_query, tuple(class_params))
 
     return render_template(
         "results.html",
         result_groups=result_groups,
         classes=classes,
-        subjects=subjects,
-        academic_years=academic_years,
-        subject_performance=subject_performance,
-        top_performers=top_performers,
-        results_summary=results_summary,
         class_filter=class_filter,
         term_filter=term_filter,
-        year_filter=year_filter,
-        subject_filter=subject_filter,
-        search=search,
-        current_year=current_year
+        search=search
     )
 
-# =========================================================
-# ATTENDANCE
-# =========================================================
 # =========================================================
 # ATTENDANCE
 # =========================================================
@@ -1718,8 +1347,6 @@ def attendance():
     role = session.get("role")
     user_id = session.get("user_id")
 
-    today = datetime.now().strftime("%Y-%m-%d")
-
     selected_class = (
         request.form.get("class_name", "").strip()
         if request.method == "POST"
@@ -1729,28 +1356,15 @@ def attendance():
     attendance_date = (
         request.form.get("attendance_date", "").strip()
         if request.method == "POST"
-        else request.args.get("date", today).strip()
+        else datetime.now().strftime("%Y-%m-%d")
     )
-
-    if not attendance_date:
-        attendance_date = today
 
     students_list = []
     class_options = []
     teacher = None
 
-    # Name saved with the attendance record.
-    marked_by_name = (
-        session.get("full_name")
-        or session.get("name")
-        or session.get("username")
-        or session.get("email")
-        or f"User {user_id}"
-    )
-
     # =====================================================
     # TEACHER VIEW
-    # Teachers only see classes assigned to them.
     # =====================================================
     if role == "teacher":
         teacher = fetch_one("""
@@ -1762,30 +1376,21 @@ def attendance():
         """, (user_id, school_id))
 
         if not teacher:
-            flash(
-                "No teacher profile is linked to this account.",
-                "danger"
-            )
+            flash("No teacher profile is linked to this account.", "danger")
 
             return render_template(
                 "attendance.html",
                 class_options=[],
                 selected_class="",
                 students=[],
-                attendance_date=attendance_date,
-                today=today,
-                existing_attendance={},
-                register_summary={},
-                recent_registers=[]
+                today=attendance_date
             )
 
         class_teacher_rows = fetch_all("""
-            SELECT DISTINCT class_name
+            SELECT class_name
             FROM school_classes
             WHERE class_teacher_id = ?
               AND school_id = ?
-              AND class_name IS NOT NULL
-              AND TRIM(class_name) != ''
             ORDER BY class_name
         """, (teacher["id"], school_id))
 
@@ -1820,7 +1425,6 @@ def attendance():
         class_options = [
             row["class_name"]
             for row in class_rows
-            if row["class_name"]
         ] or CLASS_OPTIONS
 
     # =====================================================
@@ -1839,22 +1443,7 @@ def attendance():
         class_options = [
             row["class_name"]
             for row in class_rows
-            if row["class_name"]
         ] or CLASS_OPTIONS
-
-    # =====================================================
-    # VALIDATE SELECTED CLASS
-    # =====================================================
-    if (
-        selected_class
-        and role != "super_admin"
-        and selected_class not in class_options
-    ):
-        flash(
-            "You do not have permission to access that class.",
-            "danger"
-        )
-        selected_class = ""
 
     # =====================================================
     # LOAD ACTIVE STUDENTS
@@ -1879,7 +1468,7 @@ def attendance():
             """, (school_id, selected_class))
 
     # =====================================================
-    # SAVE OR UPDATE ATTENDANCE
+    # SAVE ATTENDANCE
     # =====================================================
     if request.method == "POST":
         if not selected_class:
@@ -1889,10 +1478,7 @@ def attendance():
         if not attendance_date:
             flash("Attendance date is required.", "danger")
             return redirect(
-                url_for(
-                    "attendance",
-                    class_name=selected_class
-                )
+                url_for("attendance", class_name=selected_class)
             )
 
         if not students_list:
@@ -1901,11 +1487,7 @@ def attendance():
                 "warning"
             )
             return redirect(
-                url_for(
-                    "attendance",
-                    class_name=selected_class,
-                    date=attendance_date
-                )
+                url_for("attendance", class_name=selected_class)
             )
 
         allowed_statuses = {
@@ -1915,13 +1497,8 @@ def attendance():
             "Excused"
         }
 
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
         conn = get_db()
         cursor = conn.cursor()
-
-        inserted_count = 0
-        updated_count = 0
 
         try:
             for student in students_list:
@@ -1935,78 +1512,63 @@ def attendance():
                 if status not in allowed_statuses:
                     status = "Present"
 
+                # Prevent duplicate attendance for the same student/date.
+                if role == "super_admin":
+                    cursor.execute(
+                        convert_query("""
+                            DELETE FROM attendance
+                            WHERE student_id = ?
+                              AND class_name = ?
+                              AND date = ?
+                        """),
+                        (
+                            student_id,
+                            selected_class,
+                            attendance_date
+                        )
+                    )
+                else:
+                    cursor.execute(
+                        convert_query("""
+                            DELETE FROM attendance
+                            WHERE school_id = ?
+                              AND student_id = ?
+                              AND class_name = ?
+                              AND date = ?
+                        """),
+                        (
+                            school_id,
+                            student_id,
+                            selected_class,
+                            attendance_date
+                        )
+                    )
+
                 record_school_id = (
                     student["school_id"]
                     if role == "super_admin"
                     else school_id
                 )
 
-                existing_record = fetch_one("""
-                    SELECT id, marked_at
-                    FROM attendance
-                    WHERE school_id = ?
-                      AND student_id = ?
-                      AND class_name = ?
-                      AND date = ?
-                    LIMIT 1
-                """, (
-                    record_school_id,
-                    student_id,
-                    selected_class,
-                    attendance_date
-                ))
-
-                if existing_record:
-                    cursor.execute(
-                        convert_query("""
-                            UPDATE attendance
-                            SET status = ?,
-                                marked_by_user_id = ?,
-                                marked_by_name = ?,
-                                updated_at = ?
-                            WHERE id = ?
-                        """),
-                        (
-                            status,
-                            user_id,
-                            marked_by_name,
-                            timestamp,
-                            existing_record["id"]
-                        )
-                    )
-
-                    updated_count += 1
-
-                else:
-                    cursor.execute(
-                        convert_query("""
-                            INSERT INTO attendance (
-                                school_id,
-                                student_id,
-                                class_name,
-                                date,
-                                status,
-                                marked_by_user_id,
-                                marked_by_name,
-                                marked_at,
-                                updated_at
-                            )
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """),
-                        (
-                            record_school_id,
+                cursor.execute(
+                    convert_query("""
+                        INSERT INTO attendance (
+                            school_id,
                             student_id,
-                            selected_class,
-                            attendance_date,
-                            status,
-                            user_id,
-                            marked_by_name,
-                            timestamp,
-                            timestamp
+                            class_name,
+                            date,
+                            status
                         )
+                        VALUES (?, ?, ?, ?, ?)
+                    """),
+                    (
+                        record_school_id,
+                        student_id,
+                        selected_class,
+                        attendance_date,
+                        status
                     )
-
-                    inserted_count += 1
+                )
 
             conn.commit()
 
@@ -2014,41 +1576,13 @@ def attendance():
                 "Recorded attendance",
                 "attendance",
                 None,
-                (
-                    f"{selected_class} attendance for "
-                    f"{attendance_date}. "
-                    f"New: {inserted_count}, "
-                    f"Updated: {updated_count}"
-                )
+                f"{selected_class} attendance for {attendance_date}"
             )
 
-            if inserted_count and updated_count:
-                flash(
-                    (
-                        f"Attendance saved successfully. "
-                        f"{inserted_count} new records and "
-                        f"{updated_count} updated records."
-                    ),
-                    "success"
-                )
-
-            elif updated_count:
-                flash(
-                    (
-                        f"Attendance for {selected_class} on "
-                        f"{attendance_date} was updated successfully."
-                    ),
-                    "success"
-                )
-
-            else:
-                flash(
-                    (
-                        f"Attendance for {selected_class} on "
-                        f"{attendance_date} was saved successfully."
-                    ),
-                    "success"
-                )
+            flash(
+                f"Attendance for {selected_class} was saved successfully.",
+                "success"
+            )
 
             return redirect(
                 url_for(
@@ -2071,15 +1605,12 @@ def attendance():
             conn.close()
 
     # =====================================================
-    # LOAD EXISTING ATTENDANCE FOR SELECTED DATE
+    # LOAD EXISTING ATTENDANCE
     # =====================================================
     existing_attendance = {}
 
     if selected_class and students_list:
-        attendance_params = [
-            selected_class,
-            attendance_date
-        ]
+        attendance_params = [selected_class, attendance_date]
 
         attendance_query = """
             SELECT student_id, status
@@ -2102,164 +1633,117 @@ def attendance():
             for row in attendance_rows
         }
 
-    # =====================================================
-    # SELECTED REGISTER SUMMARY
-    # =====================================================
-    register_summary = {
-        "total_students": len(students_list),
-        "marked_count": 0,
-        "present_count": 0,
-        "absent_count": 0,
-        "late_count": 0,
-        "excused_count": 0,
-        "attendance_percentage": 0,
-        "marked_by_name": None,
-        "marked_at": None,
-        "updated_at": None,
-        "completion_status": "Not Marked"
-    }
-
-    if selected_class:
-        summary_params = [
-            selected_class,
-            attendance_date
-        ]
-
-        summary_query = """
-            SELECT
-                COUNT(*) AS marked_count,
-                SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END)
-                    AS present_count,
-                SUM(CASE WHEN status = 'Absent' THEN 1 ELSE 0 END)
-                    AS absent_count,
-                SUM(CASE WHEN status = 'Late' THEN 1 ELSE 0 END)
-                    AS late_count,
-                SUM(CASE WHEN status = 'Excused' THEN 1 ELSE 0 END)
-                    AS excused_count,
-                MAX(marked_by_name) AS marked_by_name,
-                MIN(marked_at) AS marked_at,
-                MAX(updated_at) AS updated_at
-            FROM attendance
-            WHERE class_name = ?
-              AND date = ?
-        """
-
-        if role != "super_admin":
-            summary_query += " AND school_id = ?"
-            summary_params.append(school_id)
-
-        summary_row = fetch_one(
-            summary_query,
-            tuple(summary_params)
-        )
-
-        if summary_row:
-            marked_count = summary_row["marked_count"] or 0
-            present_count = summary_row["present_count"] or 0
-            absent_count = summary_row["absent_count"] or 0
-            late_count = summary_row["late_count"] or 0
-            excused_count = summary_row["excused_count"] or 0
-            total_students = len(students_list)
-
-            attendance_percentage = 0
-
-            if marked_count:
-                attendance_percentage = round(
-                    (
-                        (present_count + late_count)
-                        / marked_count
-                    ) * 100,
-                    1
-                )
-
-            if marked_count == 0:
-                completion_status = "Not Marked"
-            elif total_students and marked_count < total_students:
-                completion_status = "Partially Marked"
-            else:
-                completion_status = "Complete"
-
-            register_summary = {
-                "total_students": total_students,
-                "marked_count": marked_count,
-                "present_count": present_count,
-                "absent_count": absent_count,
-                "late_count": late_count,
-                "excused_count": excused_count,
-                "attendance_percentage": attendance_percentage,
-                "marked_by_name": summary_row["marked_by_name"],
-                "marked_at": summary_row["marked_at"],
-                "updated_at": summary_row["updated_at"],
-                "completion_status": completion_status
-            }
-
-    # =====================================================
-    # RECENT ATTENDANCE REGISTERS
-    # One row per class and attendance date.
-    # =====================================================
-    recent_params = []
-
-    recent_query = """
-        SELECT
-            class_name,
-            date,
-            COUNT(*) AS marked_count,
-            SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END)
-                AS present_count,
-            SUM(CASE WHEN status = 'Absent' THEN 1 ELSE 0 END)
-                AS absent_count,
-            SUM(CASE WHEN status = 'Late' THEN 1 ELSE 0 END)
-                AS late_count,
-            SUM(CASE WHEN status = 'Excused' THEN 1 ELSE 0 END)
-                AS excused_count,
-            MAX(marked_by_name) AS marked_by_name,
-            MIN(marked_at) AS marked_at,
-            MAX(updated_at) AS updated_at
-        FROM attendance
-        WHERE 1 = 1
-    """
-
-    if role != "super_admin":
-        recent_query += " AND school_id = ?"
-        recent_params.append(school_id)
-
-    if role == "teacher":
-        if class_options:
-            placeholders = ", ".join(
-                ["?"] * len(class_options)
-            )
-
-            recent_query += (
-                f" AND class_name IN ({placeholders})"
-            )
-
-            recent_params.extend(class_options)
-        else:
-            recent_query += " AND 1 = 0"
-
-    recent_query += """
-        GROUP BY class_name, date
-        ORDER BY date DESC, class_name
-        LIMIT 12
-    """
-
-    recent_registers = fetch_all(
-        recent_query,
-        tuple(recent_params)
-    )
-
     return render_template(
         "attendance.html",
         class_options=class_options,
         selected_class=selected_class,
         students=students_list,
-        attendance_date=attendance_date,
-        today=today,
-        existing_attendance=existing_attendance,
-        register_summary=register_summary,
-        recent_registers=recent_registers
+        today=attendance_date,
+        existing_attendance=existing_attendance
     )
- 
+    
+@app.route("/save_attendance", methods=["POST"])
+@login_required
+@roles_required("school_admin", "super_admin", "teacher")
+def save_attendance():
+    school_id = session.get("school_id")
+    role = session.get("role")
+
+    class_name = request.form.get("class_name")
+    date = request.form.get("date")
+    student_ids = request.form.getlist("student_id")
+
+    if not class_name or not date:
+        flash("Class and date are required.", "danger")
+        return redirect(url_for("attendance"))
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    saved_count = 0
+    updated_count = 0
+
+    try:
+        for student_id in student_ids:
+            if role != "super_admin":
+                student = fetch_one(
+                    "SELECT * FROM students WHERE id = ? AND school_id = ?",
+                    (student_id, school_id)
+                )
+                if not student:
+                    continue
+            else:
+                student = fetch_one(
+                    "SELECT * FROM students WHERE id = ?",
+                    (student_id,)
+                )
+                if not student:
+                    continue
+
+                school_id = student["school_id"]
+
+            status = request.form.get(f"status_{student_id}")
+
+            existing = fetch_one("""
+                SELECT id
+                FROM attendance
+                WHERE student_id = ?
+                  AND class_name = ?
+                  AND date = ?
+            """, (student_id, class_name, date))
+
+            if existing:
+                cursor.execute(
+                    convert_query("""
+                        UPDATE attendance
+                        SET status = ?
+                        WHERE id = ?
+                    """),
+                    (status, existing["id"])
+                )
+                updated_count += 1
+            else:
+                cursor.execute(
+                    convert_query("""
+                        INSERT INTO attendance (
+                            school_id, student_id, class_name, date, status
+                        )
+                        VALUES (?, ?, ?, ?, ?)
+                    """),
+                    (
+                        school_id,
+                        student_id,
+                        class_name,
+                        date,
+                        status
+                    )
+                )
+                saved_count += 1
+
+        conn.commit()
+
+        log_audit(
+            "Saved attendance",
+            "attendance",
+            None,
+            f"Saved attendance for {class_name} on {date}. New: {saved_count}, Updated: {updated_count}"
+        )
+
+        if saved_count > 0 and updated_count > 0:
+            flash(f"Attendance saved. New records: {saved_count}, updated records: {updated_count}.", "success")
+        elif updated_count > 0:
+            flash("Attendance was already marked for this class/date, so the records were updated instead of duplicated.", "success")
+        else:
+            flash("Attendance saved successfully.", "success")
+
+    except Exception as e:
+        conn.rollback()
+        flash(f"Error saving attendance: {str(e)}", "danger")
+
+    finally:
+        conn.close()
+
+    return redirect(url_for("attendance", class_name=class_name))
 @app.route("/debug_audit")
 @login_required
 @roles_required("super_admin")

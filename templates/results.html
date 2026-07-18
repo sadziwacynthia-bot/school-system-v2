@@ -4,28 +4,601 @@
 
 {% block content %}
 
-<div class="page-header-card resources-page-header">
-  <div>
-    <span class="page-eyebrow">ACADEMIC RECORDS</span>
-    <h1>Student Results</h1>
-    <p>
-      Review student performance by class and term, enter marks,
-      and print individual result slips.
-    </p>
-  </div>
+<!-- =====================================================
+     PAGE HEADER
+===================================================== -->
 
-  <div class="action-row">
-    <a href="{{ url_for('enter_result') }}" class="premium-btn">
-      ＋ Enter Result
-    </a>
+<div class="page-header-card">
 
-    <a
-      href="{{ url_for('export_results_csv') }}"
-      class="premium-btn premium-btn-light"
-    >
-      Export Results
-    </a>
-  </div>
+    <div>
+        <span class="page-eyebrow">
+            ACADEMIC PERFORMANCE
+        </span>
+
+        <h1>Results Centre</h1>
+
+        <p>
+            Analyse student performance, compare classes,
+            identify top performers and generate professional
+            academic reports.
+        </p>
+    </div>
+
+    <div class="page-header-actions">
+
+        <a
+            href="{{ url_for('enter_result') }}"
+            class="premium-btn"
+        >
+            ➕ Enter Results
+        </a>
+
+        <a
+            href="{{ url_for('export_results_csv') }}"
+            class="premium-btn premium-btn-light"
+        >
+            Export CSV
+        </a>
+
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     FILTERS
+===================================================== -->
+
+<div class="premium-card report-filter-card">
+
+<form
+method="GET"
+action="{{ url_for('results') }}"
+class="report-filter-form results-filter-grid">
+
+<div class="report-filter-field">
+
+<label>Search Student</label>
+
+<input
+type="text"
+name="search"
+placeholder="Name or student number..."
+value="{{ search }}"
+>
+
+</div>
+
+
+<div class="report-filter-field">
+
+<label>Class</label>
+
+<select name="class_name">
+
+<option value="">All Classes</option>
+
+{% for item in classes %}
+
+{% set class_name=item.class_name or item[0] %}
+
+<option
+value="{{ class_name }}"
+{% if class_filter==class_name %}selected{% endif %}
+>
+
+{{ class_name }}
+
+</option>
+
+{% endfor %}
+
+</select>
+
+</div>
+
+
+<div class="report-filter-field">
+
+<label>Academic Year</label>
+
+<select name="academic_year">
+
+<option value="">All Years</option>
+
+{% for year in academic_years %}
+
+{% set y=year.academic_year or year[0] %}
+
+<option
+value="{{ y }}"
+{% if year_filter|string==y|string %}selected{% endif %}
+>
+
+{{ y }}
+
+</option>
+
+{% endfor %}
+
+</select>
+
+</div>
+
+
+<div class="report-filter-field">
+
+<label>Term</label>
+
+<select name="term">
+
+<option value="">All Terms</option>
+
+<option value="Term 1"
+{% if term_filter=="Term 1" %}selected{% endif %}
+>
+
+Term 1
+
+</option>
+
+<option value="Term 2"
+{% if term_filter=="Term 2" %}selected{% endif %}
+>
+
+Term 2
+
+</option>
+
+<option value="Term 3"
+{% if term_filter=="Term 3" %}selected{% endif %}
+>
+
+Term 3
+
+</option>
+
+</select>
+
+</div>
+
+
+<div class="report-filter-field">
+
+<label>Subject</label>
+
+<select name="subject">
+
+<option value="">All Subjects</option>
+
+{% for item in subjects %}
+
+{% set subject=item.subject or item[0] %}
+
+<option
+value="{{ subject }}"
+{% if subject_filter==subject %}selected{% endif %}
+>
+
+{{ subject }}
+
+</option>
+
+{% endfor %}
+
+</select>
+
+</div>
+
+
+<div class="report-filter-actions">
+
+<button
+type="submit"
+class="premium-btn">
+
+Apply Filters
+
+</button>
+
+<a
+href="{{ url_for('results') }}"
+class="premium-btn premium-btn-light">
+
+Clear
+
+</a>
+
+</div>
+
+</form>
+
+</div>
+
+
+
+<!-- =====================================================
+     SUMMARY CARDS
+===================================================== -->
+
+<div class="report-summary-grid">
+
+
+
+<div class="report-summary-card">
+
+<div class="summary-icon summary-blue">
+🎓
+</div>
+
+<div>
+
+<span>
+
+Students
+
+</span>
+
+<strong>
+
+{{ results_summary.student_count }}
+
+</strong>
+
+</div>
+
+</div>
+
+
+
+<div class="report-summary-card">
+
+<div class="summary-icon summary-green">
+
+📊
+
+</div>
+
+<div>
+
+<span>
+
+Overall Average
+
+</span>
+
+<strong>
+
+{{ results_summary.overall_average }}%
+
+</strong>
+
+</div>
+
+</div>
+
+
+
+<div class="report-summary-card">
+
+<div class="summary-icon summary-purple">
+
+🥇
+
+</div>
+
+<div>
+
+<span>
+
+Highest Average
+
+</span>
+
+<strong>
+
+{{ results_summary.top_average }}%
+
+</strong>
+
+</div>
+
+</div>
+
+
+
+<div class="report-summary-card">
+
+<div class="summary-icon summary-orange">
+
+⚠
+
+</div>
+
+<div>
+
+<span>
+
+Need Support
+
+</span>
+
+<strong>
+
+{{ results_summary.students_needing_support }}
+
+</strong>
+
+</div>
+
+</div>
+
+
+
+<div class="report-summary-card">
+
+<div class="summary-icon summary-teal">
+
+✔
+
+</div>
+
+<div>
+
+<span>
+
+Completed
+
+</span>
+
+<strong>
+
+{{ results_summary.complete_results }}
+
+</strong>
+
+</div>
+
+</div>
+
+
+
+<div class="report-summary-card">
+
+<div class="summary-icon summary-red">
+
+⏳
+
+</div>
+
+<div>
+
+<span>
+
+Incomplete
+
+</span>
+
+<strong>
+
+{{ results_summary.incomplete_results }}
+
+</strong>
+
+</div>
+
+</div>
+
+</div>
+
+
+
+<!-- =====================================================
+     TOP PANELS
+===================================================== -->
+
+<div class="results-dashboard-grid">
+
+
+
+
+<div class="premium-card">
+
+<div class="section-title">
+
+<div>
+
+<span class="page-eyebrow">
+
+TOP PERFORMERS
+
+</span>
+
+<h2>
+
+Academic Leaders
+
+</h2>
+
+</div>
+
+</div>
+
+
+{% if top_performers %}
+
+<div class="top-performer-list">
+
+{% for student in top_performers %}
+
+<div class="top-performer-item">
+
+<div class="top-performer-rank">
+
+{{ loop.index }}
+
+</div>
+
+<div class="top-performer-info">
+
+<strong>
+
+{{ student.first_name }}
+{{ student.last_name }}
+
+</strong>
+
+<span>
+
+{{ student.class_name }}
+
+</span>
+
+</div>
+
+<div class="top-performer-score">
+
+{{ "%.1f"|format(student.average_marks) }}%
+
+</div>
+
+</div>
+
+{% endfor %}
+
+</div>
+
+{% else %}
+
+<div class="empty-box">
+
+No results available.
+
+</div>
+
+{% endif %}
+
+</div>
+
+
+
+
+<div class="premium-card">
+
+<div class="section-title">
+
+<div>
+
+<span class="page-eyebrow">
+
+SUBJECT ANALYSIS
+
+</span>
+
+<h2>
+
+Average Performance
+
+</h2>
+
+</div>
+
+</div>
+
+{% if subject_performance %}
+
+<div class="table-responsive">
+
+<table class="premium-table">
+
+<thead>
+
+<tr>
+
+<th>
+
+Subject
+
+</th>
+
+<th>
+
+Average
+
+</th>
+
+<th>
+
+Highest
+
+</th>
+
+<th>
+
+Lowest
+
+</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+{% for subject in subject_performance %}
+
+<tr>
+
+<td>
+
+<strong>
+
+{{ subject.subject }}
+
+</strong>
+
+</td>
+
+<td>
+
+{{ "%.1f"|format(subject.average_marks) }}%
+
+</td>
+
+<td>
+
+{{ "%.1f"|format(subject.highest_mark) }}
+
+</td>
+
+<td>
+
+{{ "%.1f"|format(subject.lowest_mark) }}
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+
+{% else %}
+
+<div class="empty-box">
+
+No subject data available.
+
+</div>
+
+{% endif %}
+
+</div>
+
 </div>
 
 <div class="premium-card report-filter-card">
@@ -153,104 +726,319 @@
 
 </div>
 
-<div class="premium-card">
+<!-- =====================================================
+     PREMIUM RESULTS TABLE
+===================================================== -->
+
+<div class="premium-card results-table-card">
 
   <div class="section-title">
+
     <div>
+
+      <span class="page-eyebrow">
+        STUDENT PERFORMANCE
+      </span>
+
       <h2>Academic Results</h2>
+
       <p class="section-description">
-        Results are grouped by student and term.
+        Review student averages, class positions, subject completion
+        and overall academic performance.
       </p>
+
     </div>
 
-    <button
-      type="button"
-      class="premium-btn premium-btn-light"
-      onclick="window.print()"
-    >
-      🖨 Print
-    </button>
+    <div class="action-row">
+
+      <span class="results-record-count">
+        {{ result_groups|length }} record{% if result_groups|length != 1 %}s{% endif %}
+      </span>
+
+      <button
+        type="button"
+        class="premium-btn premium-btn-light"
+        onclick="window.print()"
+      >
+        🖨 Print
+      </button>
+
+    </div>
+
   </div>
+
 
   {% if result_groups %}
 
   <div class="table-responsive">
 
-    <table class="premium-table report-table">
+    <table class="premium-table results-premium-table">
 
       <thead>
+
         <tr>
           <th>#</th>
-          <th>Student Number</th>
           <th>Student</th>
           <th>Class</th>
+          <th>Year</th>
           <th>Term</th>
           <th>Subjects</th>
-          <th>Total Marks</th>
+          <th>Completion</th>
+          <th>Total</th>
           <th>Average</th>
+          <th>Position</th>
           <th>Performance</th>
+          <th>Updated</th>
           <th>Actions</th>
         </tr>
+
       </thead>
+
 
       <tbody>
 
         {% for result in result_groups %}
+
         <tr>
 
-          <td>{{ loop.index }}</td>
-
           <td>
-            <strong>{{ result.student_number or "-" }}</strong>
+            {{ loop.index }}
           </td>
 
+
           <td>
+
             <a
               href="{{ url_for('student_profile', id=result.student_id) }}"
               class="student-report-link"
             >
-              <strong>
-                {{ result.first_name }} {{ result.last_name }}
-              </strong>
+
+              <div class="results-student-cell">
+
+                <div class="results-student-avatar">
+                  {{ result.first_name[0]|upper
+                     if result.first_name else "S" }}
+                </div>
+
+                <div>
+
+                  <strong>
+                    {{ result.first_name }}
+                    {{ result.last_name }}
+                  </strong>
+
+                  <span>
+                    {{ result.student_number or "No student number" }}
+                  </span>
+
+                </div>
+
+              </div>
+
             </a>
+
           </td>
 
+
           <td>
+
             <span class="report-class-badge">
               {{ result.class_name or "Unassigned" }}
             </span>
+
           </td>
 
-          <td>{{ result.term or "-" }}</td>
-
-          <td>{{ result.subject_count or 0 }}</td>
-
-          <td>{{ "%.2f"|format(result.total_marks or 0) }}</td>
 
           <td>
+
             <strong>
-              {{ "%.2f"|format(result.average_marks or 0) }}%
+              {{ result.academic_year or current_year }}
             </strong>
+
           </td>
 
-          <td>
-            {% set average = result.average_marks or 0 %}
 
-            {% if average >= 80 %}
-              <span class="badge badge-success">Excellent</span>
-            {% elif average >= 70 %}
-              <span class="badge badge-success">Very Good</span>
-            {% elif average >= 60 %}
-              <span class="badge badge-warning">Good</span>
-            {% elif average >= 50 %}
-              <span class="badge badge-warning">Pass</span>
+          <td>
+            {{ result.term or "-" }}
+          </td>
+
+
+          <td>
+
+            <span class="results-subject-count">
+              {{ result.subject_count or 0 }}
+            </span>
+
+          </td>
+
+
+          <td>
+
+            <div class="results-completion-cell">
+
+              <div class="results-completion-header">
+
+                <span>
+                  {{ result.completion_percentage }}%
+                </span>
+
+                {% if result.completion_percentage >= 100 %}
+
+                <small class="results-complete-label">
+                  Complete
+                </small>
+
+                {% else %}
+
+                <small class="results-incomplete-label">
+                  Incomplete
+                </small>
+
+                {% endif %}
+
+              </div>
+
+              <div class="results-progress-track">
+
+                <div
+                  class="results-progress-bar
+                  {% if result.completion_percentage >= 100 %}
+                    results-progress-complete
+                  {% else %}
+                    results-progress-incomplete
+                  {% endif %}"
+                  style="width: {{ result.completion_percentage }}%;"
+                ></div>
+
+              </div>
+
+            </div>
+
+          </td>
+
+
+          <td>
+
+            <strong>
+              {{ "%.1f"|format(result.total_marks or 0) }}
+            </strong>
+
+          </td>
+
+
+          <td>
+
+            <div class="results-average-cell">
+
+              <strong>
+                {{ "%.1f"|format(result.average_marks or 0) }}%
+              </strong>
+
+              {% if result.average_marks >= 50 %}
+                <span class="results-average-pass">
+                  Pass
+                </span>
+              {% else %}
+                <span class="results-average-fail">
+                  Below pass mark
+                </span>
+              {% endif %}
+
+            </div>
+
+          </td>
+
+
+          <td>
+
+            {% if result.position %}
+
+              {% if result.position == 1 %}
+
+              <span class="results-position-badge position-first">
+                🥇 1st
+              </span>
+
+              {% elif result.position == 2 %}
+
+              <span class="results-position-badge position-second">
+                🥈 2nd
+              </span>
+
+              {% elif result.position == 3 %}
+
+              <span class="results-position-badge position-third">
+                🥉 3rd
+              </span>
+
+              {% else %}
+
+              <span class="results-position-badge position-other">
+                {{ result.position }}
+              </span>
+
+              {% endif %}
+
             {% else %}
-              <span class="badge badge-danger">Needs Support</span>
+
+              <span class="text-muted">
+                -
+              </span>
+
             {% endif %}
+
           </td>
 
+
           <td>
-            <div class="action-row">
+
+            {% if result.performance_class == "excellent" %}
+
+            <span class="results-performance-badge performance-excellent">
+              Excellent
+            </span>
+
+            {% elif result.performance_class == "very-good" %}
+
+            <span class="results-performance-badge performance-very-good">
+              Very Good
+            </span>
+
+            {% elif result.performance_class == "good" %}
+
+            <span class="results-performance-badge performance-good">
+              Good
+            </span>
+
+            {% elif result.performance_class == "pass" %}
+
+            <span class="results-performance-badge performance-pass">
+              Pass
+            </span>
+
+            {% else %}
+
+            <span class="results-performance-badge performance-support">
+              Needs Support
+            </span>
+
+            {% endif %}
+
+          </td>
+
+
+          <td>
+
+            <span class="results-updated-text">
+              {{ result.last_updated or "Not recorded" }}
+            </span>
+
+          </td>
+
+
+          <td>
+
+            <div class="results-action-menu">
 
               <a
                 href="{{ url_for(
@@ -258,16 +1046,25 @@
                   student_id=result.student_id,
                   term=result.term
                 ) }}"
-                class="premium-btn premium-btn-light"
+                class="table-action-link"
                 target="_blank"
               >
-                Print Slip
+                View Report
+              </a>
+
+              <a
+                href="{{ url_for('student_profile', id=result.student_id) }}"
+                class="table-action-link table-action-secondary"
+              >
+                Profile
               </a>
 
             </div>
+
           </td>
 
         </tr>
+
         {% endfor %}
 
       </tbody>
@@ -276,27 +1073,167 @@
 
   </div>
 
+
   {% else %}
 
   <div class="empty-box">
-    <div class="report-empty-icon">📊</div>
 
-    <h3>No results found</h3>
+    <div class="report-empty-icon">
+      📊
+    </div>
+
+    <h3>No academic results found</h3>
 
     <p>
-      No student results match the selected filters.
+      No student results match the selected class, term, academic year,
+      subject or search filters.
     </p>
 
-    <a
-      href="{{ url_for('enter_result') }}"
-      class="premium-btn"
-    >
-      Enter First Result
-    </a>
+    <div class="action-row">
+
+      <a
+        href="{{ url_for('results') }}"
+        class="premium-btn premium-btn-light"
+      >
+        Clear Filters
+      </a>
+
+      <a
+        href="{{ url_for('enter_result') }}"
+        class="premium-btn"
+      >
+        Enter Results
+      </a>
+
+    </div>
+
   </div>
 
   {% endif %}
 
 </div>
+
+
+<!-- =====================================================
+     SUPPORT AND COMPLETION INSIGHTS
+===================================================== -->
+
+{% if result_groups %}
+
+<div class="results-insight-grid">
+
+  <div class="premium-card">
+
+    <div class="section-title">
+
+      <div>
+
+        <span class="page-eyebrow">
+          COMPLETION
+        </span>
+
+        <h2>Result Entry Status</h2>
+
+        <p class="section-description">
+          Compare completed and incomplete student result records.
+        </p>
+
+      </div>
+
+    </div>
+
+
+    <div class="results-completion-summary">
+
+      <div class="results-completion-stat">
+
+        <div class="results-completion-icon complete-icon">
+          ✓
+        </div>
+
+        <div>
+
+          <span>Completed Records</span>
+
+          <strong>
+            {{ results_summary.complete_results }}
+          </strong>
+
+        </div>
+
+      </div>
+
+
+      <div class="results-completion-stat">
+
+        <div class="results-completion-icon incomplete-icon">
+          ⏳
+        </div>
+
+        <div>
+
+          <span>Incomplete Records</span>
+
+          <strong>
+            {{ results_summary.incomplete_results }}
+          </strong>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <div class="premium-card">
+
+    <div class="section-title">
+
+      <div>
+
+        <span class="page-eyebrow">
+          STUDENT SUPPORT
+        </span>
+
+        <h2>Performance Attention</h2>
+
+        <p class="section-description">
+          Students below the 50% pass threshold may require support.
+        </p>
+
+      </div>
+
+    </div>
+
+
+    <div class="results-support-summary">
+
+      <div class="results-support-number">
+        {{ results_summary.students_needing_support }}
+      </div>
+
+      <div>
+
+        <strong>
+          Student record{% if results_summary.students_needing_support != 1 %}s{% endif %}
+          needing support
+        </strong>
+
+        <p>
+          Use the filters above to review specific classes, terms
+          and subjects.
+        </p>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+{% endif %}
 
 {% endblock %}
