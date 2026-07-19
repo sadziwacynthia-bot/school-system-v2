@@ -27,60 +27,311 @@ def register_admin_routes(app):
         school_id = session.get("school_id")
         role = session.get("role")
 
-        if role == "super_admin":
-            total_schools = fetch_one("SELECT COUNT(*) AS total FROM schools")["total"]
-            total_students = fetch_one("SELECT COUNT(*) AS total FROM students")["total"]
-            total_teachers = fetch_one("SELECT COUNT(*) AS total FROM teachers")["total"]
-            total_users = fetch_one("SELECT COUNT(*) AS total FROM users")["total"]
-            total_fee_records = fetch_one("SELECT COUNT(*) AS total FROM fees")["total"]
+        is_super_admin = role == "super_admin"
 
-            fee_totals = fetch_one("""
+        def safe_fetch_one(query, params=(), default=None):
+            """
+            Prevent an optional dashboard statistic from crashing
+            the entire dashboard when a table or column is unavailable.
+            """
+            try:
+                result = fetch_one(query, params)
+
+                if result is None:
+                    return default
+
+                return result
+
+            except Exception as error:
+                app.logger.warning(
+                    "Dashboard query skipped: %s | Error: %s",
+                    query,
+                    error
+                )
+                return default
+
+        def safe_count(query, params=()):
+            result = safe_fetch_one(
+                query,
+                params,
+                {"total": 0}
+            )
+
+            try:
+                return int(result["total"] or 0)
+            except (TypeError, KeyError, IndexError):
+                return 0
+
+        # ---------------------------------------------------------
+        # CORE COUNTS
+        # ---------------------------------------------------------
+
+        if is_super_admin:
+            total_schools = safe_count(
+                "SELECT COUNT(*) AS total FROM schools"
+            )
+
+            total_students = safe_count(
+                "SELECT COUNT(*) AS total FROM students"
+            )
+
+            total_teachers = safe_count(
+                "SELECT COUNT(*) AS total FROM teachers"
+            )
+
+            total_users = safe_count(
+                "SELECT COUNT(*) AS total FROM users"
+            )
+
+            total_classes = safe_count(
+                "SELECT COUNT(*) AS total FROM classes"
+            )
+
+            total_subjects = safe_count(
+                "SELECT COUNT(*) AS total FROM subjects"
+            )
+
+            total_fee_records = safe_count(
+                "SELECT COUNT(*) AS total FROM fees"
+            )
+
+            fee_totals = safe_fetch_one(
+                """
                 SELECT
                     COALESCE(SUM(amount), 0) AS total_billed,
                     COALESCE(SUM(paid_amount), 0) AS total_paid,
                     COALESCE(SUM(balance), 0) AS total_balance
                 FROM fees
-            """)
+                """,
+                default={
+                    "total_billed": 0,
+                    "total_paid": 0,
+                    "total_balance": 0
+                }
+            )
 
-            paid_count = fetch_one("SELECT COUNT(*) AS total FROM fees WHERE status = ?", ("Paid",))["total"]
-            partial_count = fetch_one("SELECT COUNT(*) AS total FROM fees WHERE status = ?", ("Partially Paid",))["total"]
-            pending_count = fetch_one("SELECT COUNT(*) AS total FROM fees WHERE status = ?", ("Pending",))["total"]
+            paid_count = safe_count(
+                """
+                SELECT COUNT(*) AS total
+                FROM fees
+                WHERE status = ?
+                """,
+                ("Paid",)
+            )
+
+            partial_count = safe_count(
+                """
+                SELECT COUNT(*) AS total
+                FROM fees
+                WHERE status = ?
+                """,
+                ("Partially Paid",)
+            )
+
+            pending_count = safe_count(
+                """
+                SELECT COUNT(*) AS total
+                FROM fees
+                WHERE status = ?
+                """,
+                ("Pending",)
+            )
+
+            pending_applications = safe_count(
+                """
+                SELECT COUNT(*) AS total
+                FROM waiting_list
+                WHERE status = ?
+                """,
+                ("Pending",)
+            )
 
         else:
             total_schools = 0
-            total_students = fetch_one("SELECT COUNT(*) AS total FROM students WHERE school_id = ?", (school_id,))["total"]
-            total_teachers = fetch_one("SELECT COUNT(*) AS total FROM teachers WHERE school_id = ?", (school_id,))["total"]
-            total_users = fetch_one("SELECT COUNT(*) AS total FROM users WHERE school_id = ?", (school_id,))["total"]
-            total_fee_records = fetch_one("SELECT COUNT(*) AS total FROM fees WHERE school_id = ?", (school_id,))["total"]
 
-            fee_totals = fetch_one("""
+            total_students = safe_count(
+                """
+                SELECT COUNT(*) AS total
+                FROM students
+                WHERE school_id = ?
+                """,
+                (school_id,)
+            )
+
+            total_teachers = safe_count(
+                """
+                SELECT COUNT(*) AS total
+                FROM teachers
+                WHERE school_id = ?
+                """,
+                (school_id,)
+            )
+
+            total_users = safe_count(
+                """
+                SELECT COUNT(*) AS total
+                FROM users
+                WHERE school_id = ?
+                """,
+                (school_id,)
+            )
+
+            total_classes = safe_count(
+                """
+                SELECT COUNT(*) AS total
+                FROM classes
+                WHERE school_id = ?
+                """,
+                (school_id,)
+            )
+
+            total_subjects = safe_count(
+                """
+                SELECT COUNT(*) AS total
+                FROM subjects
+                WHERE school_id = ?
+                """,
+                (school_id,)
+            )
+
+            total_fee_records = safe_count(
+                """
+                SELECT COUNT(*) AS total
+                FROM fees
+                WHERE school_id = ?
+                """,
+                (school_id,)
+            )
+
+            fee_totals = safe_fetch_one(
+                """
                 SELECT
                     COALESCE(SUM(amount), 0) AS total_billed,
                     COALESCE(SUM(paid_amount), 0) AS total_paid,
                     COALESCE(SUM(balance), 0) AS total_balance
                 FROM fees
                 WHERE school_id = ?
-            """, (school_id,))
+                """,
+                (school_id,),
+                {
+                    "total_billed": 0,
+                    "total_paid": 0,
+                    "total_balance": 0
+                }
+            )
 
-            paid_count = fetch_one("SELECT COUNT(*) AS total FROM fees WHERE school_id = ? AND status = ?", (school_id, "Paid"))["total"]
-            partial_count = fetch_one("SELECT COUNT(*) AS total FROM fees WHERE school_id = ? AND status = ?", (school_id, "Partially Paid"))["total"]
-            pending_count = fetch_one("SELECT COUNT(*) AS total FROM fees WHERE school_id = ? AND status = ?", (school_id, "Pending"))["total"]
+            paid_count = safe_count(
+                """
+                SELECT COUNT(*) AS total
+                FROM fees
+                WHERE school_id = ?
+                AND status = ?
+                """,
+                (school_id, "Paid")
+            )
+
+            partial_count = safe_count(
+                """
+                SELECT COUNT(*) AS total
+                FROM fees
+                WHERE school_id = ?
+                AND status = ?
+                """,
+                (school_id, "Partially Paid")
+            )
+
+            pending_count = safe_count(
+                """
+                SELECT COUNT(*) AS total
+                FROM fees
+                WHERE school_id = ?
+                AND status = ?
+                """,
+                (school_id, "Pending")
+            )
+
+            pending_applications = safe_count(
+                """
+                SELECT COUNT(*) AS total
+                FROM waiting_list
+                WHERE school_id = ?
+                AND status = ?
+                """,
+                (school_id, "Pending")
+            )
+
+        # ---------------------------------------------------------
+        # FINANCIAL CALCULATIONS
+        # ---------------------------------------------------------
+
+        try:
+            total_billed = float(fee_totals["total_billed"] or 0)
+        except (TypeError, KeyError, IndexError):
+            total_billed = 0
+
+        try:
+            total_paid = float(fee_totals["total_paid"] or 0)
+        except (TypeError, KeyError, IndexError):
+            total_paid = 0
+
+        try:
+            total_balance = float(fee_totals["total_balance"] or 0)
+        except (TypeError, KeyError, IndexError):
+            total_balance = 0
+        collection_rate = 0
+
+        if total_billed > 0:
+            collection_rate = round(
+                (total_paid / total_billed) * 100,
+                1
+            )
+
+        # Protect the progress bar from invalid percentages.
+        collection_progress = max(
+            0,
+            min(collection_rate, 100)
+        )
+
+        current_hour = datetime.now().hour
+
+        if current_hour < 12:
+            greeting = "Good morning"
+        elif current_hour < 18:
+            greeting = "Good afternoon"
+        else:
+            greeting = "Good evening"
+
+        current_date = datetime.now().strftime(
+            "%A, %d %B %Y"
+        )
 
         return render_template(
             "dashboard.html",
+
+            greeting=greeting,
+            current_date=current_date,
+            is_super_admin=is_super_admin,
+
             total_schools=total_schools,
             total_students=total_students,
             total_teachers=total_teachers,
             total_users=total_users,
+            total_classes=total_classes,
+            total_subjects=total_subjects,
+
             total_fee_records=total_fee_records,
-            total_billed=fee_totals["total_billed"] or 0,
-            total_paid=fee_totals["total_paid"] or 0,
-            total_balance=fee_totals["total_balance"] or 0,
+            total_billed=total_billed,
+            total_paid=total_paid,
+            total_balance=total_balance,
+
             paid_count=paid_count,
             partial_count=partial_count,
-            pending_count=pending_count
-        )
+            pending_count=pending_count,
+            pending_applications=pending_applications,
 
+            collection_rate=collection_rate,
+            collection_progress=collection_progress
+        )
 
     @app.route("/schools")
     @login_required

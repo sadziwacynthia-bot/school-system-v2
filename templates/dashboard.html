@@ -1,119 +1,982 @@
 {% extends "base_premium.html" %}
 
-{% block title %}Dashboard{% endblock %}
+{% block title %}Dashboard | EduTrack{% endblock %}
 
 {% block content %}
 
-<div class="hero-card">
-  <h2>Welcome back, {{ session.get('full_name') or session.get('username', 'Admin') }} 👋</h2>
-  <p>Manage your school from one premium command center.</p>
+<div class="dashboard-page">
 
-  <div class="hero-stats">
-    <div class="hero-mini">
-      <span>Students</span>
-      <strong>{{ total_students or 0 }}</strong>
-    </div>
+    <!-- ==================================================
+         WELCOME SECTION
+    =================================================== -->
+    <section class="dashboard-hero">
 
-    <div class="hero-mini">
-      <span>Teachers</span>
-      <strong>{{ total_teachers or 0 }}</strong>
-    </div>
+        <div class="dashboard-hero-content">
 
-    <div class="hero-mini">
-      <span>Classes</span>
-      <strong>{{ total_classes or 0 }}</strong>
-    </div>
+            <div class="dashboard-hero-badge">
+                <span class="status-dot"></span>
+                EduTrack Command Centre
+            </div>
 
-    <div class="hero-mini">
-      <span>Pending</span>
-      <strong>{{ pending_count or 0 }}</strong>
-    </div>
-  </div>
+            <h1>
+                {{ greeting }},
+                {{ session.get('full_name')
+                   or session.get('username')
+                   or 'Administrator' }}
+                👋
+            </h1>
+
+            <p>
+                Here is the latest operational and financial overview
+                for your school.
+            </p>
+
+            <div class="dashboard-hero-meta">
+
+                <span>📅 {{ current_date }}</span>
+
+                <span>
+                    👤
+                    {{ session.get('role', 'Administrator')
+                       | replace('_', ' ')
+                       | title }}
+                </span>
+
+                <span>🟢 System Online</span>
+
+            </div>
+
+        </div>
+
+        <div class="dashboard-pulse-card">
+
+            <div class="pulse-card-header">
+
+                <div>
+                    <span class="pulse-label">School Pulse</span>
+                    <strong>Everything is running</strong>
+                </div>
+
+                <span class="pulse-status">LIVE</span>
+
+            </div>
+
+            <div class="pulse-progress-row">
+                <span>Fee collection progress</span>
+                <strong>{{ collection_rate or 0 }}%</strong>
+            </div>
+
+            <div class="pulse-progress-track">
+                <div
+    class="pulse-progress-value"
+    data-progress="{{ collection_progress or 0 }}">
+</div>
+            </div>
+
+            <small>
+                ${{ "{:,.2f}".format(total_paid or 0) }}
+                collected from
+                ${{ "{:,.2f}".format(total_billed or 0) }}
+            </small>
+
+        </div>
+
+    </section>
+
+
+    <!-- ==================================================
+         STATISTIC CARDS
+    =================================================== -->
+    <section class="dashboard-stat-grid">
+
+        {% if is_super_admin %}
+
+        <a href="{{ url_for('schools') }}"
+           class="dashboard-stat-card">
+
+            <div class="dashboard-stat-icon stat-icon-indigo">
+                🏫
+            </div>
+
+            <div class="dashboard-stat-content">
+                <span>Total Schools</span>
+
+                <strong class="counter-value"
+                        data-counter="{{ total_schools or 0 }}">
+                    {{ total_schools or 0 }}
+                </strong>
+
+                <small>Registered institutions</small>
+            </div>
+
+        </a>
+
+        {% endif %}
+
+
+        <a href="{{ url_for('students') }}"
+           class="dashboard-stat-card">
+
+            <div class="dashboard-stat-icon stat-icon-blue">
+                🎓
+            </div>
+
+            <div class="dashboard-stat-content">
+                <span>Total Students</span>
+
+                <strong class="counter-value"
+                        data-counter="{{ total_students or 0 }}">
+                    {{ total_students or 0 }}
+                </strong>
+
+                <small>Active student records</small>
+            </div>
+
+        </a>
+
+
+        <a href="{{ url_for('teachers') }}"
+           class="dashboard-stat-card">
+
+            <div class="dashboard-stat-icon stat-icon-green">
+                👨‍🏫
+            </div>
+
+            <div class="dashboard-stat-content">
+                <span>Total Teachers</span>
+
+                <strong class="counter-value"
+                        data-counter="{{ total_teachers or 0 }}">
+                    {{ total_teachers or 0 }}
+                </strong>
+
+                <small>Registered teaching staff</small>
+            </div>
+
+        </a>
+
+
+        <a href="{{ url_for('classes') }}"
+           class="dashboard-stat-card">
+
+            <div class="dashboard-stat-icon stat-icon-purple">
+                🏛️
+            </div>
+
+            <div class="dashboard-stat-content">
+                <span>Total Classes</span>
+
+                <strong class="counter-value"
+                        data-counter="{{ total_classes or 0 }}">
+                    {{ total_classes or 0 }}
+                </strong>
+
+                <small>Configured classes</small>
+            </div>
+
+        </a>
+
+
+        <a href="{{ url_for('subjects') }}"
+           class="dashboard-stat-card">
+
+            <div class="dashboard-stat-icon stat-icon-orange">
+                📚
+            </div>
+
+            <div class="dashboard-stat-content">
+                <span>Total Subjects</span>
+
+                <strong class="counter-value"
+                        data-counter="{{ total_subjects or 0 }}">
+                    {{ total_subjects or 0 }}
+                </strong>
+
+                <small>Subjects being offered</small>
+            </div>
+
+        </a>
+
+
+        <a href="{{ url_for('fees') }}"
+           class="dashboard-stat-card">
+
+            <div class="dashboard-stat-icon stat-icon-teal">
+                💰
+            </div>
+
+            <div class="dashboard-stat-content">
+                <span>Fees Collected</span>
+
+                <strong>
+                    ${{ "{:,.2f}".format(total_paid or 0) }}
+                </strong>
+
+                <small>
+                    {{ collection_rate or 0 }}% collection rate
+                </small>
+            </div>
+
+        </a>
+
+
+        <a href="{{ url_for('fees') }}"
+           class="dashboard-stat-card">
+
+            <div class="dashboard-stat-icon stat-icon-red">
+                ⚠️
+            </div>
+
+            <div class="dashboard-stat-content">
+                <span>Outstanding Fees</span>
+
+                <strong>
+                    ${{ "{:,.2f}".format(total_balance or 0) }}
+                </strong>
+
+                <small>
+                    {{ pending_count or 0 }} pending fee records
+                </small>
+            </div>
+
+        </a>
+
+
+        <a href="{{ url_for('applications') }}"
+           class="dashboard-stat-card">
+
+            <div class="dashboard-stat-icon stat-icon-yellow">
+                📝
+            </div>
+
+            <div class="dashboard-stat-content">
+                <span>Applications</span>
+
+                <strong class="counter-value"
+                        data-counter="{{ pending_applications or 0 }}">
+                    {{ pending_applications or 0 }}
+                </strong>
+
+                <small>Awaiting review</small>
+            </div>
+
+        </a>
+
+    </section>
+
+
+    <!-- ==================================================
+         FINANCE AND SCHOOL PULSE
+    =================================================== -->
+    <section class="dashboard-main-grid">
+
+        <div class="premium-card dashboard-finance-card">
+
+            <div class="dashboard-section-header">
+
+                <div>
+                    <span class="section-eyebrow">
+                        Financial Performance
+                    </span>
+
+                    <h2>Fee Collection Overview</h2>
+
+                    <p>
+                        Compare billed, collected and outstanding fees.
+                    </p>
+                </div>
+
+                <a href="{{ url_for('fee_analytics') }}"
+                   class="dashboard-text-link">
+                    View analytics →
+                </a>
+
+            </div>
+
+
+            <div class="finance-overview-grid">
+
+                <div class="finance-summary-list">
+
+                    <div class="finance-summary-item">
+
+                        <div>
+                            <span>Total Billed</span>
+
+                            <strong>
+                                ${{ "{:,.2f}".format(total_billed or 0) }}
+                            </strong>
+                        </div>
+
+                        <span class="finance-dot billed-dot"></span>
+
+                    </div>
+
+
+                    <div class="finance-summary-item">
+
+                        <div>
+                            <span>Total Collected</span>
+
+                            <strong>
+                                ${{ "{:,.2f}".format(total_paid or 0) }}
+                            </strong>
+                        </div>
+
+                        <span class="finance-dot paid-dot"></span>
+
+                    </div>
+
+
+                    <div class="finance-summary-item">
+
+                        <div>
+                            <span>Outstanding Balance</span>
+
+                            <strong>
+                                ${{ "{:,.2f}".format(total_balance or 0) }}
+                            </strong>
+                        </div>
+
+                        <span class="finance-dot balance-dot"></span>
+
+                    </div>
+
+
+                    <div class="collection-rate-panel">
+
+                        <div>
+                            <span>Collection Rate</span>
+                            <strong data-collection-rate="{{ collection_rate or 0 }}">
+    {{ collection_rate or 0 }}%
+</strong>
+                        </div>
+
+                        <div class="collection-rate-track">
+                            <div
+    class="pulse-progress-value"
+    data-progress="{{ collection_progress or 0 }}">
+</div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="dashboard-chart-container">
+
+                    <canvas
+                        id="feeStatusChart"
+                        data-paid="{{ paid_count or 0 }}"
+                        data-partial="{{ partial_count or 0 }}"
+                        data-pending="{{ pending_count or 0 }}"
+                        aria-label="Fee payment status chart"
+                        role="img">
+                    </canvas>
+
+                    <div
+                        id="chartFallback"
+                        class="chart-fallback">
+
+                        <div>
+                            <strong>
+                                {{ total_fee_records or 0 }}
+                            </strong>
+
+                            <span>Total fee records</span>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <aside class="premium-card dashboard-status-card">
+
+            <div class="dashboard-section-header compact-header">
+
+                <div>
+                    <span class="section-eyebrow">Live Status</span>
+                    <h2>School Pulse</h2>
+                </div>
+
+            </div>
+
+
+            <div class="school-pulse-list">
+
+                <div class="school-pulse-item">
+
+                    <div class="pulse-item-icon">🎓</div>
+
+                    <div>
+                        <strong>
+                            {{ total_students or 0 }} students
+                        </strong>
+
+                        <span>Student records available</span>
+                    </div>
+
+                    <span class="pulse-check">✓</span>
+
+                </div>
+
+
+                <div class="school-pulse-item">
+
+                    <div class="pulse-item-icon">👨‍🏫</div>
+
+                    <div>
+                        <strong>
+                            {{ total_teachers or 0 }} teachers
+                        </strong>
+
+                        <span>Teaching staff registered</span>
+                    </div>
+
+                    <span class="pulse-check">✓</span>
+
+                </div>
+
+
+                <div class="school-pulse-item">
+
+                    <div class="pulse-item-icon">🏛️</div>
+
+                    <div>
+                        <strong>
+                            {{ total_classes or 0 }} classes
+                        </strong>
+
+                        <span>Academic classes configured</span>
+                    </div>
+
+                    <span class="pulse-check">✓</span>
+
+                </div>
+
+
+                <div class="school-pulse-item">
+
+                    <div class="pulse-item-icon">📝</div>
+
+                    <div>
+                        <strong>
+                            {{ pending_applications or 0 }}
+                            applications
+                        </strong>
+
+                        <span>Awaiting review</span>
+                    </div>
+
+                    <span class="pulse-warning">
+                        {{ pending_applications or 0 }}
+                    </span>
+
+                </div>
+
+
+                <div class="school-pulse-item">
+
+                    <div class="pulse-item-icon">💳</div>
+
+                    <div>
+                        <strong>
+                            {{ pending_count or 0 }} pending fees
+                        </strong>
+
+                        <span>Outstanding fee records</span>
+                    </div>
+
+                    <span class="pulse-warning">
+                        {{ pending_count or 0 }}
+                    </span>
+
+                </div>
+
+            </div>
+
+        </aside>
+
+    </section>
+
+
+    <!-- ==================================================
+         QUICK ACTIONS AND PAYMENT STATUS
+    =================================================== -->
+    <section class="dashboard-secondary-grid">
+
+        <div class="premium-card">
+
+            <div class="dashboard-section-header">
+
+                <div>
+                    <span class="section-eyebrow">
+                        One-Click Access
+                    </span>
+
+                    <h2>Quick Actions</h2>
+
+                    <p>
+                        Complete common school tasks faster.
+                    </p>
+                </div>
+
+            </div>
+
+
+            <div class="dashboard-action-grid">
+
+                <a href="{{ url_for('add_student') }}"
+                   class="dashboard-action-card">
+
+                    <span class="action-icon">➕</span>
+
+                    <div>
+                        <strong>Add Student</strong>
+                        <small>Register a new learner</small>
+                    </div>
+
+                    <span class="action-arrow">→</span>
+
+                </a>
+
+
+                <a href="{{ url_for('add_application') }}"
+                   class="dashboard-action-card">
+
+                    <span class="action-icon">📝</span>
+
+                    <div>
+                        <strong>New Application</strong>
+                        <small>Add a prospective learner</small>
+                    </div>
+
+                    <span class="action-arrow">→</span>
+
+                </a>
+
+
+                <a href="{{ url_for('attendance') }}"
+                   class="dashboard-action-card">
+
+                    <span class="action-icon">📋</span>
+
+                    <div>
+                        <strong>Take Attendance</strong>
+                        <small>Open today's register</small>
+                    </div>
+
+                    <span class="action-arrow">→</span>
+
+                </a>
+
+
+                <a href="{{ url_for('results') }}"
+                   class="dashboard-action-card">
+
+                    <span class="action-icon">📊</span>
+
+                    <div>
+                        <strong>Enter Results</strong>
+                        <small>Manage student performance</small>
+                    </div>
+
+                    <span class="action-arrow">→</span>
+
+                </a>
+
+
+                <a href="{{ url_for('add_cashbook_entry') }}"
+                   class="dashboard-action-card">
+
+                    <span class="action-icon">📒</span>
+
+                    <div>
+                        <strong>Cashbook Entry</strong>
+                        <small>Record income or expenses</small>
+                    </div>
+
+                    <span class="action-arrow">→</span>
+
+                </a>
+
+
+                <a href="{{ url_for('reports') }}"
+                   class="dashboard-action-card">
+
+                    <span class="action-icon">📑</span>
+
+                    <div>
+                        <strong>Open Reports</strong>
+                        <small>View school reports</small>
+                    </div>
+
+                    <span class="action-arrow">→</span>
+
+                </a>
+
+            </div>
+
+        </div>
+
+
+        <div class="premium-card">
+
+            <div class="dashboard-section-header compact-header">
+
+                <div>
+                    <span class="section-eyebrow">
+                        Payment Status
+                    </span>
+
+                    <h2>Fee Records</h2>
+                </div>
+
+                <a href="{{ url_for('fees') }}"
+                   class="dashboard-text-link">
+                    View all →
+                </a>
+
+            </div>
+
+
+            <div class="fee-status-list">
+
+                <div class="fee-status-row">
+
+                    <div class="fee-status-label">
+
+                        <span class="fee-status-icon paid-status-icon">
+                            ✓
+                        </span>
+
+                        <div>
+                            <strong>Fully Paid</strong>
+                            <small>Completed fee records</small>
+                        </div>
+
+                    </div>
+
+                    <strong>{{ paid_count or 0 }}</strong>
+
+                </div>
+
+
+                <div class="fee-status-row">
+
+                    <div class="fee-status-label">
+
+                        <span class="fee-status-icon partial-status-icon">
+                            ◐
+                        </span>
+
+                        <div>
+                            <strong>Partially Paid</strong>
+                            <small>Payments in progress</small>
+                        </div>
+
+                    </div>
+
+                    <strong>{{ partial_count or 0 }}</strong>
+
+                </div>
+
+
+                <div class="fee-status-row">
+
+                    <div class="fee-status-label">
+
+                        <span class="fee-status-icon pending-status-icon">
+                            !
+                        </span>
+
+                        <div>
+                            <strong>Pending</strong>
+                            <small>Payment still required</small>
+                        </div>
+
+                    </div>
+
+                    <strong>{{ pending_count or 0 }}</strong>
+
+                </div>
+
+
+                <div class="fee-record-total">
+
+                    <span>Total fee records</span>
+                    <strong>{{ total_fee_records or 0 }}</strong>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- ==================================================
+         MANAGEMENT MODULES
+    =================================================== -->
+    <section class="premium-card dashboard-modules-card">
+
+        <div class="dashboard-section-header">
+
+            <div>
+                <span class="section-eyebrow">
+                    EduTrack Modules
+                </span>
+
+                <h2>Management Centre</h2>
+
+                <p>
+                    Access every major school management module
+                    from one place.
+                </p>
+            </div>
+
+        </div>
+
+
+        <div class="management-module-grid">
+
+            <a href="{{ url_for('students') }}"
+               class="management-module">
+
+                <span>🎓</span>
+                <strong>Students</strong>
+                <small>Records and profiles</small>
+
+            </a>
+
+
+            <a href="{{ url_for('teachers') }}"
+               class="management-module">
+
+                <span>👨‍🏫</span>
+                <strong>Teachers</strong>
+                <small>Staff management</small>
+
+            </a>
+
+
+            <a href="{{ url_for('classes') }}"
+               class="management-module">
+
+                <span>🏛️</span>
+                <strong>Classes</strong>
+                <small>Class organization</small>
+
+            </a>
+
+
+            <a href="{{ url_for('fees') }}"
+               class="management-module">
+
+                <span>💰</span>
+                <strong>Fees</strong>
+                <small>Billing and payments</small>
+
+            </a>
+
+
+            <a href="{{ url_for('attendance') }}"
+               class="management-module">
+
+                <span>📋</span>
+                <strong>Attendance</strong>
+                <small>Daily registers</small>
+
+            </a>
+
+
+            <a href="{{ url_for('results') }}"
+               class="management-module">
+
+                <span>📊</span>
+                <strong>Results</strong>
+                <small>Academic performance</small>
+
+            </a>
+
+
+            <a href="{{ url_for('timetable') }}"
+               class="management-module">
+
+                <span>🕒</span>
+                <strong>Timetable</strong>
+                <small>Lesson scheduling</small>
+
+            </a>
+
+
+            <a href="{{ url_for('cashbook') }}"
+               class="management-module">
+
+                <span>📒</span>
+                <strong>Cashbook</strong>
+                <small>Income and expenses</small>
+
+            </a>
+
+
+            <a href="{{ url_for('reports') }}"
+               class="management-module">
+
+                <span>📑</span>
+                <strong>Reports</strong>
+                <small>School intelligence</small>
+
+            </a>
+
+        </div>
+
+    </section>
+
 </div>
 
-<div class="premium-grid">
-  <div class="stat-card card-blue">
-    <span>Total Students</span>
-    <strong>{{ total_students or 0 }}</strong>
-  </div>
+{% endblock %}
 
-  <div class="stat-card card-green">
-    <span>Total Teachers</span>
-    <strong>{{ total_teachers or 0 }}</strong>
-  </div>
 
-  <div class="stat-card card-purple">
-    <span>Classes</span>
-    <strong>{{ total_classes or 0 }}</strong>
-  </div>
+{% block extra_js %}
 
-  <div class="stat-card card-orange">
-    <span>Outstanding Fees</span>
-    <strong>${{ outstanding_fees or 0 }}</strong>
-  </div>
-</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 
-<div class="dashboard-layout">
+<script>
+document.addEventListener("DOMContentLoaded", function () {
 
-  <div class="premium-card">
-    <div class="section-title">
-      <h2>Quick Actions</h2>
-    </div>
+    /*
+     * Animate number counters.
+     */
+    const counters = document.querySelectorAll("[data-counter]");
 
-    <div class="quick-action-grid">
-      <a href="{{ url_for('add_student') }}" class="quick-tile">➕ Add Student</a>
-      <a href="{{ url_for('add_application') }}" class="quick-tile">📝 New Application</a>
-      <a href="{{ url_for('add_class') }}" class="quick-tile">🏫 Add Class</a>
-      <a href="{{ url_for('add_subject') }}" class="quick-tile">📚 Add Subject</a>
-      <a href="{{ url_for('add_cashbook_entry') }}" class="quick-tile">📒 Add Cash Entry</a>
-      <a href="{{ url_for('fee_reminders') }}" class="quick-tile">🔔 Fee Reminders</a>
-    </div>
-  </div>
+    counters.forEach(function (counter) {
+        const target = Number(counter.dataset.counter) || 0;
+        const duration = 700;
+        const startTime = performance.now();
 
-  <div class="premium-card">
-    <div class="section-title">
-      <h2>Today’s Activity</h2>
-    </div>
+        function updateCounter(currentTime) {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const currentValue = Math.floor(target * progress);
 
-    <div class="activity-item">✅ System online and ready</div>
-    <div class="activity-item">🎓 {{ total_students or 0 }} student records available</div>
-    <div class="activity-item">👨‍🏫 {{ total_teachers or 0 }} teachers registered</div>
-    <div class="activity-item">📝 {{ pending_count or 0 }} applications pending</div>
-    <div class="activity-item">💰 Finance module active</div>
-  </div>
+            counter.textContent = currentValue.toLocaleString();
 
-</div>
+            if (progress < 1) {
+                requestAnimationFrame(updateCounter);
+            } else {
+                counter.textContent = target.toLocaleString();
+            }
+        }
 
-<br>
+        requestAnimationFrame(updateCounter);
+    });
 
-<div class="dashboard-layout">
 
-  <div class="premium-card">
-    <div class="section-title">
-      <h2>Management Modules</h2>
-    </div>
+    /*
+     * Build the fee status chart.
+     */
+    const chartCanvas = document.getElementById("feeStatusChart");
+    const chartFallback = document.getElementById("chartFallback");
 
-    <div class="quick-action-grid">
-      <a href="{{ url_for('students') }}" class="quick-tile">🎓 Students</a>
-      <a href="{{ url_for('teachers') }}" class="quick-tile">👨‍🏫 Teachers</a>
-      <a href="{{ url_for('fees') }}" class="quick-tile">💰 Fees</a>
-      <a href="{{ url_for('attendance') }}" class="quick-tile">📋 Attendance</a>
-      <a href="{{ url_for('timetable') }}" class="quick-tile">🕒 Timetable</a>
-      <a href="{{ url_for('cashbook') }}" class="quick-tile">📒 Cashbook</a>
-    </div>
-  </div>
+    if (!chartCanvas) {
+        return;
+    }
 
-  <div class="premium-card">
-    <div class="section-title">
-      <h2>System Health</h2>
-    </div>
+    const paidCount = Number(chartCanvas.dataset.paid) || 0;
+    const partialCount = Number(chartCanvas.dataset.partial) || 0;
+    const pendingCount = Number(chartCanvas.dataset.pending) || 0;
 
-    <div class="activity-item">🟢 Database connected</div>
-    <div class="activity-item">🟢 Permissions active</div>
-    <div class="activity-item">🟢 Premium UI active</div>
-    <div class="activity-item">🟢 Multi-role system ready</div>
-  </div>
+    const totalChartRecords =
+        paidCount +
+        partialCount +
+        pendingCount;
 
-</div>
+    if (
+        typeof Chart === "undefined" ||
+        totalChartRecords === 0
+    ) {
+        chartCanvas.style.display = "none";
+
+        if (chartFallback) {
+            chartFallback.style.display = "grid";
+        }
+
+        return;
+    }
+
+    if (chartFallback) {
+        chartFallback.style.display = "none";
+    }
+
+    new Chart(chartCanvas, {
+        type: "doughnut",
+
+        data: {
+            labels: [
+                "Paid",
+                "Partially Paid",
+                "Pending"
+            ],
+
+            datasets: [
+                {
+                    data: [
+                        paidCount,
+                        partialCount,
+                        pendingCount
+                    ],
+
+                    backgroundColor: [
+                        "#16a34a",
+                        "#f59e0b",
+                        "#ef4444"
+                    ],
+
+                    borderWidth: 0,
+                    hoverOffset: 6
+                }
+            ]
+        },
+
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: "72%",
+
+            plugins: {
+                legend: {
+                    position: "bottom",
+
+                    labels: {
+                        usePointStyle: true,
+                        padding: 18
+                    }
+                },
+
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            return (
+                                context.label +
+                                ": " +
+                                context.raw
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+});
+</script>
 
 {% endblock %}
