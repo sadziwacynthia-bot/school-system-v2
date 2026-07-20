@@ -3597,7 +3597,6 @@ def add_timetable():
 
     return render_template("add_timetable.html", class_options=CLASS_OPTIONS, teachers=teachers_list, subjects=subjects)
 
-
 @app.route("/print_result/<int:student_id>/<term>")
 @login_required
 @roles_required("school_admin", "super_admin")
@@ -3605,55 +3604,356 @@ def print_result(student_id, term):
     school_id = session.get("school_id")
     role = session.get("role")
 
+    requested_year = request.args.get("academic_year", "").strip()
+
+    # =====================================================
+    # STUDENT
+    # =====================================================
     if role == "super_admin":
-        student = fetch_one("SELECT * FROM students WHERE id = ?", (student_id,))
-        results = fetch_all("""
-            SELECT * FROM results
-            WHERE student_id = ? AND term = ?
-            ORDER BY subject
-        """, (student_id, term))
-        fee_summary = fetch_one("""
-            SELECT COALESCE(SUM(balance), 0) AS total_balance
-            FROM fees
-            WHERE student_id = ?
-        """, (student_id,))
+        student = fetch_one(
+            "SELECT * FROM students WHERE id = ?",
+            (student_id,)
+        )
     else:
         student = fetch_one("""
-            SELECT * FROM students
-            WHERE id = ? AND school_id = ?
-        """, (student_id, school_id))
-        if not student:
-            flash("Student not found or access denied.", "danger")
-            return redirect(url_for("students"))
-
-        results = fetch_all("""
-            SELECT * FROM results
-            WHERE student_id = ? AND school_id = ? AND term = ?
-            ORDER BY subject
-        """, (student_id, school_id, term))
-        fee_summary = fetch_one("""
-            SELECT COALESCE(SUM(balance), 0) AS total_balance
-            FROM fees
-            WHERE student_id = ? AND school_id = ?
+            SELECT *
+            FROM students
+            WHERE id = ?
+              AND school_id = ?
         """, (student_id, school_id))
 
     if not student:
-        flash("Student not found.", "danger")
+        flash("Student not found or access denied.", "danger")
         return redirect(url_for("students"))
 
-    total_marks = sum(float(r["marks"] or 0) for r in results)
-    subject_count = len(results)
-    average = round(total_marks / subject_count, 2) if subject_count > 0 else 0
+    student_school_id = student["school_id"]
+    class_name = student["class_name"]
 
+    # =====================================================
+    # ACADEMIC YEAR
+    # Use the requested year or the latest year available.
+    # =====================================================
+    if requested_year:
+        try:
+            academic_year = int(requested_year)
+        except ValueError:
+            academic_year = datetime.now().year
+    else:
+        latest_year = fetch_one("""
+            SELECT MAX(academic_year) AS academic_year
+            FROM results
+            WHERE student_id = ?
+              AND term = ?
+              AND school_id = ?
+        """, (
+            student_id,
+            term,
+            student_school_id
+        ))
+
+        academic_year = (
+            latest_year["academic_year"]
+            if latest_year and latest_year["academic_year"]
+            else datetime.now().year
+        )
+
+    # =====================================================
+    # STUDENT RESULTS
+    # =====================================================
+    results = fetch_all("""
+        SELECT *
+        FROM results
+        WHERE student_id = ?
+          AND school_id = ?
+          AND term = ?
+          AND academic_year = ?
+        ORDER BY subject
+    """, (
+        student_id,
+        student_school_id,
+        term,
+        academic_year
+    ))
+
+    processed_results = []
+
+    for result in results:
+        mark = float(result["marks"] or 0)
+
+        if mark >= 80:
+            calculated_grade = "A"
+            subject_remark = "Outstanding"
+        elif mark >= 70:
+            calculated_grade = "B"
+            subject_remark = "Very Good"
+        elif mark >= 60:
+            calculated_grade = "C"
+            subject_remark = "Good"
+        elif mark >= 50:
+            calculated_grade = "D"
+            subject_remark = "Fair"
+        else:
+            calculated_grade = "U"
+            subject_remark = "Needs Improvement"
+
+        processed_results.append({
+            "subject": result["subject"],
+            "marks": mark,
+            "grade": result["grade"] or calculated_grade,
+            "remark": subject_remark,
+            "teacher_comment": result["teacher_comment"] or ""
+        })
+
+    # =====================================================
+    # TOTALS AND OVERALL PERFORMANCE
+    # =====================================================
+    total_marks = sum(
+        result["marks"]
+        for result in processed_results
+    )
+
+    subject_count = len(processed_results)
+
+    average = (
+        round(total_marks / subject_count, 1)
+        if subject_count > 0
+        else 0
+    )
+
+    if average >= 80:
+        overall_grade = "A"
+        overall_remark = "Outstanding Performance"
+    elif average >= 70:
+        overall_grade = "B"
+        overall_remark = "Very Good Performance"
+    elif average >= 60:
+        overall_grade = "C"
+        overall_remark = "Good Performance"
+    elif average >= 50:
+        overall_grade = "D"
+        overall_remark = "Fair Performance"
+    else:
+        overall_grade = "U"
+        overall_remark = "Needs Improvement"
+
+    promotion_status = (
+        "Promoted"
+        if subject_count > 0 and average >= 50
+        else "Not Promoted"
+    )
+
+    # =====================================================
+    # CLASS POSITION
+    # Calculate each student's average in the same class,
+    # term and academic year.
+    # =====================================================
+    class_results = fetch_all("""
+        SELECT
+            student_id,
+            COALESCE(AVG(marks), 0) AS average_marks
+        FROM results
+        WHERE school_id = ?
+          AND class_name = ?
+          AND term = ?
+          AND academic_year = ?
+        GROUP BY student_id
+        ORDER BY average_marks DESC
+    """, (
+        student_school_id,
+        class_name,
+        term,
+        academic_year
+    ))
+
+    students_in_class = len(class_results)
+    class_position = None
+
+    previous_average = None
+    previous_position = 0
+
+    for index, row in enumerate(class_results, start=1):
+        student_average = round(
+            float(row["average_marks"] or 0),
+            2
+        )
+
+        if student_average == previous_average:
+            position = previous_position
+        else:
+            position = index
+            previous_position = position
+            previous_average = student_average
+
+        if row["student_id"] == student_id:
+            class_position = position
+            break
+
+    # =====================================================
+    # ATTENDANCE
+    # =====================================================
+    attendance_rows = fetch_all("""
+        SELECT status
+        FROM attendance
+        WHERE student_id = ?
+          AND school_id = ?
+          AND date >= ?
+          AND date <= ?
+    """, (
+        student_id,
+        student_school_id,
+        f"{academic_year}-01-01",
+        f"{academic_year}-12-31"
+    ))
+
+    present_days = 0
+    absent_days = 0
+    late_days = 0
+
+    for attendance in attendance_rows:
+        status = str(attendance["status"] or "").strip().lower()
+
+        if status in ("present", "p"):
+            present_days += 1
+        elif status in ("absent", "a"):
+            absent_days += 1
+        elif status in ("late", "l"):
+            late_days += 1
+
+    attendance_total = len(attendance_rows)
+
+    attendance_percentage = (
+        round((present_days / attendance_total) * 100, 1)
+        if attendance_total > 0
+        else 0
+    )
+
+    attendance_available = attendance_total > 0
+
+    # =====================================================
+    # FEE SUMMARY
+    # =====================================================
+    fee_summary = fetch_one("""
+        SELECT COALESCE(SUM(balance), 0) AS total_balance
+        FROM fees
+        WHERE student_id = ?
+          AND school_id = ?
+    """, (
+        student_id,
+        student_school_id
+    ))
+
+    total_balance = (
+        float(fee_summary["total_balance"] or 0)
+        if fee_summary
+        else 0
+    )
+
+    fee_status = (
+        "Fees Cleared"
+        if total_balance <= 0
+        else "Outstanding Balance"
+    )
+
+    # =====================================================
+    # TEACHER COMMENT
+    # Use the first available result comment.
+    # =====================================================
+    teacher_comment = ""
+
+    for result in processed_results:
+        if result["teacher_comment"]:
+            teacher_comment = result["teacher_comment"]
+            break
+
+    if not teacher_comment:
+        if average >= 80:
+            teacher_comment = (
+                "An excellent performance. Keep maintaining "
+                "this high standard."
+            )
+        elif average >= 70:
+            teacher_comment = (
+                "A very good performance. Continue working hard."
+            )
+        elif average >= 60:
+            teacher_comment = (
+                "Good progress has been made. Greater effort "
+                "will produce even better results."
+            )
+        elif average >= 50:
+            teacher_comment = (
+                "A fair performance. More consistent effort "
+                "is encouraged."
+            )
+        elif subject_count > 0:
+            teacher_comment = (
+                "The student needs additional support and more "
+                "consistent academic effort."
+            )
+        else:
+            teacher_comment = "No academic results have been entered."
+
+    # There is currently no headteacher_comment column.
+    headteacher_comment = (
+        "Progress reviewed. Continue striving for improvement."
+    )
+
+    # =====================================================
+    # SCHOOL DETAILS
+    # =====================================================
+    school = None
+    school_settings = None
+
+    try:
+        school = fetch_one("""
+            SELECT *
+            FROM schools
+            WHERE id = ?
+        """, (student_school_id,))
+    except Exception:
+        school = None
+
+    try:
+        school_settings = fetch_one("""
+            SELECT *
+            FROM school_settings
+            WHERE school_id = ?
+            LIMIT 1
+        """, (student_school_id,))
+    except Exception:
+        school_settings = None
+
+    # =====================================================
+    # RENDER REPORT CARD
+    # =====================================================
     return render_template(
         "print_result.html",
         student=student,
-        results=results,
+        results=processed_results,
         term=term,
-        total_marks=total_marks,
+        academic_year=academic_year,
+        total_marks=round(total_marks, 1),
+        subject_count=subject_count,
         average=average,
-        total_balance=float(fee_summary["total_balance"] or 0)
+        overall_grade=overall_grade,
+        overall_remark=overall_remark,
+        promotion_status=promotion_status,
+        class_position=class_position,
+        students_in_class=students_in_class,
+        present_days=present_days,
+        absent_days=absent_days,
+        late_days=late_days,
+        attendance_total=attendance_total,
+        attendance_percentage=attendance_percentage,
+        attendance_available=attendance_available,
+        total_balance=total_balance,
+        fee_status=fee_status,
+        teacher_comment=teacher_comment,
+        headteacher_comment=headteacher_comment,
+        school=school,
+        school_settings=school_settings
     )
+
 @app.route("/assign_class_teacher", methods=["GET", "POST"])
 @login_required
 @roles_required("school_admin", "super_admin")
