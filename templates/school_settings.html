@@ -3,56 +3,230 @@
 {% block title %}School Settings{% endblock %}
 
 {% block content %}
+
 <div class="page-header">
     <div>
-        <h2 class="page-title">School Settings</h2>
-        <p class="page-subtitle">Manage branding and report information for the school</p>
+        <h2 class="page-title">🏫 School Profile</h2>
+        <p class="page-subtitle">
+            Manage your school's branding, report card information and contact details.
+        </p>
     </div>
 </div>
 
-<div class="form-card">
-    <form method="POST">
-        {% if session.get('role') == 'super_admin' %}
-        <label for="school_id">School</label>
-        <select name="school_id" required>
-            <option value="">Select School</option>
-            {% for school in schools %}
-            <option value="{{ school.id }}" {% if selected_school_id|string == school.id|string %}selected{% endif %}>
-                {{ school.school_name }}
-            </option>
-            {% endfor %}
-        </select>
-        {% endif %}
+<div class="card">
 
-        <div class="form-grid">
-            <div>
-                <label for="display_name">Display Name</label>
-                <input type="text" name="display_name" value="{{ settings.display_name if settings else '' }}" placeholder="School display name">
-            </div>
+<form method="POST">
 
-            <div>
-                <label for="phone">Phone</label>
-                <input type="text" name="phone" value="{{ settings.phone if settings else '' }}" placeholder="School phone number">
-            </div>
+{% if session.get("role")=="super_admin" %}
 
-            <div>
-                <label for="email">Email</label>
-                <input type="email" name="email" value="{{ settings.email if settings else '' }}" placeholder="School email">
-            </div>
+<div class="form-group">
+    <label>Select School</label>
 
-            <div>
-                <label for="logo_url">Logo URL</label>
-                <input type="text" name="logo_url" value="{{ settings.logo_url if settings else '' }}" placeholder="Optional logo image URL">
-            </div>
-        </div>
+    <select name="school_id" required>
 
-        <label for="address">Address</label>
-        <textarea name="address" rows="3" placeholder="School address">{{ settings.address if settings else '' }}</textarea>
+        <option value="">Choose School</option>
 
-        <label for="report_header">Report Header Text</label>
-        <textarea name="report_header" rows="2" placeholder="Printed report header">{{ settings.report_header if settings else '' }}</textarea>
+        {% for school in schools %}
 
-        <button type="submit" class="btn btn-primary">Save Settings</button>
-    </form>
+        <option
+            value="{{ school.id }}"
+            {% if selected_school_id|string==school.id|string %}
+            selected
+            {% endif %}
+        >
+            {{ school.school_name }}
+        </option>
+
+        {% endfor %}
+
+    </select>
+
 </div>
+
+{% endif %}
+
+<div class="form-grid">
+
+<div class="form-group">
+
+<label>School Display Name</label>
+
+<input
+type="text"
+name="display_name"
+value="{{ settings.display_name if settings else '' }}"
+placeholder="Example Academy"
+/>
+
+</div>
+
+<div class="form-group">
+
+<label>School Motto</label>
+
+<input
+type="text"
+name="motto"
+value="{{ settings.motto if settings else '' }}"
+placeholder="Excellence Through Education"
+/>
+
+</div>
+
+<div class="form-group">
+
+<label>Phone</label>
+
+<input
+type="text"
+name="phone"
+value="{{ settings.phone if settings else '' }}"
+placeholder="+263..."
+/>
+
+</div>
+
+<div class="form-group">
+
+<label>Email</label>
+
+<input
+type="email"
+name="email"
+value="{{ settings.email if settings else '' }}"
+placeholder="school@email.com"
+/>
+
+</div>
+
+<div class="form-group">
+
+<label>Opening Date</label>
+
+<input
+type="date"
+name="opening_date"
+value="{{ settings.opening_date if settings else '' }}"
+/>
+
+</div>
+
+<div class="form-group">
+
+<label>Closing Date</label>
+
+<input
+type="date"
+name="closing_date"
+value="{{ settings.closing_date if settings else '' }}"
+/>
+
+</div>
+
+</div>
+
+<div class="form-group">
+
+<label>School Address</label>
+
+<textarea
+name="address"
+rows="3"
+placeholder="School Address"
+>{{ settings.address if settings else '' }}</textarea>
+
+</div>
+
+<div class="form-group">
+
+<label>Report Header</label>
+
+<textarea
+name="report_header"
+rows="3"
+placeholder="Header printed at the top of report cards"
+>{{ settings.report_header if settings else '' }}</textarea>
+
+</div>
+
+<div class="form-group">
+
+<label>School Logo URL</label>
+
+<input
+type="text"
+name="logo_url"
+value="{{ settings.logo_url if settings else '' }}"
+placeholder="https://example.com/logo.png"
+/>
+
+<small style="color:#777;">
+Paste the public URL of your school logo.
+</small>
+
+</div>
+
+<hr>
+
+<button class="btn btn-primary">
+
+💾 Save School Profile
+
+</button>
+
+</form>
+
+</div>
+
+<style>
+
+.card{
+background:#fff;
+padding:30px;
+border-radius:15px;
+box-shadow:0 10px 30px rgba(0,0,0,.08);
+}
+
+.form-grid{
+
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+gap:20px;
+
+}
+
+.form-group{
+
+display:flex;
+flex-direction:column;
+margin-bottom:20px;
+
+}
+
+.form-group label{
+
+font-weight:600;
+margin-bottom:8px;
+
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select{
+
+padding:12px;
+border:1px solid #ddd;
+border-radius:10px;
+
+}
+
+.btn{
+
+padding:14px 25px;
+font-weight:bold;
+
+}
+
+</style>
+
 {% endblock %}

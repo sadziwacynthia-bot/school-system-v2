@@ -4848,7 +4848,6 @@ def add_assessment():
         return redirect(url_for("add_assessment"))
 
     return render_template("add_assessment.html", students=students)
-
 @app.route("/school_settings", methods=["GET", "POST"])
 @login_required
 @roles_required("school_admin", "super_admin")
@@ -4856,44 +4855,169 @@ def school_settings():
     role = session.get("role")
     school_id = session.get("school_id")
 
-    schools = fetch_all("SELECT * FROM schools ORDER BY school_name") if role == "super_admin" else []
+    schools = (
+        fetch_all(
+            "SELECT * FROM schools ORDER BY school_name"
+        )
+        if role == "super_admin"
+        else []
+    )
 
     if request.method == "POST":
+
         if role == "super_admin":
             school_id = request.form.get("school_id")
 
-        display_name = request.form.get("display_name", "").strip()
-        phone = request.form.get("phone", "").strip()
-        email = request.form.get("email", "").strip()
-        address = request.form.get("address", "").strip()
-        report_header = request.form.get("report_header", "").strip()
-        logo_url = request.form.get("logo_url", "").strip()
+        display_name = request.form.get(
+            "display_name",
+            ""
+        ).strip()
+
+        motto = request.form.get(
+            "motto",
+            ""
+        ).strip()
+
+        phone = request.form.get(
+            "phone",
+            ""
+        ).strip()
+
+        email = request.form.get(
+            "email",
+            ""
+        ).strip()
+
+        address = request.form.get(
+            "address",
+            ""
+        ).strip()
+
+        report_header = request.form.get(
+            "report_header",
+            ""
+        ).strip()
+
+        logo_url = request.form.get(
+            "logo_url",
+            ""
+        ).strip()
+
+        opening_date = request.form.get(
+            "opening_date",
+            ""
+        ).strip()
+
+        closing_date = request.form.get(
+            "closing_date",
+            ""
+        ).strip()
 
         if not school_id:
-            flash("School is required.", "danger")
-            return redirect(url_for("school_settings"))
+            flash(
+                "School is required.",
+                "danger"
+            )
+            return redirect(
+                url_for("school_settings")
+            )
 
-        existing = fetch_one("SELECT * FROM school_settings WHERE school_id = ?", (school_id,))
+        existing = fetch_one(
+            """
+            SELECT *
+            FROM school_settings
+            WHERE school_id = ?
+            """,
+            (school_id,)
+        )
 
         if existing:
-            execute_commit("""
+
+            execute_commit(
+                """
                 UPDATE school_settings
-                SET display_name = ?, phone = ?, email = ?, address = ?, report_header = ?, logo_url = ?
+                SET
+                    display_name = ?,
+                    motto = ?,
+                    phone = ?,
+                    email = ?,
+                    address = ?,
+                    report_header = ?,
+                    logo_url = ?,
+                    opening_date = ?,
+                    closing_date = ?
                 WHERE school_id = ?
-            """, (display_name, phone, email, address, report_header, logo_url, school_id))
-        else:
-            execute_commit("""
-                INSERT INTO school_settings (
-                    school_id, display_name, phone, email, address, report_header, logo_url
+                """,
+                (
+                    display_name,
+                    motto,
+                    phone,
+                    email,
+                    address,
+                    report_header,
+                    logo_url,
+                    opening_date,
+                    closing_date,
+                    school_id
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (school_id, display_name, phone, email, address, report_header, logo_url))
+            )
 
-        flash("School settings saved successfully.", "success")
-        return redirect(url_for("school_settings"))
+        else:
 
-    selected_school_id = request.args.get("school_id") if role == "super_admin" else school_id
-    settings = get_school_settings(selected_school_id) if selected_school_id else None
+            execute_commit(
+                """
+                INSERT INTO school_settings
+                (
+                    school_id,
+                    display_name,
+                    motto,
+                    phone,
+                    email,
+                    address,
+                    report_header,
+                    logo_url,
+                    opening_date,
+                    closing_date
+                )
+                VALUES
+                (
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                )
+                """,
+                (
+                    school_id,
+                    display_name,
+                    motto,
+                    phone,
+                    email,
+                    address,
+                    report_header,
+                    logo_url,
+                    opening_date,
+                    closing_date
+                )
+            )
+
+        flash(
+            "School settings saved successfully.",
+            "success"
+        )
+
+        return redirect(
+            url_for("school_settings")
+        )
+
+    selected_school_id = (
+        request.args.get("school_id")
+        if role == "super_admin"
+        else school_id
+    )
+
+    settings = (
+        get_school_settings(selected_school_id)
+        if selected_school_id
+        else None
+    )
 
     return render_template(
         "school_settings.html",
@@ -4901,7 +5025,6 @@ def school_settings():
         schools=schools,
         selected_school_id=selected_school_id
     )
-
 @app.route("/year_end_promotion", methods=["GET", "POST"])
 @login_required
 @roles_required("school_admin", "super_admin")
