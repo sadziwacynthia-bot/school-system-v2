@@ -3596,7 +3596,6 @@ def add_timetable():
         return redirect(url_for("timetable", class_name=class_name))
 
     return render_template("add_timetable.html", class_options=CLASS_OPTIONS, teachers=teachers_list, subjects=subjects)
-
 @app.route("/print_result/<int:student_id>/<term>")
 @login_required
 @roles_required("school_admin", "super_admin")
@@ -3604,81 +3603,111 @@ def print_result(student_id, term):
     school_id = session.get("school_id")
     role = session.get("role")
 
-    requested_year = request.args.get("academic_year", "").strip()
-
     # =====================================================
-    # STUDENT
+    # 1. GET STUDENT
     # =====================================================
     if role == "super_admin":
         student = fetch_one(
-            "SELECT * FROM students WHERE id = ?",
+            """
+            SELECT *
+            FROM students
+            WHERE id = ?
+            """,
             (student_id,)
         )
     else:
-        student = fetch_one("""
+        student = fetch_one(
+            """
             SELECT *
             FROM students
             WHERE id = ?
               AND school_id = ?
-        """, (student_id, school_id))
+            """,
+            (
+                student_id,
+                school_id
+            )
+        )
 
     if not student:
-        flash("Student not found or access denied.", "danger")
-        return redirect(url_for("students"))
+        flash(
+            "Student not found or you do not have permission "
+            "to view this report.",
+            "danger"
+        )
+        return redirect(url_for("results"))
 
     student_school_id = student["school_id"]
     class_name = student["class_name"]
 
     # =====================================================
-    # ACADEMIC YEAR
-    # Use the requested year or the latest year available.
+    # 2. DETERMINE ACADEMIC YEAR
+    # PostgreSQL stores academic_year as VARCHAR/TEXT.
     # =====================================================
+    requested_year = request.args.get(
+        "academic_year",
+        ""
+    ).strip()
+
     if requested_year:
-        try:
-            academic_year = int(requested_year)
-        except ValueError:
-            academic_year = datetime.now().year
+        academic_year = str(requested_year)
     else:
-        latest_year = fetch_one("""
-            SELECT MAX(academic_year) AS academic_year
+        latest_year = fetch_one(
+            """
+            SELECT MAX(CAST(academic_year AS TEXT)) AS academic_year
             FROM results
             WHERE student_id = ?
-              AND term = ?
               AND school_id = ?
-        """, (
-            student_id,
-            term,
-            student_school_id
-        ))
-
-        academic_year = (
-            latest_year["academic_year"]
-            if latest_year and latest_year["academic_year"]
-            else datetime.now().year
+              AND term = ?
+            """,
+            (
+                student_id,
+                student_school_id,
+                term
+            )
         )
 
+        if latest_year and latest_year["academic_year"]:
+            academic_year = str(
+                latest_year["academic_year"]
+            )
+        else:
+            academic_year = str(
+                datetime.now().year
+            )
+
     # =====================================================
-    # STUDENT RESULTS
+    # 3. GET STUDENT RESULTS
+    # CAST allows the query to work in PostgreSQL and SQLite.
     # =====================================================
-    results = fetch_all("""
+    results = fetch_all(
+        """
         SELECT *
         FROM results
         WHERE student_id = ?
           AND school_id = ?
           AND term = ?
-          AND academic_year = ?
-        ORDER BY subject
-    """, (
-        student_id,
-        student_school_id,
-        term,
-        academic_year
-    ))
+          AND CAST(academic_year AS TEXT) = ?
+        ORDER BY subject ASC
+        """,
+        (
+            student_id,
+            student_school_id,
+            term,
+            academic_year
+        )
+    )
 
+    # =====================================================
+    # 4. PROCESS SUBJECT RESULTS
+    # =====================================================
     processed_results = []
 
     for result in results:
-        mark = float(result["marks"] or 0)
+        try:
+            mark = float(result["marks"] or 0)
+        except (TypeError, ValueError):
+            mark = 0.0
 
         if mark >= 80:
             calculated_grade = "A"
@@ -3696,29 +3725,39 @@ def print_result(student_id, term):
             calculated_grade = "U"
             subject_remark = "Needs Improvement"
 
+        saved_grade = result["grade"]
+
         processed_results.append({
             "subject": result["subject"],
-            "marks": mark,
-            "grade": result["grade"] or calculated_grade,
+            "marks": round(mark, 1),
+            "grade": saved_grade or calculated_grade,
             "remark": subject_remark,
-            "teacher_comment": result["teacher_comment"] or ""
+            "teacher_comment": (
+                row_get(
+                    result,
+                    "teacher_comment",
+                    ""
+                ) or ""
+            )
         })
 
     # =====================================================
-    # TOTALS AND OVERALL PERFORMANCE
+    # 5. TOTALS AND AVERAGE
     # =====================================================
+    subject_count = len(processed_results)
+
     total_marks = sum(
         result["marks"]
         for result in processed_results
     )
 
-    subject_count = len(processed_results)
-
-    average = (
-        round(total_marks / subject_count, 1)
-        if subject_count > 0
-        else 0
-    )
+    if subject_count > 0:
+        average = round(
+            total_marks / subject_count,
+            1
+        )
+    else:
+        average = 0
 
     if average >= 80:
         overall_grade = "A"
@@ -3736,18 +3775,18 @@ def print_result(student_id, term):
         overall_grade = "U"
         overall_remark = "Needs Improvement"
 
-    promotion_status = (
-        "Promoted"
-        if subject_count > 0 and average >= 50
-        else "Not Promoted"
-    )
+    if subject_count == 0:
+        promotion_status = "Results Pending"
+    elif average >= 50:
+        promotion_status = "Promoted"
+    else:
+        promotion_status = "Not Promoted"
 
     # =====================================================
-    # CLASS POSITION
-    # Calculate each student's average in the same class,
-    # term and academic year.
+    # 6. CALCULATE CLASS POSITION
     # =====================================================
-    class_results = fetch_all("""
+    class_results = fetch_all(
+        """
         SELECT
             student_id,
             COALESCE(AVG(marks), 0) AS average_marks
@@ -3755,15 +3794,17 @@ def print_result(student_id, term):
         WHERE school_id = ?
           AND class_name = ?
           AND term = ?
-          AND academic_year = ?
+          AND CAST(academic_year AS TEXT) = ?
         GROUP BY student_id
         ORDER BY average_marks DESC
-    """, (
-        student_school_id,
-        class_name,
-        term,
-        academic_year
-    ))
+        """,
+        (
+            student_school_id,
+            class_name,
+            term,
+            academic_year
+        )
+    )
 
     students_in_class = len(class_results)
     class_position = None
@@ -3771,46 +3812,60 @@ def print_result(student_id, term):
     previous_average = None
     previous_position = 0
 
-    for index, row in enumerate(class_results, start=1):
+    for index, class_result in enumerate(
+        class_results,
+        start=1
+    ):
         student_average = round(
-            float(row["average_marks"] or 0),
+            float(
+                class_result["average_marks"] or 0
+            ),
             2
         )
 
-        if student_average == previous_average:
+        if (
+            previous_average is not None
+            and student_average == previous_average
+        ):
             position = previous_position
         else:
             position = index
             previous_position = position
             previous_average = student_average
 
-        if row["student_id"] == student_id:
+        if int(class_result["student_id"]) == int(student_id):
             class_position = position
             break
 
     # =====================================================
-    # ATTENDANCE
+    # 7. ATTENDANCE SUMMARY
     # =====================================================
-    attendance_rows = fetch_all("""
+    attendance_rows = fetch_all(
+        """
         SELECT status
         FROM attendance
         WHERE student_id = ?
           AND school_id = ?
           AND date >= ?
           AND date <= ?
-    """, (
-        student_id,
-        student_school_id,
-        f"{academic_year}-01-01",
-        f"{academic_year}-12-31"
-    ))
+        """,
+        (
+            student_id,
+            student_school_id,
+            f"{academic_year}-01-01",
+            f"{academic_year}-12-31"
+        )
+    )
 
     present_days = 0
     absent_days = 0
     late_days = 0
+    excused_days = 0
 
-    for attendance in attendance_rows:
-        status = str(attendance["status"] or "").strip().lower()
+    for attendance_record in attendance_rows:
+        status = str(
+            attendance_record["status"] or ""
+        ).strip().lower()
 
         if status in ("present", "p"):
             present_days += 1
@@ -3818,45 +3873,61 @@ def print_result(student_id, term):
             absent_days += 1
         elif status in ("late", "l"):
             late_days += 1
+        elif status in ("excused", "e"):
+            excused_days += 1
 
     attendance_total = len(attendance_rows)
 
-    attendance_percentage = (
-        round((present_days / attendance_total) * 100, 1)
-        if attendance_total > 0
-        else 0
-    )
+    if attendance_total > 0:
+        attendance_percentage = round(
+            (
+                (
+                    present_days
+                    + late_days
+                )
+                / attendance_total
+            ) * 100,
+            1
+        )
+    else:
+        attendance_percentage = 0
 
     attendance_available = attendance_total > 0
 
     # =====================================================
-    # FEE SUMMARY
+    # 8. FEE SUMMARY
     # =====================================================
-    fee_summary = fetch_one("""
-        SELECT COALESCE(SUM(balance), 0) AS total_balance
+    fee_summary = fetch_one(
+        """
+        SELECT
+            COALESCE(SUM(balance), 0) AS total_balance
         FROM fees
         WHERE student_id = ?
           AND school_id = ?
-    """, (
-        student_id,
-        student_school_id
-    ))
-
-    total_balance = (
-        float(fee_summary["total_balance"] or 0)
-        if fee_summary
-        else 0
+        """,
+        (
+            student_id,
+            student_school_id
+        )
     )
 
-    fee_status = (
-        "Fees Cleared"
-        if total_balance <= 0
-        else "Outstanding Balance"
-    )
+    if fee_summary:
+        try:
+            total_balance = float(
+                fee_summary["total_balance"] or 0
+            )
+        except (TypeError, ValueError):
+            total_balance = 0
+    else:
+        total_balance = 0
+
+    if total_balance <= 0:
+        fee_status = "Fees Cleared"
+    else:
+        fee_status = "Outstanding Balance"
 
     # =====================================================
-    # TEACHER COMMENT
-    # Use the first available result comment.
+    # 9. TEACHER COMMENT
     # =====================================================
     teacher_comment = ""
 
@@ -3866,7 +3937,12 @@ def print_result(student_id, term):
             break
 
     if not teacher_comment:
-        if average >= 80:
+        if subject_count == 0:
+            teacher_comment = (
+                "No academic results have been entered "
+                "for this term."
+            )
+        elif average >= 80:
             teacher_comment = (
                 "An excellent performance. Keep maintaining "
                 "this high standard."
@@ -3885,46 +3961,55 @@ def print_result(student_id, term):
                 "A fair performance. More consistent effort "
                 "is encouraged."
             )
-        elif subject_count > 0:
-            teacher_comment = (
-                "The student needs additional support and more "
-                "consistent academic effort."
-            )
         else:
-            teacher_comment = "No academic results have been entered."
+            teacher_comment = (
+                "The student needs additional support and "
+                "more consistent academic effort."
+            )
 
-    # There is currently no headteacher_comment column.
     headteacher_comment = (
         "Progress reviewed. Continue striving for improvement."
     )
 
     # =====================================================
-    # SCHOOL DETAILS
+    # 10. SCHOOL DETAILS
     # =====================================================
     school = None
     school_settings = None
 
     try:
-        school = fetch_one("""
+        school = fetch_one(
+            """
             SELECT *
             FROM schools
             WHERE id = ?
-        """, (student_school_id,))
-    except Exception:
-        school = None
+            """,
+            (student_school_id,)
+        )
+    except Exception as error:
+        app.logger.warning(
+            "Could not load school details for report card: %s",
+            error
+        )
 
     try:
-        school_settings = fetch_one("""
+        school_settings = fetch_one(
+            """
             SELECT *
             FROM school_settings
             WHERE school_id = ?
             LIMIT 1
-        """, (student_school_id,))
-    except Exception:
-        school_settings = None
+            """,
+            (student_school_id,)
+        )
+    except Exception as error:
+        app.logger.warning(
+            "Could not load school settings for report card: %s",
+            error
+        )
 
     # =====================================================
-    # RENDER REPORT CARD
+    # 11. RENDER REPORT CARD
     # =====================================================
     return render_template(
         "print_result.html",
@@ -3943,10 +4028,11 @@ def print_result(student_id, term):
         present_days=present_days,
         absent_days=absent_days,
         late_days=late_days,
+        excused_days=excused_days,
         attendance_total=attendance_total,
         attendance_percentage=attendance_percentage,
         attendance_available=attendance_available,
-        total_balance=total_balance,
+        total_balance=round(total_balance, 2),
         fee_status=fee_status,
         teacher_comment=teacher_comment,
         headteacher_comment=headteacher_comment,
