@@ -13,6 +13,8 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
+from io import BytesIO
+from flask import send_file
 import pandas as pd
 from utils.db import (
     DB_PATH,
@@ -43,6 +45,17 @@ from routes.fees import register_fee_routes
 from routes.teachers import register_teacher_routes
 from routes.admin import register_admin_routes
 from utils.storage import upload_to_supabase
+from utils.branding import (
+    ASSET_FIELDS,
+    get_branding,
+    get_branding_asset,
+    save_school_identity,
+    save_branding_asset,
+    delete_branding_asset,
+    save_theme,
+    reset_theme,
+    save_report_options,
+)
 UPLOAD_FOLDER = os.path.join("static", "uploads", "resources")
 ALLOWED_RESOURCE_EXTENSIONS = {"pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "png", "jpg", "jpeg"}
 
@@ -693,34 +706,6 @@ def create_assessments_table():
 def delete_by_scope(cursor, query, params):
     cursor.execute(convert_query(query), params)
 
-
-def get_school_settings(school_id):
-    if not school_id:
-        return None
-
-    try:
-        settings = fetch_one(
-            "SELECT * FROM school_settings WHERE school_id = ?",
-            (school_id,)
-        )
-        if settings:
-            return settings
-    except Exception:
-        pass
-
-    school = fetch_one("SELECT * FROM schools WHERE id = ?", (school_id,))
-    if not school:
-        return None
-
-    return {
-        "school_id": school_id,
-        "display_name": row_get(school, "school_name", "EduTrack"),
-        "phone": "",
-        "email": "",
-        "address": "",
-        "report_header": "School Management System",
-        "logo_url": "",
-    }
 
 
 def school_is_overdue(school):
@@ -4848,182 +4833,423 @@ def add_assessment():
         return redirect(url_for("add_assessment"))
 
     return render_template("add_assessment.html", students=students)
+# ============================================================
+# BRANDING CENTER
+# ============================================================
+
+def get_allowed_branding_school_id():
+    """
+    Resolve the school that the current user is allowed to manage.
+
+    School admins can only manage their assigned school.
+    Super admins may select any school.
+    """
+    role = session.get("role")
+    session_school_id = session.get("school_id")
+
+    if role == "super_admin":
+        selected_school_id = (
+            request.form.get("school_id")
+            or request.args.get("school_id")
+            or session_school_id
+        )
+    else:
+        selected_school_id = session_school_id
+
+    if not selected_school_id:
+        return None
+
+    try:
+        selected_school_id = int(selected_school_id)
+    except (TypeError, ValueError):
+        return None
+
+    if role != "super_admin":
+        try:
+            session_school_id = int(session_school_id)
+        except (TypeError, ValueError):
+            return None
+
+        if selected_school_id != session_school_id:
+            return None
+
+    return selected_school_id
+
+
+def branding_redirect(school_id=None, active_tab=None):
+    """
+    Redirect back to the Branding Center while preserving the selected
+    school and currently active tab.
+    """
+    parameters = {}
+
+    if session.get("role") == "super_admin" and school_id:
+        parameters["school_id"] = school_id
+
+    if active_tab:
+        parameters["tab"] = active_tab
+
+    return redirect(url_for("school_settings", **parameters))
+
+
 @app.route("/school_settings", methods=["GET", "POST"])
 @login_required
 @roles_required("school_admin", "super_admin")
 def school_settings():
     role = session.get("role")
-    school_id = session.get("school_id")
+    selected_school_id = get_allowed_branding_school_id()
 
     schools = (
         fetch_all(
-            "SELECT * FROM schools ORDER BY school_name"
+            """
+            SELECT id, school_name
+            FROM schools
+            ORDER BY school_name
+            """
         )
         if role == "super_admin"
         else []
     )
 
     if request.method == "POST":
+        action = request.form.get("action", "").strip().lower()
+        active_tab = request.form.get("active_tab", "identity").strip().lower()
 
-        if role == "super_admin":
-            school_id = request.form.get("school_id")
+        if not selected_school_id:
+            flash("Please select a valid school.", "danger")
+            return branding_redirect(active_tab=active_tab)
 
-        display_name = request.form.get(
-            "display_name",
-            ""
-        ).strip()
+        try:
+            # ------------------------------------------------
+            # Save school identity
+            # ------------------------------------------------
+            if action == "save_identity":
+                save_school_identity(
+                    school_id=selected_school_id,
+                    display_name=request.form.get("display_name"),
+                    motto=request.form.get("motto"),
+                    phone=request.form.get("phone"),
+                    email=request.form.get("email"),
+                    address=request.form.get("address"),
+                    report_header=request.form.get("report_header"),
+                    logo_url=request.form.get("logo_url"),
+                    opening_date=request.form.get("opening_date"),
+                    closing_date=request.form.get("closing_date"),
+                )
 
-        motto = request.form.get(
-            "motto",
-            ""
-        ).strip()
+                flash(
+                    "School identity saved successfully.",
+                    "success"
+                )
 
-        phone = request.form.get(
-            "phone",
-            ""
-        ).strip()
+                return branding_redirect(
+                    selected_school_id,
+                    "identity"
+                )
 
-        email = request.form.get(
-            "email",
-            ""
-        ).strip()
+            # ------------------------------------------------
+            # Save logo, stamp or signature
+            # ------------------------------------------------
+            if action == "upload_asset":
+                asset_name = request.form.get(
+                    "asset_name",
+                    ""
+                ).strip()
 
-        address = request.form.get(
-            "address",
-            ""
-        ).strip()
+                if asset_name not in ASSET_FIELDS:
+                    raise ValueError(
+                        "The selected branding asset is invalid."
+                    )
 
-        report_header = request.form.get(
-            "report_header",
-            ""
-        ).strip()
+                uploaded_file = request.files.get("asset_file")
 
-        logo_url = request.form.get(
-            "logo_url",
-            ""
-        ).strip()
+                result = save_branding_asset(
+                    selected_school_id,
+                    asset_name,
+                    uploaded_file,
+                )
 
-        opening_date = request.form.get(
-            "opening_date",
-            ""
-        ).strip()
+                asset_labels = {
+                    "logo": "School logo",
+                    "stamp": "School stamp",
+                    "head_signature": "Headteacher signature",
+                    "bursar_signature": "Bursar signature",
+                }
 
-        closing_date = request.form.get(
-            "closing_date",
-            ""
-        ).strip()
+                asset_label = asset_labels.get(
+                    asset_name,
+                    "Branding image"
+                )
 
-        if not school_id:
+                flash(
+                    f"{asset_label} uploaded successfully.",
+                    "success"
+                )
+
+                return branding_redirect(
+                    selected_school_id,
+                    "branding"
+                )
+
+            # ------------------------------------------------
+            # Delete logo, stamp or signature
+            # ------------------------------------------------
+            if action == "delete_asset":
+                asset_name = request.form.get(
+                    "asset_name",
+                    ""
+                ).strip()
+
+                if asset_name not in ASSET_FIELDS:
+                    raise ValueError(
+                        "The selected branding asset is invalid."
+                    )
+
+                delete_branding_asset(
+                    selected_school_id,
+                    asset_name,
+                )
+
+                asset_labels = {
+                    "logo": "School logo",
+                    "stamp": "School stamp",
+                    "head_signature": "Headteacher signature",
+                    "bursar_signature": "Bursar signature",
+                }
+
+                asset_label = asset_labels.get(
+                    asset_name,
+                    "Branding image"
+                )
+
+                flash(
+                    f"{asset_label} removed successfully.",
+                    "success"
+                )
+
+                return branding_redirect(
+                    selected_school_id,
+                    "branding"
+                )
+
+            # ------------------------------------------------
+            # Save theme
+            # ------------------------------------------------
+            if action == "save_theme":
+                save_theme(
+                    school_id=selected_school_id,
+                    primary_color=request.form.get(
+                        "primary_color"
+                    ),
+                    secondary_color=request.form.get(
+                        "secondary_color"
+                    ),
+                    accent_color=request.form.get(
+                        "accent_color"
+                    ),
+                )
+
+                flash(
+                    "School theme saved successfully.",
+                    "success"
+                )
+
+                return branding_redirect(
+                    selected_school_id,
+                    "theme"
+                )
+
+            # ------------------------------------------------
+            # Reset theme
+            # ------------------------------------------------
+            if action == "reset_theme":
+                reset_theme(selected_school_id)
+
+                flash(
+                    "The school theme was reset to the EduTrack defaults.",
+                    "success"
+                )
+
+                return branding_redirect(
+                    selected_school_id,
+                    "theme"
+                )
+
+            # ------------------------------------------------
+            # Save report settings
+            # ------------------------------------------------
+            if action == "save_reports":
+                save_report_options(
+                    school_id=selected_school_id,
+                    report_template=request.form.get(
+                        "report_template",
+                        "classic"
+                    ),
+                    show_logo=request.form.get("show_logo"),
+                    show_stamp=request.form.get("show_stamp"),
+                    show_head_signature=request.form.get(
+                        "show_head_signature"
+                    ),
+                    show_bursar_signature=request.form.get(
+                        "show_bursar_signature"
+                    ),
+                    show_position=request.form.get(
+                        "show_position"
+                    ),
+                    show_attendance=request.form.get(
+                        "show_attendance"
+                    ),
+                    show_conduct=request.form.get(
+                        "show_conduct"
+                    ),
+                )
+
+                flash(
+                    "Report settings saved successfully.",
+                    "success"
+                )
+
+                return branding_redirect(
+                    selected_school_id,
+                    "reports"
+                )
+
+            raise ValueError(
+                "The requested Branding Center action was not recognized."
+            )
+
+        except ValueError as error:
+            flash(str(error), "danger")
+
+        except Exception as error:
+            app.logger.exception(
+                "Branding Center error for school %s: %s",
+                selected_school_id,
+                error,
+            )
+
             flash(
-                "School is required.",
+                "The Branding Center could not save your changes. "
+                "Please try again.",
                 "danger"
             )
-            return redirect(
-                url_for("school_settings")
-            )
 
-        existing = fetch_one(
-            """
-            SELECT *
-            FROM school_settings
-            WHERE school_id = ?
-            """,
-            (school_id,)
+        return branding_redirect(
+            selected_school_id,
+            active_tab
         )
 
-        if existing:
-
-            execute_commit(
-                """
-                UPDATE school_settings
-                SET
-                    display_name = ?,
-                    motto = ?,
-                    phone = ?,
-                    email = ?,
-                    address = ?,
-                    report_header = ?,
-                    logo_url = ?,
-                    opening_date = ?,
-                    closing_date = ?
-                WHERE school_id = ?
-                """,
-                (
-                    display_name,
-                    motto,
-                    phone,
-                    email,
-                    address,
-                    report_header,
-                    logo_url,
-                    opening_date,
-                    closing_date,
-                    school_id
-                )
-            )
-
-        else:
-
-            execute_commit(
-                """
-                INSERT INTO school_settings
-                (
-                    school_id,
-                    display_name,
-                    motto,
-                    phone,
-                    email,
-                    address,
-                    report_header,
-                    logo_url,
-                    opening_date,
-                    closing_date
-                )
-                VALUES
-                (
-                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-                )
-                """,
-                (
-                    school_id,
-                    display_name,
-                    motto,
-                    phone,
-                    email,
-                    address,
-                    report_header,
-                    logo_url,
-                    opening_date,
-                    closing_date
-                )
-            )
-
-        flash(
-            "School settings saved successfully.",
-            "success"
-        )
-
-        return redirect(
-            url_for("school_settings")
-        )
-
-    selected_school_id = (
-        request.args.get("school_id")
-        if role == "super_admin"
-        else school_id
-    )
-
-    settings = (
-        get_school_settings(selected_school_id)
+    branding = (
+        get_branding(selected_school_id)
         if selected_school_id
         else None
     )
 
+    active_tab = request.args.get(
+        "tab",
+        "identity"
+    ).strip().lower()
+
+    valid_tabs = {
+        "identity",
+        "branding",
+        "theme",
+        "reports",
+        "preview",
+    }
+
+    if active_tab not in valid_tabs:
+        active_tab = "identity"
+
     return render_template(
         "school_settings.html",
-        settings=settings,
+        settings=branding,
+        branding=branding,
         schools=schools,
-        selected_school_id=selected_school_id
+        selected_school_id=selected_school_id,
+        active_tab=active_tab,
+    )
+
+
+# ============================================================
+# BRANDING ASSET VIEWER
+# ============================================================
+
+@app.route(
+    "/school_settings/asset/<int:school_id>/<asset_name>"
+)
+@login_required
+@roles_required("school_admin", "super_admin")
+def school_settings_asset(school_id, asset_name):
+    role = session.get("role")
+    user_school_id = session.get("school_id")
+
+    if role != "super_admin":
+        try:
+            user_school_id = int(user_school_id)
+        except (TypeError, ValueError):
+            return "", 403
+
+        if school_id != user_school_id:
+            return "", 403
+
+    if asset_name not in ASSET_FIELDS:
+        return "", 404
+
+    asset = get_branding_asset(
+        school_id,
+        asset_name,
+    )
+
+    if not asset:
+        return "", 404
+
+    return send_file(
+        BytesIO(asset["data"]),
+        mimetype=asset["mime_type"],
+        download_name=asset["filename"],
+        as_attachment=False,
+        max_age=0,
+    )
+
+
+# ============================================================
+# OLD LOGO URL COMPATIBILITY
+# ============================================================
+
+@app.route("/school_settings/logo/<int:school_id>")
+@login_required
+@roles_required("school_admin", "super_admin")
+def school_settings_logo(school_id):
+    """
+    Keep the old logo URL working for existing templates and reports.
+    """
+    role = session.get("role")
+    user_school_id = session.get("school_id")
+
+    if role != "super_admin":
+        try:
+            user_school_id = int(user_school_id)
+        except (TypeError, ValueError):
+            return "", 403
+
+        if school_id != user_school_id:
+            return "", 403
+
+    asset = get_branding_asset(
+        school_id,
+        "logo",
+    )
+
+    if not asset:
+        return "", 404
+
+    return send_file(
+        BytesIO(asset["data"]),
+        mimetype=asset["mime_type"],
+        download_name=asset["filename"],
+        as_attachment=False,
+        max_age=0,
     )
 @app.route("/year_end_promotion", methods=["GET", "POST"])
 @login_required
