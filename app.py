@@ -56,6 +56,9 @@ from utils.branding import (
     reset_theme,
     save_report_options,
 )
+from dotenv import load_dotenv
+
+load_dotenv()
 UPLOAD_FOLDER = os.path.join("static", "uploads", "resources")
 ALLOWED_RESOURCE_EXTENSIONS = {"pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "png", "jpg", "jpeg"}
 
@@ -3955,46 +3958,78 @@ def print_result(student_id, term):
     headteacher_comment = (
         "Progress reviewed. Continue striving for improvement."
     )
-
     # =====================================================
-    # 10. SCHOOL DETAILS
+    # 10. SCHOOL DETAILS AND BRANDING
     # =====================================================
-    school = None
-    school_settings = None
+    school = fetch_one(
+        """
+        SELECT *
+        FROM schools
+        WHERE id = ?
+        """,
+        (student_school_id,)
+    )
 
     try:
-        school = fetch_one(
-            """
-            SELECT *
-            FROM schools
-            WHERE id = ?
-            """,
-            (student_school_id,)
-        )
+        branding = get_branding(student_school_id)
     except Exception as error:
-        app.logger.warning(
-            "Could not load school details for report card: %s",
+        app.logger.exception(
+            "Could not load branding for report card: %s",
             error
         )
+        branding = None
 
-    try:
-        school_settings = fetch_one(
-            """
-            SELECT *
-            FROM school_settings
-            WHERE school_id = ?
-            LIMIT 1
-            """,
-            (student_school_id,)
-        )
-    except Exception as error:
-        app.logger.warning(
-            "Could not load school settings for report card: %s",
-            error
-        )
+    # Safe defaults when branding has not been configured.
+    if not branding:
+        branding = {
+            "display_name": (
+                row_get(school, "school_name", "")
+                or "EduTrack School"
+            ),
+            "motto": (
+                row_get(school, "motto", "")
+                or "Excellence Through Education"
+            ),
+            "address": row_get(school, "address", "") or "",
+            "phone": row_get(school, "phone", "") or "",
+            "email": row_get(school, "email", "") or "",
+            "report_header": "Student Academic Report",
+            "opening_date": "",
+            "closing_date": "",
+            "logo_url": "",
+            "logo_data": None,
+            "stamp_data": None,
+            "head_signature_data": None,
+            "bursar_signature_data": None,
+            "primary_color": "#2563eb",
+            "secondary_color": "#7c3aed",
+            "accent_color": "#10b981",
+            "report_template": "classic",
+            "show_logo": True,
+            "show_stamp": True,
+            "show_head_signature": True,
+            "show_bursar_signature": False,
+            "show_position": True,
+            "show_attendance": True,
+            "show_conduct": True,
+        }
 
     # =====================================================
-    # 11. RENDER REPORT CARD
+    # 11. STUDENT CONDUCT
+    # =====================================================
+    if average >= 80:
+        conduct = "Excellent"
+    elif average >= 70:
+        conduct = "Very Good"
+    elif average >= 60:
+        conduct = "Good"
+    elif average >= 50:
+        conduct = "Satisfactory"
+    else:
+        conduct = "Needs Improvement"
+
+    # =====================================================
+    # 12. RENDER REPORT CARD
     # =====================================================
     return render_template(
         "print_result.html",
@@ -4021,8 +4056,10 @@ def print_result(student_id, term):
         fee_status=fee_status,
         teacher_comment=teacher_comment,
         headteacher_comment=headteacher_comment,
+        conduct=conduct,
         school=school,
-        school_settings=school_settings
+        branding=branding,
+        student_school_id=student_school_id
     )
 
 @app.route("/assign_class_teacher", methods=["GET", "POST"])

@@ -14,6 +14,11 @@
         | Report Card
     </title>
 
+    {% set primary = branding.primary_color or "#2563eb" %}
+    {% set secondary = branding.secondary_color or "#7c3aed" %}
+    {% set accent = branding.accent_color or "#10b981" %}
+    {% set report_style = branding.report_template or "classic" %}
+
     <style>
         * {
             box-sizing: border-box;
@@ -22,12 +27,9 @@
         body {
             margin: 0;
             padding: 30px;
-            background: #eef2f7;
             color: #1f2937;
-            font-family:
-                Arial,
-                Helvetica,
-                sans-serif;
+            background: #eef2f7;
+            font-family: Arial, Helvetica, sans-serif;
         }
 
         .page-actions {
@@ -36,7 +38,6 @@
             margin: 0 auto 20px;
             display: flex;
             justify-content: space-between;
-            align-items: center;
             gap: 12px;
         }
 
@@ -51,7 +52,6 @@
             justify-content: center;
             min-height: 42px;
             padding: 10px 18px;
-            border: none;
             border-radius: 8px;
             font-size: 14px;
             font-weight: 700;
@@ -60,14 +60,19 @@
         }
 
         .button-primary {
-            background: #1d4ed8;
+            border: none;
             color: #ffffff;
+            background: linear-gradient(
+                135deg,
+                {{ primary }},
+                {{ secondary }}
+            );
         }
 
         .button-secondary {
-            background: #ffffff;
             color: #1f2937;
             border: 1px solid #d1d5db;
+            background: #ffffff;
         }
 
         .report-card {
@@ -76,11 +81,19 @@
             min-height: 1300px;
             margin: 0 auto;
             padding: 38px;
-            background: #ffffff;
             border: 1px solid #d8dee8;
-            box-shadow:
-                0 12px 30px
-                rgba(15, 23, 42, 0.08);
+            background: #ffffff;
+            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+        }
+
+        .report-card.modern {
+            border-top: 10px solid {{ primary }};
+            border-radius: 15px;
+        }
+
+        .report-card.executive {
+            border: 2px solid {{ primary }};
+            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.14);
         }
 
         .school-header {
@@ -89,10 +102,29 @@
             align-items: center;
             gap: 20px;
             padding-bottom: 20px;
-            border-bottom: 3px solid #1d4ed8;
+            border-bottom: 4px solid {{ primary }};
         }
 
-        .school-logo-box {
+        .modern .school-header {
+            padding: 24px;
+            color: #ffffff;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(
+                135deg,
+                {{ primary }},
+                {{ secondary }}
+            );
+        }
+
+        .modern .school-name,
+        .modern .school-motto,
+        .modern .school-contact {
+            color: #ffffff;
+        }
+
+        .school-logo-box,
+        .school-stamp-header {
             width: 100px;
             height: 100px;
             display: flex;
@@ -100,7 +132,8 @@
             justify-content: center;
         }
 
-        .school-logo {
+        .school-logo,
+        .header-stamp {
             max-width: 100%;
             max-height: 100%;
             object-fit: contain;
@@ -109,13 +142,13 @@
         .school-logo-placeholder {
             width: 90px;
             height: 90px;
-            border: 2px solid #d1d5db;
-            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #6b7280;
-            font-size: 12px;
+            border: 2px dashed #cbd5e1;
+            border-radius: 50%;
+            color: #64748b;
+            font-size: 11px;
             text-align: center;
         }
 
@@ -129,7 +162,6 @@
             font-size: 30px;
             font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
 
         .school-motto {
@@ -153,7 +185,7 @@
 
         .report-title h2 {
             margin: 0;
-            color: #1d4ed8;
+            color: {{ primary }};
             font-size: 23px;
             text-transform: uppercase;
             letter-spacing: 1px;
@@ -167,18 +199,13 @@
 
         .student-details {
             display: grid;
-            grid-template-columns:
-                repeat(4, minmax(0, 1fr));
+            grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 12px;
             margin-bottom: 22px;
             padding: 16px;
-            background: #f8fafc;
             border: 1px solid #dbe2ea;
             border-radius: 10px;
-        }
-
-        .detail-item {
-            min-width: 0;
+            background: #f8fafc;
         }
 
         .detail-label {
@@ -187,14 +214,12 @@
             font-size: 10px;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
 
         .detail-value {
             color: #0f172a;
             font-size: 14px;
             font-weight: 700;
-            word-break: break-word;
         }
 
         .section {
@@ -203,13 +228,16 @@
 
         .section-title {
             margin: 0 0 10px;
-            padding: 8px 12px;
-            background: #1e3a8a;
+            padding: 9px 12px;
             color: #ffffff;
             border-radius: 5px;
+            background: linear-gradient(
+                135deg,
+                {{ primary }},
+                {{ secondary }}
+            );
             font-size: 14px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
 
         .results-table {
@@ -225,10 +253,13 @@
         }
 
         .results-table th {
-            background: #e8eef9;
             color: #0f172a;
+            background: color-mix(
+                in srgb,
+                {{ primary }} 13%,
+                white
+            );
             text-align: left;
-            font-weight: 800;
         }
 
         .results-table td:nth-child(2),
@@ -240,22 +271,20 @@
             padding: 22px !important;
             color: #64748b;
             text-align: center !important;
-            font-style: italic;
         }
 
         .summary-grid {
             display: grid;
-            grid-template-columns:
-                repeat(4, minmax(0, 1fr));
+            grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 12px;
             margin-top: 15px;
         }
 
         .summary-card {
             padding: 13px;
-            background: #f8fafc;
             border: 1px solid #dbe2ea;
             border-radius: 8px;
+            background: #f8fafc;
             text-align: center;
         }
 
@@ -276,9 +305,13 @@
         .performance-message {
             margin-top: 12px;
             padding: 12px;
-            background: #eff6ff;
-            border-left: 4px solid #2563eb;
-            color: #1e3a8a;
+            color: {{ primary }};
+            border-left: 4px solid {{ accent }};
+            background: color-mix(
+                in srgb,
+                {{ accent }} 9%,
+                white
+            );
             font-size: 13px;
             font-weight: 700;
         }
@@ -289,11 +322,18 @@
             gap: 18px;
         }
 
-        .information-box {
-            height: 100%;
+        .information-box,
+        .comment-box {
             padding: 15px;
             border: 1px solid #dbe2ea;
             border-radius: 8px;
+        }
+
+        .comment-box {
+            min-height: 78px;
+            color: #334155;
+            font-size: 12px;
+            line-height: 1.7;
         }
 
         .information-row {
@@ -320,62 +360,15 @@
             text-align: right;
         }
 
-        .comment-box {
-            min-height: 78px;
-            padding: 13px;
-            border: 1px solid #cbd5e1;
-            border-radius: 7px;
-            color: #334155;
-            font-size: 12px;
-            line-height: 1.7;
-        }
-
-        .signature-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 35px;
-            margin-top: 38px;
-        }
-
-        .signature-box {
-            min-height: 105px;
-            text-align: center;
-        }
-
-        .signature-space {
-            height: 55px;
-        }
-
-        .signature-line {
-            border-top: 1px solid #475569;
-            padding-top: 7px;
-            color: #334155;
-            font-size: 11px;
-            font-weight: 700;
-        }
-
-        .stamp-box {
-            height: 90px;
-            border: 2px dashed #94a3b8;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #64748b;
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-        }
-
         .term-dates {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 18px;
             margin-top: 25px;
             padding: 14px;
-            background: #f8fafc;
             border: 1px solid #dbe2ea;
             border-radius: 8px;
+            background: #f8fafc;
         }
 
         .term-date-item {
@@ -385,20 +378,63 @@
             font-size: 12px;
         }
 
-        .term-date-label {
-            color: #64748b;
+        .signature-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 35px;
+            margin-top: 38px;
+        }
+
+        .signature-box {
+            min-height: 110px;
+            text-align: center;
+        }
+
+        .signature-image {
+            display: block;
+            max-width: 150px;
+            max-height: 60px;
+            margin: 0 auto 6px;
+            object-fit: contain;
+        }
+
+        .signature-space {
+            height: 60px;
+        }
+
+        .signature-line {
+            padding-top: 7px;
+            border-top: 1px solid #475569;
+            color: #334155;
+            font-size: 11px;
             font-weight: 700;
         }
 
-        .term-date-value {
-            color: #0f172a;
-            font-weight: 800;
+        .stamp-image {
+            display: block;
+            max-width: 110px;
+            max-height: 90px;
+            margin: 0 auto;
+            object-fit: contain;
+        }
+
+        .stamp-placeholder {
+            height: 90px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px dashed #94a3b8;
+            border-radius: 50%;
+            color: #64748b;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
         }
 
         .report-footer {
             margin-top: 28px;
             padding-top: 14px;
-            border-top: 1px solid #dbe2ea;
+            border-top: 2px solid {{ primary }};
             color: #64748b;
             font-size: 10px;
             text-align: center;
@@ -429,17 +465,8 @@
                 grid-template-columns: 80px 1fr;
             }
 
-            .school-header-spacer {
+            .school-stamp-header {
                 display: none;
-            }
-
-            .school-logo-box {
-                width: 75px;
-                height: 75px;
-            }
-
-            .school-name {
-                font-size: 20px;
             }
 
             .student-details,
@@ -477,7 +504,7 @@
                 max-width: none;
                 min-height: auto;
                 margin: 0;
-                padding: 10mm;
+                padding: 8mm;
                 border: none;
                 box-shadow: none;
             }
@@ -495,520 +522,468 @@
                 break-inside: avoid;
                 page-break-inside: avoid;
             }
-
-            .school-name {
-                font-size: 24px;
-            }
         }
     </style>
 </head>
 
 <body>
 
-    <div class="page-actions">
-        <a
-            href="{{ url_for('results') }}"
-            class="button button-secondary"
+<div class="page-actions">
+    <a
+        href="{{ url_for('results') }}"
+        class="button button-secondary"
+    >
+        ← Back to Results
+    </a>
+
+    <div class="action-group">
+        <button
+            type="button"
+            class="button button-primary"
+            onclick="window.print()"
         >
-            ← Back to Results
-        </a>
-
-        <div class="action-group">
-            <button
-                type="button"
-                class="button button-primary"
-                onclick="window.print()"
-            >
-                Print Report Card
-            </button>
-        </div>
+            Print Report Card
+        </button>
     </div>
+</div>
 
-    <main class="report-card">
+<main class="report-card {{ report_style }}">
 
-        <header class="school-header">
-            <div class="school-logo-box">
+    <header class="school-header">
 
-                {% set logo_path = none %}
+        <div class="school-logo-box">
+            {% if branding.show_logo %}
 
-                {% if school_settings %}
-                    {% if school_settings.logo %}
-                        {% set logo_path = school_settings.logo %}
-                    {% elif school_settings.school_logo %}
-                        {% set logo_path = school_settings.school_logo %}
-                    {% elif school_settings.logo_path %}
-                        {% set logo_path = school_settings.logo_path %}
-                    {% endif %}
-                {% endif %}
-
-                {% if not logo_path and school and school.logo %}
-                    {% set logo_path = school.logo %}
-                {% endif %}
-
-                {% if logo_path %}
+                {% if branding.logo_data %}
                     <img
-                        src="{{ url_for('static', filename=logo_path.replace('static/', '')) }}"
+                        src="{{ url_for(
+                            'school_settings_asset',
+                            school_id=student_school_id,
+                            asset_name='logo'
+                        ) }}"
                         alt="School logo"
                         class="school-logo"
                     >
+
+                {% elif branding.logo_url %}
+                    <img
+                        src="{{ branding.logo_url }}"
+                        alt="School logo"
+                        class="school-logo"
+                    >
+
                 {% else %}
                     <div class="school-logo-placeholder">
                         School<br>Logo
                     </div>
                 {% endif %}
-            </div>
 
-            <div class="school-heading">
-                <h1 class="school-name">
-                    {% if school and school.name %}
-                        {{ school.name }}
-                    {% elif school and school.school_name %}
-                        {{ school.school_name }}
-                    {% else %}
-                        EduTrack School
-                    {% endif %}
-                </h1>
+            {% endif %}
+        </div>
 
-                <p class="school-motto">
-                    {% if school_settings and school_settings.motto %}
-                        “{{ school_settings.motto }}”
-                    {% elif school and school.motto %}
-                        “{{ school.motto }}”
-                    {% else %}
-                        Excellence Through Education
-                    {% endif %}
-                </p>
+        <div class="school-heading">
+            <h1 class="school-name">
+                {{ branding.display_name
+                   or school.school_name
+                   or "EduTrack School" }}
+            </h1>
 
-                <p class="school-contact">
-                    {% if school_settings and school_settings.address %}
-                        {{ school_settings.address }}
-                    {% elif school and school.address %}
-                        {{ school.address }}
-                    {% endif %}
-
-                    {% if school_settings and school_settings.phone %}
-                        | Tel: {{ school_settings.phone }}
-                    {% elif school and school.phone %}
-                        | Tel: {{ school.phone }}
-                    {% endif %}
-                </p>
-
-                <p class="school-contact">
-                    {% if school_settings and school_settings.email %}
-                        Email: {{ school_settings.email }}
-                    {% elif school and school.email %}
-                        Email: {{ school.email }}
-                    {% endif %}
-                </p>
-            </div>
-
-            <div class="school-header-spacer"></div>
-        </header>
-
-        <section class="report-title">
-            <h2>Student Academic Report</h2>
-
-            <p>
-                {{ term }} · Academic Year {{ academic_year }}
+            <p class="school-motto">
+                “{{ branding.motto
+                    or "Excellence Through Education" }}”
             </p>
-        </section>
 
-        <section class="student-details">
-            <div class="detail-item">
-                <div class="detail-label">Student Name</div>
+            {% if branding.address or branding.phone %}
+                <p class="school-contact">
+                    {{ branding.address or "" }}
 
-                <div class="detail-value">
-                    {{ student.first_name }}
-                    {{ student.last_name }}
-                </div>
+                    {% if branding.phone %}
+                        {% if branding.address %} | {% endif %}
+                        Tel: {{ branding.phone }}
+                    {% endif %}
+                </p>
+            {% endif %}
+
+            {% if branding.email %}
+                <p class="school-contact">
+                    Email: {{ branding.email }}
+                </p>
+            {% endif %}
+        </div>
+
+        <div class="school-stamp-header">
+            {% if branding.show_stamp and branding.stamp_data %}
+                <img
+                    src="{{ url_for(
+                        'school_settings_asset',
+                        school_id=student_school_id,
+                        asset_name='stamp'
+                    ) }}"
+                    class="header-stamp"
+                    alt="School stamp"
+                >
+            {% endif %}
+        </div>
+
+    </header>
+
+    <section class="report-title">
+        <h2>
+            {{ branding.report_header
+               or "Student Academic Report" }}
+        </h2>
+
+        <p>
+            {{ term }} · Academic Year {{ academic_year }}
+        </p>
+    </section>
+
+    <section class="student-details">
+
+        <div class="detail-item">
+            <div class="detail-label">Student Name</div>
+            <div class="detail-value">
+                {{ student.first_name }} {{ student.last_name }}
             </div>
+        </div>
 
-            <div class="detail-item">
-                <div class="detail-label">Student Number</div>
-
-                <div class="detail-value">
-                    {{ student.student_number or student.id }}
-                </div>
+        <div class="detail-item">
+            <div class="detail-label">Student Number</div>
+            <div class="detail-value">
+                {{ student.student_number or student.id }}
             </div>
+        </div>
 
-            <div class="detail-item">
-                <div class="detail-label">Class</div>
-
-                <div class="detail-value">
-                    {{ student.class_name or "Not assigned" }}
-                </div>
+        <div class="detail-item">
+            <div class="detail-label">Class</div>
+            <div class="detail-value">
+                {{ student.class_name or "Not assigned" }}
             </div>
+        </div>
 
-            <div class="detail-item">
-                <div class="detail-label">Gender</div>
-
-                <div class="detail-value">
-                    {{ student.gender or "Not recorded" }}
-                </div>
+        <div class="detail-item">
+            <div class="detail-label">Gender</div>
+            <div class="detail-value">
+                {{ student.gender or "Not recorded" }}
             </div>
+        </div>
 
-            <div class="detail-item">
-                <div class="detail-label">Term</div>
+        <div class="detail-item">
+            <div class="detail-label">Term</div>
+            <div class="detail-value">{{ term }}</div>
+        </div>
 
-                <div class="detail-value">
-                    {{ term }}
-                </div>
-            </div>
+        <div class="detail-item">
+            <div class="detail-label">Academic Year</div>
+            <div class="detail-value">{{ academic_year }}</div>
+        </div>
 
-            <div class="detail-item">
-                <div class="detail-label">Academic Year</div>
-
-                <div class="detail-value">
-                    {{ academic_year }}
-                </div>
-            </div>
-
+        {% if branding.show_position %}
             <div class="detail-item">
                 <div class="detail-label">Class Position</div>
 
                 <div class="detail-value">
                     {% if class_position %}
-                        {{ class_position }} of
-                        {{ students_in_class }}
+                        {{ class_position }} of {{ students_in_class }}
                     {% else %}
                         Not available
                     {% endif %}
                 </div>
             </div>
+        {% endif %}
 
-            <div class="detail-item">
-                <div class="detail-label">Promotion Status</div>
+        <div class="detail-item">
+            <div class="detail-label">Promotion Status</div>
 
-                <div
-                    class="detail-value
-                    {% if promotion_status == 'Promoted' %}
-                        status-good
-                    {% elif promotion_status == 'Not Promoted' %}
-                        status-danger
-                    {% else %}
-                        status-warning
-                    {% endif %}"
-                >
-                    {{ promotion_status }}
-                </div>
+            <div
+                class="detail-value
+                {% if promotion_status == 'Promoted' %}
+                    status-good
+                {% elif promotion_status == 'Not Promoted' %}
+                    status-danger
+                {% else %}
+                    status-warning
+                {% endif %}"
+            >
+                {{ promotion_status }}
             </div>
-        </section>
+        </div>
 
-        <section class="section">
-            <h3 class="section-title">
-                Academic Performance
-            </h3>
+    </section>
 
-            <table class="results-table">
-                <thead>
-                    <tr>
-                        <th>Subject</th>
-                        <th>Mark (%)</th>
-                        <th>Grade</th>
-                        <th>Teacher’s Remark</th>
-                    </tr>
-                </thead>
+    <section class="section">
+        <h3 class="section-title">Academic Performance</h3>
 
-                <tbody>
-                    {% if results %}
-                        {% for result in results %}
-                            <tr>
-                                <td>
-                                    {{ result.subject }}
-                                </td>
+        <table class="results-table">
+            <thead>
+                <tr>
+                    <th>Subject</th>
+                    <th>Mark (%)</th>
+                    <th>Grade</th>
+                    <th>Teacher’s Remark</th>
+                </tr>
+            </thead>
 
-                                <td>
-                                    {{ result.marks }}
-                                </td>
-
-                                <td>
-                                    <strong>
-                                        {{ result.grade }}
-                                    </strong>
-                                </td>
-
-                                <td>
-                                    {{ result.remark }}
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    {% else %}
+            <tbody>
+                {% if results %}
+                    {% for result in results %}
                         <tr>
-                            <td
-                                colspan="4"
-                                class="no-results"
-                            >
-                                No results have been entered for
-                                this student, term and academic year.
-                            </td>
+                            <td>{{ result.subject }}</td>
+                            <td>{{ result.marks }}</td>
+                            <td><strong>{{ result.grade }}</strong></td>
+                            <td>{{ result.remark }}</td>
                         </tr>
-                    {% endif %}
-                </tbody>
-            </table>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="4" class="no-results">
+                            No results have been entered for this
+                            student, term and academic year.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
 
-            <div class="summary-grid">
-                <div class="summary-card">
-                    <div class="summary-label">
-                        Total Marks
-                    </div>
-
-                    <div class="summary-value">
-                        {{ total_marks }}
-                    </div>
-                </div>
-
-                <div class="summary-card">
-                    <div class="summary-label">
-                        Subjects
-                    </div>
-
-                    <div class="summary-value">
-                        {{ subject_count }}
-                    </div>
-                </div>
-
-                <div class="summary-card">
-                    <div class="summary-label">
-                        Average
-                    </div>
-
-                    <div class="summary-value">
-                        {{ average }}%
-                    </div>
-                </div>
-
-                <div class="summary-card">
-                    <div class="summary-label">
-                        Overall Grade
-                    </div>
-
-                    <div class="summary-value">
-                        {{ overall_grade }}
-                    </div>
-                </div>
+        <div class="summary-grid">
+            <div class="summary-card">
+                <div class="summary-label">Total Marks</div>
+                <div class="summary-value">{{ total_marks }}</div>
             </div>
 
-            <div class="performance-message">
-                {{ overall_remark }}
+            <div class="summary-card">
+                <div class="summary-label">Subjects</div>
+                <div class="summary-value">{{ subject_count }}</div>
             </div>
-        </section>
 
+            <div class="summary-card">
+                <div class="summary-label">Average</div>
+                <div class="summary-value">{{ average }}%</div>
+            </div>
+
+            <div class="summary-card">
+                <div class="summary-label">Overall Grade</div>
+                <div class="summary-value">{{ overall_grade }}</div>
+            </div>
+        </div>
+
+        <div class="performance-message">
+            {{ overall_remark }}
+        </div>
+    </section>
+
+    {% if branding.show_attendance or branding.show_conduct %}
         <section class="section">
             <div class="two-column-grid">
 
-                <div>
-                    <h3 class="section-title">
-                        Attendance Summary
-                    </h3>
+                {% if branding.show_attendance %}
+                    <div>
+                        <h3 class="section-title">
+                            Attendance Summary
+                        </h3>
 
-                    <div class="information-box">
-                        {% if attendance_available %}
-                            <div class="information-row">
-                                <span class="information-label">
-                                    Present
-                                </span>
+                        <div class="information-box">
+                            {% if attendance_available %}
+                                <div class="information-row">
+                                    <span class="information-label">
+                                        Present
+                                    </span>
+                                    <span class="information-value">
+                                        {{ present_days }}
+                                    </span>
+                                </div>
 
-                                <span class="information-value">
-                                    {{ present_days }}
-                                </span>
-                            </div>
+                                <div class="information-row">
+                                    <span class="information-label">
+                                        Absent
+                                    </span>
+                                    <span class="information-value">
+                                        {{ absent_days }}
+                                    </span>
+                                </div>
 
-                            <div class="information-row">
-                                <span class="information-label">
-                                    Absent
-                                </span>
+                                <div class="information-row">
+                                    <span class="information-label">
+                                        Late
+                                    </span>
+                                    <span class="information-value">
+                                        {{ late_days }}
+                                    </span>
+                                </div>
 
-                                <span class="information-value">
-                                    {{ absent_days }}
-                                </span>
-                            </div>
-
-                            <div class="information-row">
-                                <span class="information-label">
-                                    Late
-                                </span>
-
-                                <span class="information-value">
-                                    {{ late_days }}
-                                </span>
-                            </div>
-
-                            <div class="information-row">
-                                <span class="information-label">
-                                    Excused
-                                </span>
-
-                                <span class="information-value">
-                                    {{ excused_days }}
-                                </span>
-                            </div>
-
-                            <div class="information-row">
-                                <span class="information-label">
-                                    Attendance Rate
-                                </span>
-
-                                <span class="information-value">
-                                    {{ attendance_percentage }}%
-                                </span>
-                            </div>
-                        {% else %}
-                            <div class="information-row">
-                                <span class="information-label">
-                                    Attendance
-                                </span>
-
-                                <span class="information-value">
-                                    No attendance records available
-                                </span>
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <div>
-                    <h3 class="section-title">
-                        Fees Summary
-                    </h3>
-
-                    <div class="information-box">
-                        <div class="information-row">
-                            <span class="information-label">
-                                Outstanding Balance
-                            </span>
-
-                            <span class="information-value">
-                                ${{ "%.2f"|format(total_balance) }}
-                            </span>
-                        </div>
-
-                        <div class="information-row">
-                            <span class="information-label">
-                                Fee Status
-                            </span>
-
-                            <span
-                                class="information-value
-                                {% if total_balance <= 0 %}
-                                    status-good
-                                {% else %}
-                                    status-warning
-                                {% endif %}"
-                            >
-                                {{ fee_status }}
-                            </span>
-                        </div>
-
-                        <div class="information-row">
-                            <span class="information-label">
-                                Class Position
-                            </span>
-
-                            <span class="information-value">
-                                {% if class_position %}
-                                    {{ class_position }} of
-                                    {{ students_in_class }}
-                                {% else %}
-                                    Not available
-                                {% endif %}
-                            </span>
-                        </div>
-
-                        <div class="information-row">
-                            <span class="information-label">
-                                Promotion
-                            </span>
-
-                            <span class="information-value">
-                                {{ promotion_status }}
-                            </span>
+                                <div class="information-row">
+                                    <span class="information-label">
+                                        Attendance Rate
+                                    </span>
+                                    <span class="information-value">
+                                        {{ attendance_percentage }}%
+                                    </span>
+                                </div>
+                            {% else %}
+                                <div class="information-row">
+                                    <span class="information-label">
+                                        Attendance
+                                    </span>
+                                    <span class="information-value">
+                                        No records available
+                                    </span>
+                                </div>
+                            {% endif %}
                         </div>
                     </div>
-                </div>
+                {% endif %}
+
+                {% if branding.show_conduct %}
+                    <div>
+                        <h3 class="section-title">
+                            Student Conduct
+                        </h3>
+
+                        <div class="information-box">
+                            <div class="information-row">
+                                <span class="information-label">
+                                    Conduct
+                                </span>
+
+                                <span class="information-value">
+                                    {{ conduct }}
+                                </span>
+                            </div>
+
+                            <div class="information-row">
+                                <span class="information-label">
+                                    Promotion
+                                </span>
+
+                                <span class="information-value">
+                                    {{ promotion_status }}
+                                </span>
+                            </div>
+
+                            {% if branding.show_position %}
+                                <div class="information-row">
+                                    <span class="information-label">
+                                        Class Position
+                                    </span>
+
+                                    <span class="information-value">
+                                        {% if class_position %}
+                                            {{ class_position }}
+                                            of {{ students_in_class }}
+                                        {% else %}
+                                            Not available
+                                        {% endif %}
+                                    </span>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}
 
             </div>
         </section>
+    {% endif %}
 
-        <section class="section">
-            <h3 class="section-title">
-                Class Teacher’s Comment
-            </h3>
+    <section class="section">
+        <h3 class="section-title">
+            Class Teacher’s Comment
+        </h3>
 
-            <div class="comment-box">
-                {{ teacher_comment }}
+        <div class="comment-box">
+            {{ teacher_comment }}
+        </div>
+    </section>
+
+    <section class="section">
+        <h3 class="section-title">
+            Headteacher’s Comment
+        </h3>
+
+        <div class="comment-box">
+            {{ headteacher_comment }}
+        </div>
+    </section>
+
+    <section class="term-dates">
+        <div class="term-date-item">
+            <strong>School Closes:</strong>
+
+            <span>
+                {{ branding.closing_date or "__________________" }}
+            </span>
+        </div>
+
+        <div class="term-date-item">
+            <strong>Next Term Opens:</strong>
+
+            <span>
+                {{ branding.opening_date or "__________________" }}
+            </span>
+        </div>
+    </section>
+
+    <section class="signature-row">
+
+        <div class="signature-box">
+            <div class="signature-space"></div>
+
+            <div class="signature-line">
+                Class Teacher’s Signature
             </div>
-        </section>
+        </div>
 
-        <section class="section">
-            <h3 class="section-title">
-                Headteacher’s Comment
-            </h3>
+        <div class="signature-box">
 
-            <div class="comment-box">
-                {{ headteacher_comment }}
-            </div>
-        </section>
+            {% if branding.show_head_signature
+                  and branding.head_signature_data %}
 
-        <section class="term-dates">
-            <div class="term-date-item">
-                <span class="term-date-label">
-                    School Closes:
-                </span>
+                <img
+                    src="{{ url_for(
+                        'school_settings_asset',
+                        school_id=student_school_id,
+                        asset_name='head_signature'
+                    ) }}"
+                    class="signature-image"
+                    alt="Headteacher signature"
+                >
 
-                <span class="term-date-value">
-                    {% if school_settings and school_settings.closing_date %}
-                        {{ school_settings.closing_date }}
-                    {% else %}
-                        __________________
-                    {% endif %}
-                </span>
-            </div>
-
-            <div class="term-date-item">
-                <span class="term-date-label">
-                    Next Term Opens:
-                </span>
-
-                <span class="term-date-value">
-                    {% if school_settings and school_settings.opening_date %}
-                        {{ school_settings.opening_date }}
-                    {% else %}
-                        __________________
-                    {% endif %}
-                </span>
-            </div>
-        </section>
-
-        <section class="signature-row">
-            <div class="signature-box">
+            {% else %}
                 <div class="signature-space"></div>
+            {% endif %}
 
-                <div class="signature-line">
-                    Class Teacher’s Signature
-                </div>
+            <div class="signature-line">
+                Headteacher’s Signature
             </div>
+        </div>
 
-            <div class="signature-box">
-                <div class="signature-space"></div>
+        <div class="signature-box">
 
-                <div class="signature-line">
-                    Headteacher’s Signature
-                </div>
-            </div>
-
-            <div class="signature-box">
-                <div class="stamp-box">
+            {% if branding.show_stamp and branding.stamp_data %}
+                <img
+                    src="{{ url_for(
+                        'school_settings_asset',
+                        school_id=student_school_id,
+                        asset_name='stamp'
+                    ) }}"
+                    class="stamp-image"
+                    alt="Official school stamp"
+                >
+            {% else %}
+                <div class="stamp-placeholder">
                     Official<br>School Stamp
                 </div>
-            </div>
-        </section>
+            {% endif %}
 
-        <footer class="report-footer">
-            This report was generated through EduTrack School
-            Management System.
-        </footer>
+        </div>
 
-    </main>
+    </section>
+
+    <footer class="report-footer">
+        This report was generated through EduTrack School
+        Management System.
+    </footer>
+
+</main>
 
 </body>
 </html>

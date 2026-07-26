@@ -1,232 +1,2979 @@
 {% extends "base_premium.html" %}
 
-{% block title %}School Settings{% endblock %}
+{% block title %}Branding Center | EduTrack{% endblock %}
 
 {% block content %}
 
-<div class="page-header">
-    <div>
-        <h2 class="page-title">🏫 School Profile</h2>
-        <p class="page-subtitle">
-            Manage your school's branding, report card information and contact details.
-        </p>
-    </div>
-</div>
-
-<div class="card">
-
-<form method="POST">
-
-{% if session.get("role")=="super_admin" %}
-
-<div class="form-group">
-    <label>Select School</label>
-
-    <select name="school_id" required>
-
-        <option value="">Choose School</option>
-
-        {% for school in schools %}
-
-        <option
-            value="{{ school.id }}"
-            {% if selected_school_id|string==school.id|string %}
-            selected
-            {% endif %}
-        >
-            {{ school.school_name }}
-        </option>
-
-        {% endfor %}
-
-    </select>
-
-</div>
-
-{% endif %}
-
-<div class="form-grid">
-
-<div class="form-group">
-
-<label>School Display Name</label>
-
-<input
-type="text"
-name="display_name"
-value="{{ settings.display_name if settings else '' }}"
-placeholder="Example Academy"
-/>
-
-</div>
-
-<div class="form-group">
-
-<label>School Motto</label>
-
-<input
-type="text"
-name="motto"
-value="{{ settings.motto if settings else '' }}"
-placeholder="Excellence Through Education"
-/>
-
-</div>
-
-<div class="form-group">
-
-<label>Phone</label>
-
-<input
-type="text"
-name="phone"
-value="{{ settings.phone if settings else '' }}"
-placeholder="+263..."
-/>
-
-</div>
-
-<div class="form-group">
-
-<label>Email</label>
-
-<input
-type="email"
-name="email"
-value="{{ settings.email if settings else '' }}"
-placeholder="school@email.com"
-/>
-
-</div>
-
-<div class="form-group">
-
-<label>Opening Date</label>
-
-<input
-type="date"
-name="opening_date"
-value="{{ settings.opening_date if settings else '' }}"
-/>
-
-</div>
-
-<div class="form-group">
-
-<label>Closing Date</label>
-
-<input
-type="date"
-name="closing_date"
-value="{{ settings.closing_date if settings else '' }}"
-/>
-
-</div>
-
-</div>
-
-<div class="form-group">
-
-<label>School Address</label>
-
-<textarea
-name="address"
-rows="3"
-placeholder="School Address"
->{{ settings.address if settings else '' }}</textarea>
-
-</div>
-
-<div class="form-group">
-
-<label>Report Header</label>
-
-<textarea
-name="report_header"
-rows="3"
-placeholder="Header printed at the top of report cards"
->{{ settings.report_header if settings else '' }}</textarea>
-
-</div>
-
-<div class="form-group">
-
-<label>School Logo URL</label>
-
-<input
-type="text"
-name="logo_url"
-value="{{ settings.logo_url if settings else '' }}"
-placeholder="https://example.com/logo.png"
-/>
-
-<small style="color:#777;">
-Paste the public URL of your school logo.
-</small>
-
-</div>
-
-<hr>
-
-<button class="btn btn-primary">
-
-💾 Save School Profile
-
-</button>
-
-</form>
-
-</div>
+{% set primary = settings.primary_color if settings and settings.primary_color else '#2563eb' %}
+{% set secondary = settings.secondary_color if settings and settings.secondary_color else '#7c3aed' %}
+{% set accent = settings.accent_color if settings and settings.accent_color else '#10b981' %}
 
 <style>
+    .branding-center {
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
 
-.card{
-background:#fff;
-padding:30px;
-border-radius:15px;
-box-shadow:0 10px 30px rgba(0,0,0,.08);
-}
+    .branding-hero {
+        position: relative;
+        overflow: hidden;
+        padding: 32px;
+        border-radius: 24px;
+        color: #ffffff;
+        background:
+            radial-gradient(
+                circle at top right,
+                rgba(255, 255, 255, 0.22),
+                transparent 36%
+            ),
+            linear-gradient(
+                135deg,
+                {{ primary }},
+                {{ secondary }}
+            );
+        box-shadow: 0 22px 48px rgba(37, 99, 235, 0.18);
+    }
 
-.form-grid{
+    .branding-hero::after {
+        content: "";
+        position: absolute;
+        width: 260px;
+        height: 260px;
+        right: -95px;
+        bottom: -145px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.10);
+    }
 
-display:grid;
-grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
-gap:20px;
+    .branding-hero-content {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 24px;
+        flex-wrap: wrap;
+    }
 
-}
+    .branding-hero h1 {
+        margin: 0 0 8px;
+        font-size: clamp(1.9rem, 3vw, 2.6rem);
+        font-weight: 850;
+        letter-spacing: -0.03em;
+    }
 
-.form-group{
+    .branding-hero p {
+        max-width: 720px;
+        margin: 0;
+        color: rgba(255, 255, 255, 0.88);
+        line-height: 1.65;
+    }
 
-display:flex;
-flex-direction:column;
-margin-bottom:20px;
+    .branding-hero-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 11px 15px;
+        border: 1px solid rgba(255, 255, 255, 0.30);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.14);
+        font-size: 0.82rem;
+        font-weight: 800;
+        backdrop-filter: blur(8px);
+    }
 
-}
+    .school-selector-card {
+        padding: 20px 22px;
+        border: 1px solid #e2e8f0;
+        border-radius: 18px;
+        background: #ffffff;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+    }
 
-.form-group label{
+    .school-selector-card label {
+        display: block;
+        margin-bottom: 8px;
+        color: #334155;
+        font-size: 0.8rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
 
-font-weight:600;
-margin-bottom:8px;
+    .school-selector-card select {
+        width: 100%;
+        min-height: 46px;
+        padding: 10px 13px;
+        border: 1px solid #cbd5e1;
+        border-radius: 11px;
+        color: #0f172a;
+        background: #f8fafc;
+        font: inherit;
+        outline: none;
+    }
 
-}
+    .school-selector-card select:focus {
+        border-color: {{ primary }};
+        background: #ffffff;
+        box-shadow: 0 0 0 4px color-mix(
+            in srgb,
+            {{ primary }} 14%,
+            transparent
+        );
+    }
 
-.form-group input,
-.form-group textarea,
-.form-group select{
+    .branding-tabs {
+        display: flex;
+        gap: 8px;
+        padding: 8px;
+        overflow-x: auto;
+        border: 1px solid #e2e8f0;
+        border-radius: 17px;
+        background: #ffffff;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+    }
 
-padding:12px;
-border:1px solid #ddd;
-border-radius:10px;
+    .branding-tab {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-width: 135px;
+        padding: 11px 15px;
+        border-radius: 11px;
+        color: #64748b;
+        text-decoration: none;
+        font-size: 0.84rem;
+        font-weight: 800;
+        white-space: nowrap;
+        transition: 0.2s ease;
+    }
 
-}
+    .branding-tab:hover {
+        color: #0f172a;
+        background: #f8fafc;
+    }
 
-.btn{
+    .branding-tab.active {
+        color: #ffffff;
+        background: linear-gradient(
+            135deg,
+            {{ primary }},
+            {{ secondary }}
+        );
+        box-shadow: 0 8px 18px color-mix(
+            in srgb,
+            {{ primary }} 22%,
+            transparent
+        );
+    }
 
-padding:14px 25px;
-font-weight:bold;
+    .branding-panel {
+        padding: 28px;
+        border: 1px solid #e2e8f0;
+        border-radius: 21px;
+        background: #ffffff;
+        box-shadow: 0 12px 34px rgba(15, 23, 42, 0.07);
+    }
 
-}
+    .panel-heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 18px;
+        margin-bottom: 26px;
+        padding-bottom: 18px;
+        border-bottom: 1px solid #e2e8f0;
+        flex-wrap: wrap;
+    }
 
+    .panel-heading h2 {
+        margin: 0 0 7px;
+        color: #0f172a;
+        font-size: 1.35rem;
+        font-weight: 850;
+    }
+
+    .panel-heading p {
+        max-width: 720px;
+        margin: 0;
+        color: #64748b;
+        line-height: 1.55;
+    }
+
+    .panel-step {
+        padding: 7px 11px;
+        border-radius: 999px;
+        color: {{ primary }};
+        background: color-mix(
+            in srgb,
+            {{ primary }} 10%,
+            white
+        );
+        font-size: 0.76rem;
+        font-weight: 850;
+    }
+
+    .branding-form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 20px;
+    }
+
+    .branding-field {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .branding-field.full-width {
+        grid-column: 1 / -1;
+    }
+
+    .branding-field label {
+        color: #334155;
+        font-size: 0.84rem;
+        font-weight: 750;
+    }
+
+    .branding-field input,
+    .branding-field textarea,
+    .branding-field select {
+        width: 100%;
+        box-sizing: border-box;
+        min-height: 46px;
+        padding: 11px 13px;
+        border: 1px solid #cbd5e1;
+        border-radius: 11px;
+        color: #0f172a;
+        background: #f8fafc;
+        font: inherit;
+        outline: none;
+        transition: 0.18s ease;
+    }
+
+    .branding-field textarea {
+        min-height: 105px;
+        resize: vertical;
+    }
+
+    .branding-field input:focus,
+    .branding-field textarea:focus,
+    .branding-field select:focus {
+        border-color: {{ primary }};
+        background: #ffffff;
+        box-shadow: 0 0 0 4px color-mix(
+            in srgb,
+            {{ primary }} 12%,
+            transparent
+        );
+    }
+
+    .field-help {
+        color: #64748b;
+        font-size: 0.77rem;
+        line-height: 1.45;
+    }
+
+    .branding-save-area {
+        display: flex;
+        justify-content: flex-end;
+        gap: 11px;
+        margin-top: 26px;
+        padding-top: 20px;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .branding-save-btn,
+    .branding-reset-btn,
+    .branding-delete-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 44px;
+        padding: 11px 17px;
+        border-radius: 11px;
+        cursor: pointer;
+        font: inherit;
+        font-size: 0.84rem;
+        font-weight: 800;
+        transition: 0.18s ease;
+    }
+
+    .branding-save-btn {
+        color: #ffffff;
+        border: none;
+        background: linear-gradient(
+            135deg,
+            {{ primary }},
+            {{ secondary }}
+        );
+        box-shadow: 0 9px 20px color-mix(
+            in srgb,
+            {{ primary }} 20%,
+            transparent
+        );
+    }
+
+    .branding-save-btn:hover,
+    .branding-reset-btn:hover,
+    .branding-delete-btn:hover {
+        transform: translateY(-1px);
+    }
+
+    .branding-reset-btn {
+        color: #475569;
+        border: 1px solid #cbd5e1;
+        background: #ffffff;
+    }
+
+    .branding-delete-btn {
+        min-height: 36px;
+        padding: 8px 11px;
+        color: #b91c1c;
+        border: 1px solid #fecaca;
+        background: #fff1f2;
+        font-size: 0.76rem;
+    }
+
+    .asset-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(280px, 1fr));
+        gap: 20px;
+    }
+
+    .asset-card {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+        border-radius: 17px;
+        background: #ffffff;
+    }
+
+    .asset-preview {
+        position: relative;
+        display: grid;
+        place-items: center;
+        min-height: 210px;
+        padding: 22px;
+        background:
+            linear-gradient(45deg, #f8fafc 25%, transparent 25%),
+            linear-gradient(-45deg, #f8fafc 25%, transparent 25%),
+            linear-gradient(45deg, transparent 75%, #f8fafc 75%),
+            linear-gradient(-45deg, transparent 75%, #f8fafc 75%);
+        background-size: 22px 22px;
+        background-position:
+            0 0,
+            0 11px,
+            11px -11px,
+            -11px 0;
+    }
+
+    .asset-preview img {
+        display: block;
+        max-width: 100%;
+        max-height: 165px;
+        object-fit: contain;
+        filter: drop-shadow(0 8px 10px rgba(15, 23, 42, 0.12));
+    }
+
+    .asset-placeholder {
+        text-align: center;
+        color: #94a3b8;
+    }
+
+    .asset-placeholder-icon {
+        display: grid;
+        place-items: center;
+        width: 62px;
+        height: 62px;
+        margin: 0 auto 11px;
+        border-radius: 17px;
+        color: {{ primary }};
+        background: color-mix(
+            in srgb,
+            {{ primary }} 10%,
+            white
+        );
+        font-size: 27px;
+    }
+
+    .asset-placeholder strong {
+        display: block;
+        margin-bottom: 5px;
+        color: #475569;
+    }
+
+    .asset-card-body {
+        padding: 19px;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .asset-card-heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 15px;
+    }
+
+    .asset-card-heading h3 {
+        margin: 0 0 5px;
+        color: #0f172a;
+        font-size: 1rem;
+        font-weight: 800;
+    }
+
+    .asset-card-heading p {
+        margin: 0;
+        color: #64748b;
+        font-size: 0.78rem;
+        line-height: 1.45;
+    }
+
+    .asset-upload-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .asset-upload-row input[type="file"] {
+        flex: 1;
+        min-width: 0;
+        padding: 9px;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        background: #f8fafc;
+        font-size: 0.78rem;
+    }
+
+    .asset-upload-btn {
+        min-height: 40px;
+        padding: 9px 13px;
+        border: none;
+        border-radius: 10px;
+        color: #ffffff;
+        background: {{ primary }};
+        cursor: pointer;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .theme-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(330px, 0.8fr);
+        gap: 24px;
+    }
+
+    .color-control-list {
+        display: flex;
+        flex-direction: column;
+        gap: 17px;
+    }
+
+    .color-control {
+        display: grid;
+        grid-template-columns: 56px 1fr 125px;
+        align-items: center;
+        gap: 13px;
+        padding: 15px;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        background: #f8fafc;
+    }
+
+    .color-control input[type="color"] {
+        width: 56px;
+        height: 48px;
+        padding: 3px;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        background: #ffffff;
+        cursor: pointer;
+    }
+
+    .color-control strong {
+        display: block;
+        margin-bottom: 4px;
+        color: #0f172a;
+        font-size: 0.88rem;
+    }
+
+    .color-control small {
+        color: #64748b;
+        font-size: 0.75rem;
+    }
+
+    .color-code {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 10px;
+        border: 1px solid #cbd5e1;
+        border-radius: 9px;
+        color: #334155;
+        background: #ffffff;
+        text-align: center;
+        font-size: 0.8rem;
+        font-weight: 750;
+        text-transform: uppercase;
+    }
+
+    .theme-preview {
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+        border-radius: 17px;
+        background: #ffffff;
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+    }
+
+    .theme-preview-header {
+        padding: 18px;
+        color: #ffffff;
+        background: linear-gradient(
+            135deg,
+            {{ primary }},
+            {{ secondary }}
+        );
+    }
+
+    .theme-preview-header strong {
+        display: block;
+        margin-bottom: 4px;
+    }
+
+    .theme-preview-header small {
+        color: rgba(255, 255, 255, 0.82);
+    }
+
+    .theme-preview-body {
+        padding: 18px;
+    }
+
+    .preview-mini-stats {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+
+    .preview-mini-card {
+        padding: 13px;
+        border: 1px solid #e2e8f0;
+        border-radius: 11px;
+        background: #f8fafc;
+    }
+
+    .preview-mini-card span {
+        display: block;
+        margin-bottom: 5px;
+        color: #64748b;
+        font-size: 0.67rem;
+    }
+
+    .preview-mini-card strong {
+        color: #0f172a;
+    }
+
+    .theme-preview-button {
+        width: 100%;
+        padding: 11px;
+        border: none;
+        border-radius: 10px;
+        color: #ffffff;
+        background: {{ accent }};
+        font-weight: 800;
+    }
+
+    .report-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(330px, 0.9fr);
+        gap: 24px;
+    }
+
+    .template-options {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+
+    .template-option {
+        position: relative;
+    }
+
+    .template-option input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .template-option label {
+        display: block;
+        padding: 16px 13px;
+        border: 2px solid #e2e8f0;
+        border-radius: 13px;
+        background: #ffffff;
+        cursor: pointer;
+        text-align: center;
+        transition: 0.18s ease;
+    }
+
+    .template-option label strong {
+        display: block;
+        margin-bottom: 5px;
+        color: #0f172a;
+    }
+
+    .template-option label small {
+        color: #64748b;
+        font-size: 0.72rem;
+    }
+
+    .template-option input:checked + label {
+        border-color: {{ primary }};
+        background: color-mix(
+            in srgb,
+            {{ primary }} 7%,
+            white
+        );
+        box-shadow: 0 0 0 3px color-mix(
+            in srgb,
+            {{ primary }} 10%,
+            transparent
+        );
+    }
+
+    .report-option-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .report-toggle {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        padding: 13px;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        background: #f8fafc;
+        cursor: pointer;
+    }
+
+    .report-toggle input {
+        width: 18px;
+        height: 18px;
+        accent-color: {{ primary }};
+    }
+
+    .report-toggle span {
+        color: #334155;
+        font-size: 0.83rem;
+        font-weight: 700;
+    }
+
+    .report-preview-card {
+        position: sticky;
+        top: 20px;
+        padding: 24px;
+        border: 1px solid #dbe2ea;
+        border-radius: 15px;
+        background: #ffffff;
+        box-shadow: 0 15px 34px rgba(15, 23, 42, 0.10);
+    }
+
+    .report-preview-top {
+        display: grid;
+        grid-template-columns: 70px 1fr 70px;
+        align-items: center;
+        gap: 12px;
+        padding-bottom: 16px;
+        border-bottom: 3px solid {{ primary }};
+        text-align: center;
+    }
+
+    .report-preview-logo,
+    .report-preview-stamp {
+        display: grid;
+        place-items: center;
+        height: 65px;
+    }
+
+    .report-preview-logo img,
+    .report-preview-stamp img {
+        max-width: 65px;
+        max-height: 65px;
+        object-fit: contain;
+    }
+
+    .preview-empty-image {
+        display: grid;
+        place-items: center;
+        width: 54px;
+        height: 54px;
+        border: 1px dashed #cbd5e1;
+        border-radius: 10px;
+        color: #94a3b8;
+        background: #f8fafc;
+        font-size: 0.66rem;
+    }
+
+    .report-preview-school h3 {
+        margin: 0 0 4px;
+        color: #0f172a;
+        font-size: 1rem;
+        text-transform: uppercase;
+    }
+
+    .report-preview-school p {
+        margin: 0;
+        color: #64748b;
+        font-size: 0.68rem;
+    }
+
+    .report-preview-title {
+        margin: 17px 0;
+        color: {{ primary }};
+        text-align: center;
+        font-size: 0.9rem;
+        font-weight: 850;
+        text-transform: uppercase;
+    }
+
+    .student-summary {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        margin-bottom: 15px;
+        padding: 12px;
+        border-radius: 10px;
+        background: #f8fafc;
+    }
+
+    .student-summary div {
+        color: #64748b;
+        font-size: 0.67rem;
+    }
+
+    .student-summary strong {
+        color: #334155;
+    }
+
+    .preview-results {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.68rem;
+    }
+
+    .preview-results th,
+    .preview-results td {
+        padding: 8px;
+        border: 1px solid #e2e8f0;
+        text-align: left;
+    }
+
+    .preview-results th {
+        color: #ffffff;
+        background: {{ primary }};
+    }
+
+    .preview-results tbody tr:nth-child(even) {
+        background: #f8fafc;
+    }
+
+    .report-extra-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        margin-top: 13px;
+        padding: 10px;
+        border-radius: 9px;
+        color: #475569;
+        background: color-mix(
+            in srgb,
+            {{ accent }} 8%,
+            white
+        );
+        font-size: 0.67rem;
+    }
+
+    .signature-preview-row {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+        margin-top: 22px;
+        text-align: center;
+    }
+
+    .signature-preview {
+        min-height: 62px;
+        padding-top: 9px;
+        border-top: 1px solid #94a3b8;
+        color: #64748b;
+        font-size: 0.65rem;
+    }
+
+    .signature-preview img {
+        display: block;
+        max-width: 100px;
+        max-height: 40px;
+        margin: 0 auto 4px;
+        object-fit: contain;
+    }
+
+    .full-preview-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 0.8fr) minmax(420px, 1.2fr);
+        gap: 25px;
+        align-items: start;
+    }
+
+    .preview-information-card {
+        padding: 22px;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        background: #f8fafc;
+    }
+
+    .preview-information-card h3 {
+        margin: 0 0 12px;
+        color: #0f172a;
+    }
+
+    .preview-information-card p {
+        margin: 0 0 15px;
+        color: #64748b;
+        line-height: 1.6;
+    }
+
+    .preview-detail {
+        display: flex;
+        justify-content: space-between;
+        gap: 15px;
+        padding: 11px 0;
+        border-bottom: 1px solid #e2e8f0;
+        color: #64748b;
+        font-size: 0.83rem;
+    }
+
+    .preview-detail:last-child {
+        border-bottom: none;
+    }
+
+    .preview-detail strong {
+        color: #334155;
+        text-align: right;
+    }
+
+    .no-school-selected {
+        padding: 65px 25px;
+        border: 1px solid #e2e8f0;
+        border-radius: 21px;
+        background: #ffffff;
+        text-align: center;
+        box-shadow: 0 12px 34px rgba(15, 23, 42, 0.07);
+    }
+
+    .no-school-selected-icon {
+        display: grid;
+        place-items: center;
+        width: 75px;
+        height: 75px;
+        margin: 0 auto 18px;
+        border-radius: 20px;
+        color: {{ primary }};
+        background: color-mix(
+            in srgb,
+            {{ primary }} 10%,
+            white
+        );
+        font-size: 32px;
+    }
+
+    @media (max-width: 1050px) {
+        .theme-layout,
+        .report-layout,
+        .full-preview-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .report-preview-card {
+            position: static;
+        }
+    }
+
+    @media (max-width: 780px) {
+        .branding-hero {
+            padding: 25px 21px;
+        }
+
+        .branding-panel {
+            padding: 21px;
+        }
+
+        .branding-form-grid,
+        .asset-grid,
+        .report-option-list {
+            grid-template-columns: 1fr;
+        }
+
+        .template-options {
+            grid-template-columns: 1fr;
+        }
+
+        .color-control {
+            grid-template-columns: 50px 1fr;
+        }
+
+        .color-code {
+            grid-column: 1 / -1;
+        }
+
+        .branding-save-area {
+            align-items: stretch;
+            flex-direction: column-reverse;
+        }
+
+        .branding-save-btn,
+        .branding-reset-btn {
+            width: 100%;
+        }
+    }
+
+    @media (max-width: 520px) {
+        .asset-upload-row {
+            align-items: stretch;
+            flex-direction: column;
+        }
+
+        .asset-upload-btn {
+            width: 100%;
+        }
+
+        .report-preview-top {
+            grid-template-columns: 55px 1fr 55px;
+        }
+    }
 </style>
+
+
+<div class="branding-center">
+
+    <section class="branding-hero">
+        <div class="branding-hero-content">
+
+            <div>
+                <h1>🎨 Branding Center</h1>
+
+                <p>
+                    Customize your school's identity, branding assets,
+                    system colors and official report appearance.
+                </p>
+            </div>
+
+            <div class="branding-hero-badge">
+                ✨ EduTrack Premium Branding
+            </div>
+
+        </div>
+    </section>
+
+
+    {% if session.get("role") == "super_admin" %}
+
+        <section class="school-selector-card">
+
+            <label for="branding-school-selector">
+                Select school to customize
+            </label>
+
+            <select
+                id="branding-school-selector"
+                onchange="
+                    if (this.value) {
+                        window.location.href =
+                            '{{ url_for("school_settings") }}'
+                            + '?school_id='
+                            + this.value
+                            + '&tab=identity';
+                    }
+                "
+            >
+                <option value="">Choose a school</option>
+
+                {% for school in schools %}
+                    <option
+                        value="{{ school.id }}"
+                        {% if selected_school_id|string == school.id|string %}
+                            selected
+                        {% endif %}
+                    >
+                        {{ school.school_name }}
+                    </option>
+                {% endfor %}
+            </select>
+
+        </section>
+
+    {% endif %}
+
+
+    {% if selected_school_id %}
+
+        <nav class="branding-tabs">
+
+            <a
+                href="{{ url_for(
+                    'school_settings',
+                    school_id=selected_school_id,
+                    tab='identity'
+                ) }}"
+                class="branding-tab
+                       {% if active_tab == 'identity' %}active{% endif %}"
+            >
+                🏫 Identity
+            </a>
+
+            <a
+                href="{{ url_for(
+                    'school_settings',
+                    school_id=selected_school_id,
+                    tab='branding'
+                ) }}"
+                class="branding-tab
+                       {% if active_tab == 'branding' %}active{% endif %}"
+            >
+                🖼️ Branding
+            </a>
+
+            <a
+                href="{{ url_for(
+                    'school_settings',
+                    school_id=selected_school_id,
+                    tab='theme'
+                ) }}"
+                class="branding-tab
+                       {% if active_tab == 'theme' %}active{% endif %}"
+            >
+                🎨 Theme
+            </a>
+
+            <a
+                href="{{ url_for(
+                    'school_settings',
+                    school_id=selected_school_id,
+                    tab='reports'
+                ) }}"
+                class="branding-tab
+                       {% if active_tab == 'reports' %}active{% endif %}"
+            >
+                📄 Reports
+            </a>
+
+            <a
+                href="{{ url_for(
+                    'school_settings',
+                    school_id=selected_school_id,
+                    tab='preview'
+                ) }}"
+                class="branding-tab
+                       {% if active_tab == 'preview' %}active{% endif %}"
+            >
+                👁️ Preview
+            </a>
+
+        </nav>
+
+
+        <!-- =================================================
+             IDENTITY TAB
+        ================================================== -->
+
+        {% if active_tab == "identity" %}
+
+            <section class="branding-panel">
+
+                <div class="panel-heading">
+                    <div>
+                        <h2>School Identity</h2>
+                        <p>
+                            Manage the official school information that
+                            appears throughout EduTrack and on reports.
+                        </p>
+                    </div>
+
+                    <span class="panel-step">Step 1 of 5</span>
+                </div>
+
+                <form method="POST">
+
+                    <input
+                        type="hidden"
+                        name="action"
+                        value="save_identity"
+                    >
+
+                    <input
+                        type="hidden"
+                        name="active_tab"
+                        value="identity"
+                    >
+
+                    {% if session.get("role") == "super_admin" %}
+                        <input
+                            type="hidden"
+                            name="school_id"
+                            value="{{ selected_school_id }}"
+                        >
+                    {% endif %}
+
+                    <div class="branding-form-grid">
+
+                        <div class="branding-field">
+                            <label for="display_name">
+                                School Display Name
+                            </label>
+
+                            <input
+                                id="display_name"
+                                type="text"
+                                name="display_name"
+                                value="{{ settings.display_name or '' }}"
+                                placeholder="Example Academy"
+                            >
+                        </div>
+
+                        <div class="branding-field">
+                            <label for="motto">School Motto</label>
+
+                            <input
+                                id="motto"
+                                type="text"
+                                name="motto"
+                                value="{{ settings.motto or '' }}"
+                                placeholder="Excellence Through Education"
+                            >
+                        </div>
+
+                        <div class="branding-field">
+                            <label for="phone">Phone Number</label>
+
+                            <input
+                                id="phone"
+                                type="text"
+                                name="phone"
+                                value="{{ settings.phone or '' }}"
+                                placeholder="+263..."
+                            >
+                        </div>
+
+                        <div class="branding-field">
+                            <label for="email">Email Address</label>
+
+                            <input
+                                id="email"
+                                type="email"
+                                name="email"
+                                value="{{ settings.email or '' }}"
+                                placeholder="school@example.com"
+                            >
+                        </div>
+
+                        <div class="branding-field">
+                            <label for="opening_date">
+                                Term Opening Date
+                            </label>
+
+                            <input
+                                id="opening_date"
+                                type="date"
+                                name="opening_date"
+                                value="{{ settings.opening_date or '' }}"
+                            >
+                        </div>
+
+                        <div class="branding-field">
+                            <label for="closing_date">
+                                Term Closing Date
+                            </label>
+
+                            <input
+                                id="closing_date"
+                                type="date"
+                                name="closing_date"
+                                value="{{ settings.closing_date or '' }}"
+                            >
+                        </div>
+
+                        <div class="branding-field full-width">
+                            <label for="address">School Address</label>
+
+                            <textarea
+                                id="address"
+                                name="address"
+                                placeholder="Enter the official school address"
+                            >{{ settings.address or '' }}</textarea>
+                        </div>
+
+                        <div class="branding-field full-width">
+                            <label for="report_header">
+                                Report Header
+                            </label>
+
+                            <textarea
+                                id="report_header"
+                                name="report_header"
+                                placeholder="Text displayed near the top of official school reports"
+                            >{{ settings.report_header or '' }}</textarea>
+
+                            <span class="field-help">
+                                Example: Term One Academic Progress Report.
+                            </span>
+                        </div>
+
+                        <div class="branding-field full-width">
+                            <label for="logo_url">
+                                External Logo URL — Optional
+                            </label>
+
+                            <input
+                                id="logo_url"
+                                type="url"
+                                name="logo_url"
+                                value="{{ settings.logo_url or '' }}"
+                                placeholder="https://example.com/logo.png"
+                            >
+
+                            <span class="field-help">
+                                An uploaded logo is preferred. This URL is
+                                kept as a fallback.
+                            </span>
+                        </div>
+
+                    </div>
+
+                    <div class="branding-save-area">
+                        <button
+                            type="submit"
+                            class="branding-save-btn"
+                        >
+                            💾 Save School Identity
+                        </button>
+                    </div>
+
+                </form>
+
+            </section>
+
+        {% endif %}
+
+
+        <!-- =================================================
+             BRANDING ASSETS TAB
+        ================================================== -->
+
+        {% if active_tab == "branding" %}
+
+            <section class="branding-panel">
+
+                <div class="panel-heading">
+                    <div>
+                        <h2>Branding Assets</h2>
+                        <p>
+                            Upload the school logo, official stamp and
+                            authorized signatures used on reports.
+                        </p>
+                    </div>
+
+                    <span class="panel-step">Step 2 of 5</span>
+                </div>
+
+
+                <div class="asset-grid">
+
+                    <!-- Logo -->
+                    <article class="asset-card">
+
+                        <div class="asset-preview">
+
+                            {% if settings.logo_data %}
+
+                                <img
+                                    id="logo-preview"
+                                    src="{{ url_for(
+                                        'school_settings_asset',
+                                        school_id=selected_school_id,
+                                        asset_name='logo'
+                                    ) }}"
+                                    alt="School logo"
+                                >
+
+                            {% elif settings.logo_url %}
+
+                                <img
+                                    id="logo-preview"
+                                    src="{{ settings.logo_url }}"
+                                    alt="School logo"
+                                >
+
+                            {% else %}
+
+                                <div
+                                    class="asset-placeholder"
+                                    id="logo-placeholder"
+                                >
+                                    <div class="asset-placeholder-icon">
+                                        🏫
+                                    </div>
+
+                                    <strong>No logo uploaded</strong>
+                                    <span>Upload the school's official logo.</span>
+                                </div>
+
+                                <img
+                                    id="logo-preview"
+                                    alt="School logo preview"
+                                    style="display: none;"
+                                >
+
+                            {% endif %}
+
+                        </div>
+
+                        <div class="asset-card-body">
+
+                            <div class="asset-card-heading">
+                                <div>
+                                    <h3>School Logo</h3>
+                                    <p>
+                                        Displayed on reports and official
+                                        school documents.
+                                    </p>
+                                </div>
+
+                                {% if settings.logo_data %}
+                                    <form
+                                        method="POST"
+                                        onsubmit="
+                                            return confirm(
+                                                'Remove the current school logo?'
+                                            );
+                                        "
+                                    >
+                                        <input
+                                            type="hidden"
+                                            name="action"
+                                            value="delete_asset"
+                                        >
+
+                                        <input
+                                            type="hidden"
+                                            name="active_tab"
+                                            value="branding"
+                                        >
+
+                                        <input
+                                            type="hidden"
+                                            name="asset_name"
+                                            value="logo"
+                                        >
+
+                                        {% if session.get("role") == "super_admin" %}
+                                            <input
+                                                type="hidden"
+                                                name="school_id"
+                                                value="{{ selected_school_id }}"
+                                            >
+                                        {% endif %}
+
+                                        <button
+                                            type="submit"
+                                            class="branding-delete-btn"
+                                        >
+                                            Remove
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </div>
+
+                            <form
+                                method="POST"
+                                enctype="multipart/form-data"
+                                class="asset-upload-row"
+                            >
+                                <input
+                                    type="hidden"
+                                    name="action"
+                                    value="upload_asset"
+                                >
+
+                                <input
+                                    type="hidden"
+                                    name="active_tab"
+                                    value="branding"
+                                >
+
+                                <input
+                                    type="hidden"
+                                    name="asset_name"
+                                    value="logo"
+                                >
+
+                                {% if session.get("role") == "super_admin" %}
+                                    <input
+                                        type="hidden"
+                                        name="school_id"
+                                        value="{{ selected_school_id }}"
+                                    >
+                                {% endif %}
+
+                                <input
+                                    type="file"
+                                    name="asset_file"
+                                    accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+                                    required
+                                    onchange="
+                                        previewBrandingImage(
+                                            this,
+                                            'logo-preview',
+                                            'logo-placeholder'
+                                        )
+                                    "
+                                >
+
+                                <button
+                                    type="submit"
+                                    class="asset-upload-btn"
+                                >
+                                    Upload
+                                </button>
+                            </form>
+
+                        </div>
+
+                    </article>
+
+
+                    <!-- Stamp -->
+                    <article class="asset-card">
+
+                        <div class="asset-preview">
+
+                            {% if settings.stamp_data %}
+
+                                <img
+                                    id="stamp-preview"
+                                    src="{{ url_for(
+                                        'school_settings_asset',
+                                        school_id=selected_school_id,
+                                        asset_name='stamp'
+                                    ) }}"
+                                    alt="School stamp"
+                                >
+
+                            {% else %}
+
+                                <div
+                                    class="asset-placeholder"
+                                    id="stamp-placeholder"
+                                >
+                                    <div class="asset-placeholder-icon">
+                                        🔵
+                                    </div>
+
+                                    <strong>No stamp uploaded</strong>
+                                    <span>Upload the official school stamp.</span>
+                                </div>
+
+                                <img
+                                    id="stamp-preview"
+                                    alt="School stamp preview"
+                                    style="display: none;"
+                                >
+
+                            {% endif %}
+
+                        </div>
+
+                        <div class="asset-card-body">
+
+                            <div class="asset-card-heading">
+                                <div>
+                                    <h3>School Stamp</h3>
+                                    <p>
+                                        Used to certify reports and official
+                                        financial documents.
+                                    </p>
+                                </div>
+
+                                {% if settings.stamp_data %}
+                                    <form
+                                        method="POST"
+                                        onsubmit="
+                                            return confirm(
+                                                'Remove the current school stamp?'
+                                            );
+                                        "
+                                    >
+                                        <input
+                                            type="hidden"
+                                            name="action"
+                                            value="delete_asset"
+                                        >
+
+                                        <input
+                                            type="hidden"
+                                            name="active_tab"
+                                            value="branding"
+                                        >
+
+                                        <input
+                                            type="hidden"
+                                            name="asset_name"
+                                            value="stamp"
+                                        >
+
+                                        {% if session.get("role") == "super_admin" %}
+                                            <input
+                                                type="hidden"
+                                                name="school_id"
+                                                value="{{ selected_school_id }}"
+                                            >
+                                        {% endif %}
+
+                                        <button
+                                            type="submit"
+                                            class="branding-delete-btn"
+                                        >
+                                            Remove
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </div>
+
+                            <form
+                                method="POST"
+                                enctype="multipart/form-data"
+                                class="asset-upload-row"
+                            >
+                                <input
+                                    type="hidden"
+                                    name="action"
+                                    value="upload_asset"
+                                >
+
+                                <input
+                                    type="hidden"
+                                    name="active_tab"
+                                    value="branding"
+                                >
+
+                                <input
+                                    type="hidden"
+                                    name="asset_name"
+                                    value="stamp"
+                                >
+
+                                {% if session.get("role") == "super_admin" %}
+                                    <input
+                                        type="hidden"
+                                        name="school_id"
+                                        value="{{ selected_school_id }}"
+                                    >
+                                {% endif %}
+
+                                <input
+                                    type="file"
+                                    name="asset_file"
+                                    accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+                                    required
+                                    onchange="
+                                        previewBrandingImage(
+                                            this,
+                                            'stamp-preview',
+                                            'stamp-placeholder'
+                                        )
+                                    "
+                                >
+
+                                <button
+                                    type="submit"
+                                    class="asset-upload-btn"
+                                >
+                                    Upload
+                                </button>
+                            </form>
+
+                        </div>
+
+                    </article>
+
+
+                    <!-- Headteacher signature -->
+                    <article class="asset-card">
+
+                        <div class="asset-preview">
+
+                            {% if settings.head_signature_data %}
+
+                                <img
+                                    id="head-signature-preview"
+                                    src="{{ url_for(
+                                        'school_settings_asset',
+                                        school_id=selected_school_id,
+                                        asset_name='head_signature'
+                                    ) }}"
+                                    alt="Headteacher signature"
+                                >
+
+                            {% else %}
+
+                                <div
+                                    class="asset-placeholder"
+                                    id="head-signature-placeholder"
+                                >
+                                    <div class="asset-placeholder-icon">
+                                        ✍️
+                                    </div>
+
+                                    <strong>No signature uploaded</strong>
+                                    <span>
+                                        Upload the headteacher's signature.
+                                    </span>
+                                </div>
+
+                                <img
+                                    id="head-signature-preview"
+                                    alt="Headteacher signature preview"
+                                    style="display: none;"
+                                >
+
+                            {% endif %}
+
+                        </div>
+
+                        <div class="asset-card-body">
+
+                            <div class="asset-card-heading">
+                                <div>
+                                    <h3>Headteacher Signature</h3>
+                                    <p>
+                                        Appears in the authorization section
+                                        of academic reports.
+                                    </p>
+                                </div>
+
+                                {% if settings.head_signature_data %}
+                                    <form
+                                        method="POST"
+                                        onsubmit="
+                                            return confirm(
+                                                'Remove the headteacher signature?'
+                                            );
+                                        "
+                                    >
+                                        <input
+                                            type="hidden"
+                                            name="action"
+                                            value="delete_asset"
+                                        >
+
+                                        <input
+                                            type="hidden"
+                                            name="active_tab"
+                                            value="branding"
+                                        >
+
+                                        <input
+                                            type="hidden"
+                                            name="asset_name"
+                                            value="head_signature"
+                                        >
+
+                                        {% if session.get("role") == "super_admin" %}
+                                            <input
+                                                type="hidden"
+                                                name="school_id"
+                                                value="{{ selected_school_id }}"
+                                            >
+                                        {% endif %}
+
+                                        <button
+                                            type="submit"
+                                            class="branding-delete-btn"
+                                        >
+                                            Remove
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </div>
+
+                            <form
+                                method="POST"
+                                enctype="multipart/form-data"
+                                class="asset-upload-row"
+                            >
+                                <input
+                                    type="hidden"
+                                    name="action"
+                                    value="upload_asset"
+                                >
+
+                                <input
+                                    type="hidden"
+                                    name="active_tab"
+                                    value="branding"
+                                >
+
+                                <input
+                                    type="hidden"
+                                    name="asset_name"
+                                    value="head_signature"
+                                >
+
+                                {% if session.get("role") == "super_admin" %}
+                                    <input
+                                        type="hidden"
+                                        name="school_id"
+                                        value="{{ selected_school_id }}"
+                                    >
+                                {% endif %}
+
+                                <input
+                                    type="file"
+                                    name="asset_file"
+                                    accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+                                    required
+                                    onchange="
+                                        previewBrandingImage(
+                                            this,
+                                            'head-signature-preview',
+                                            'head-signature-placeholder'
+                                        )
+                                    "
+                                >
+
+                                <button
+                                    type="submit"
+                                    class="asset-upload-btn"
+                                >
+                                    Upload
+                                </button>
+                            </form>
+
+                        </div>
+
+                    </article>
+
+
+                    <!-- Bursar signature -->
+                    <article class="asset-card">
+
+                        <div class="asset-preview">
+
+                            {% if settings.bursar_signature_data %}
+
+                                <img
+                                    id="bursar-signature-preview"
+                                    src="{{ url_for(
+                                        'school_settings_asset',
+                                        school_id=selected_school_id,
+                                        asset_name='bursar_signature'
+                                    ) }}"
+                                    alt="Bursar signature"
+                                >
+
+                            {% else %}
+
+                                <div
+                                    class="asset-placeholder"
+                                    id="bursar-signature-placeholder"
+                                >
+                                    <div class="asset-placeholder-icon">
+                                        🖊️
+                                    </div>
+
+                                    <strong>No signature uploaded</strong>
+                                    <span>Upload the bursar's signature.</span>
+                                </div>
+
+                                <img
+                                    id="bursar-signature-preview"
+                                    alt="Bursar signature preview"
+                                    style="display: none;"
+                                >
+
+                            {% endif %}
+
+                        </div>
+
+                        <div class="asset-card-body">
+
+                            <div class="asset-card-heading">
+                                <div>
+                                    <h3>Bursar Signature</h3>
+                                    <p>
+                                        Used on fee statements and official
+                                        financial reports.
+                                    </p>
+                                </div>
+
+                                {% if settings.bursar_signature_data %}
+                                    <form
+                                        method="POST"
+                                        onsubmit="
+                                            return confirm(
+                                                'Remove the bursar signature?'
+                                            );
+                                        "
+                                    >
+                                        <input
+                                            type="hidden"
+                                            name="action"
+                                            value="delete_asset"
+                                        >
+
+                                        <input
+                                            type="hidden"
+                                            name="active_tab"
+                                            value="branding"
+                                        >
+
+                                        <input
+                                            type="hidden"
+                                            name="asset_name"
+                                            value="bursar_signature"
+                                        >
+
+                                        {% if session.get("role") == "super_admin" %}
+                                            <input
+                                                type="hidden"
+                                                name="school_id"
+                                                value="{{ selected_school_id }}"
+                                            >
+                                        {% endif %}
+
+                                        <button
+                                            type="submit"
+                                            class="branding-delete-btn"
+                                        >
+                                            Remove
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </div>
+
+                            <form
+                                method="POST"
+                                enctype="multipart/form-data"
+                                class="asset-upload-row"
+                            >
+                                <input
+                                    type="hidden"
+                                    name="action"
+                                    value="upload_asset"
+                                >
+
+                                <input
+                                    type="hidden"
+                                    name="active_tab"
+                                    value="branding"
+                                >
+
+                                <input
+                                    type="hidden"
+                                    name="asset_name"
+                                    value="bursar_signature"
+                                >
+
+                                {% if session.get("role") == "super_admin" %}
+                                    <input
+                                        type="hidden"
+                                        name="school_id"
+                                        value="{{ selected_school_id }}"
+                                    >
+                                {% endif %}
+
+                                <input
+                                    type="file"
+                                    name="asset_file"
+                                    accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+                                    required
+                                    onchange="
+                                        previewBrandingImage(
+                                            this,
+                                            'bursar-signature-preview',
+                                            'bursar-signature-placeholder'
+                                        )
+                                    "
+                                >
+
+                                <button
+                                    type="submit"
+                                    class="asset-upload-btn"
+                                >
+                                    Upload
+                                </button>
+                            </form>
+
+                        </div>
+
+                    </article>
+
+                </div>
+
+            </section>
+
+        {% endif %}
+
+
+        <!-- =================================================
+             THEME TAB
+        ================================================== -->
+
+        {% if active_tab == "theme" %}
+
+            <section class="branding-panel">
+
+                <div class="panel-heading">
+                    <div>
+                        <h2>School Theme</h2>
+                        <p>
+                            Choose the colors that represent the school's
+                            digital identity.
+                        </p>
+                    </div>
+
+                    <span class="panel-step">Step 3 of 5</span>
+                </div>
+
+
+                <div class="theme-layout">
+
+                    <form method="POST">
+
+                        <input
+                            type="hidden"
+                            name="action"
+                            value="save_theme"
+                        >
+
+                        <input
+                            type="hidden"
+                            name="active_tab"
+                            value="theme"
+                        >
+
+                        {% if session.get("role") == "super_admin" %}
+                            <input
+                                type="hidden"
+                                name="school_id"
+                                value="{{ selected_school_id }}"
+                            >
+                        {% endif %}
+
+                        <div class="color-control-list">
+
+                            <div class="color-control">
+                                <input
+                                    id="primary-color"
+                                    type="color"
+                                    name="primary_color"
+                                    value="{{ primary }}"
+                                    oninput="
+                                        updateColorCode(
+                                            'primary-color',
+                                            'primary-code'
+                                        );
+                                        updateThemePreview();
+                                    "
+                                >
+
+                                <div>
+                                    <strong>Primary Color</strong>
+                                    <small>
+                                        Main headers, navigation and buttons.
+                                    </small>
+                                </div>
+
+                                <input
+                                    id="primary-code"
+                                    class="color-code"
+                                    type="text"
+                                    value="{{ primary }}"
+                                    readonly
+                                >
+                            </div>
+
+
+                            <div class="color-control">
+                                <input
+                                    id="secondary-color"
+                                    type="color"
+                                    name="secondary_color"
+                                    value="{{ secondary }}"
+                                    oninput="
+                                        updateColorCode(
+                                            'secondary-color',
+                                            'secondary-code'
+                                        );
+                                        updateThemePreview();
+                                    "
+                                >
+
+                                <div>
+                                    <strong>Secondary Color</strong>
+                                    <small>
+                                        Gradients, highlights and accents.
+                                    </small>
+                                </div>
+
+                                <input
+                                    id="secondary-code"
+                                    class="color-code"
+                                    type="text"
+                                    value="{{ secondary }}"
+                                    readonly
+                                >
+                            </div>
+
+
+                            <div class="color-control">
+                                <input
+                                    id="accent-color"
+                                    type="color"
+                                    name="accent_color"
+                                    value="{{ accent }}"
+                                    oninput="
+                                        updateColorCode(
+                                            'accent-color',
+                                            'accent-code'
+                                        );
+                                        updateThemePreview();
+                                    "
+                                >
+
+                                <div>
+                                    <strong>Accent Color</strong>
+                                    <small>
+                                        Success states and special actions.
+                                    </small>
+                                </div>
+
+                                <input
+                                    id="accent-code"
+                                    class="color-code"
+                                    type="text"
+                                    value="{{ accent }}"
+                                    readonly
+                                >
+                            </div>
+
+                        </div>
+
+                        <div class="branding-save-area">
+
+                            <button
+                                type="submit"
+                                class="branding-save-btn"
+                            >
+                                🎨 Save Theme
+                            </button>
+
+                        </div>
+
+                    </form>
+
+
+                    <div
+                        class="theme-preview"
+                        id="theme-preview"
+                    >
+
+                        <div
+                            class="theme-preview-header"
+                            id="theme-preview-header"
+                        >
+                            <strong>
+                                {{ settings.display_name or "Your School" }}
+                            </strong>
+
+                            <small>
+                                EduTrack School Management System
+                            </small>
+                        </div>
+
+                        <div class="theme-preview-body">
+
+                            <div class="preview-mini-stats">
+
+                                <div class="preview-mini-card">
+                                    <span>Students</span>
+                                    <strong>248</strong>
+                                </div>
+
+                                <div class="preview-mini-card">
+                                    <span>Attendance</span>
+                                    <strong>94%</strong>
+                                </div>
+
+                            </div>
+
+                            <button
+                                type="button"
+                                class="theme-preview-button"
+                                id="theme-preview-button"
+                            >
+                                Sample Action Button
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <form
+                    method="POST"
+                    onsubmit="
+                        return confirm(
+                            'Reset the school colors to the EduTrack defaults?'
+                        );
+                    "
+                >
+                    <input
+                        type="hidden"
+                        name="action"
+                        value="reset_theme"
+                    >
+
+                    <input
+                        type="hidden"
+                        name="active_tab"
+                        value="theme"
+                    >
+
+                    {% if session.get("role") == "super_admin" %}
+                        <input
+                            type="hidden"
+                            name="school_id"
+                            value="{{ selected_school_id }}"
+                        >
+                    {% endif %}
+
+                    <div
+                        class="branding-save-area"
+                        style="justify-content: flex-start;"
+                    >
+                        <button
+                            type="submit"
+                            class="branding-reset-btn"
+                        >
+                            ↺ Reset to EduTrack Defaults
+                        </button>
+                    </div>
+                </form>
+
+            </section>
+
+        {% endif %}
+
+
+        <!-- =================================================
+             REPORT SETTINGS TAB
+        ================================================== -->
+
+        {% if active_tab == "reports" %}
+
+            <section class="branding-panel">
+
+                <div class="panel-heading">
+                    <div>
+                        <h2>Report Branding</h2>
+                        <p>
+                            Select the report style and control which
+                            information appears on school reports.
+                        </p>
+                    </div>
+
+                    <span class="panel-step">Step 4 of 5</span>
+                </div>
+
+
+                <form method="POST">
+
+                    <input
+                        type="hidden"
+                        name="action"
+                        value="save_reports"
+                    >
+
+                    <input
+                        type="hidden"
+                        name="active_tab"
+                        value="reports"
+                    >
+
+                    {% if session.get("role") == "super_admin" %}
+                        <input
+                            type="hidden"
+                            name="school_id"
+                            value="{{ selected_school_id }}"
+                        >
+                    {% endif %}
+
+
+                    <div class="report-layout">
+
+                        <div>
+
+                            <h3 style="margin-top: 0;">
+                                Report Template
+                            </h3>
+
+                            <div class="template-options">
+
+                                <div class="template-option">
+                                    <input
+                                        id="template-classic"
+                                        type="radio"
+                                        name="report_template"
+                                        value="classic"
+                                        {% if not settings.report_template
+                                              or settings.report_template == "classic" %}
+                                            checked
+                                        {% endif %}
+                                    >
+
+                                    <label for="template-classic">
+                                        <strong>Classic</strong>
+                                        <small>
+                                            Formal and traditional.
+                                        </small>
+                                    </label>
+                                </div>
+
+                                <div class="template-option">
+                                    <input
+                                        id="template-modern"
+                                        type="radio"
+                                        name="report_template"
+                                        value="modern"
+                                        {% if settings.report_template == "modern" %}
+                                            checked
+                                        {% endif %}
+                                    >
+
+                                    <label for="template-modern">
+                                        <strong>Modern</strong>
+                                        <small>
+                                            Clean and colorful.
+                                        </small>
+                                    </label>
+                                </div>
+
+                                <div class="template-option">
+                                    <input
+                                        id="template-executive"
+                                        type="radio"
+                                        name="report_template"
+                                        value="executive"
+                                        {% if settings.report_template == "executive" %}
+                                            checked
+                                        {% endif %}
+                                    >
+
+                                    <label for="template-executive">
+                                        <strong>Executive</strong>
+                                        <small>
+                                            Premium and professional.
+                                        </small>
+                                    </label>
+                                </div>
+
+                            </div>
+
+
+                            <h3>Information to Display</h3>
+
+                            <div class="report-option-list">
+
+                                <label class="report-toggle">
+                                    <input
+                                        type="checkbox"
+                                        name="show_logo"
+                                        {% if settings.show_logo %}checked{% endif %}
+                                    >
+                                    <span>School Logo</span>
+                                </label>
+
+                                <label class="report-toggle">
+                                    <input
+                                        type="checkbox"
+                                        name="show_stamp"
+                                        {% if settings.show_stamp %}checked{% endif %}
+                                    >
+                                    <span>School Stamp</span>
+                                </label>
+
+                                <label class="report-toggle">
+                                    <input
+                                        type="checkbox"
+                                        name="show_head_signature"
+                                        {% if settings.show_head_signature %}
+                                            checked
+                                        {% endif %}
+                                    >
+                                    <span>Headteacher Signature</span>
+                                </label>
+
+                                <label class="report-toggle">
+                                    <input
+                                        type="checkbox"
+                                        name="show_bursar_signature"
+                                        {% if settings.show_bursar_signature %}
+                                            checked
+                                        {% endif %}
+                                    >
+                                    <span>Bursar Signature</span>
+                                </label>
+
+                                <label class="report-toggle">
+                                    <input
+                                        type="checkbox"
+                                        name="show_position"
+                                        {% if settings.show_position %}
+                                            checked
+                                        {% endif %}
+                                    >
+                                    <span>Class Position</span>
+                                </label>
+
+                                <label class="report-toggle">
+                                    <input
+                                        type="checkbox"
+                                        name="show_attendance"
+                                        {% if settings.show_attendance %}
+                                            checked
+                                        {% endif %}
+                                    >
+                                    <span>Attendance Summary</span>
+                                </label>
+
+                                <label class="report-toggle">
+                                    <input
+                                        type="checkbox"
+                                        name="show_conduct"
+                                        {% if settings.show_conduct %}
+                                            checked
+                                        {% endif %}
+                                    >
+                                    <span>Student Conduct</span>
+                                </label>
+
+                            </div>
+
+                            <div class="branding-save-area">
+                                <button
+                                    type="submit"
+                                    class="branding-save-btn"
+                                >
+                                    📄 Save Report Settings
+                                </button>
+                            </div>
+
+                        </div>
+
+
+                        {% include "branding_report_preview.html" ignore missing %}
+
+                        {% if false %}
+                        {% endif %}
+
+                        <div class="report-preview-card">
+
+                            <div class="report-preview-top">
+
+                                <div class="report-preview-logo">
+                                    {% if settings.show_logo and settings.logo_data %}
+                                        <img
+                                            src="{{ url_for(
+                                                'school_settings_asset',
+                                                school_id=selected_school_id,
+                                                asset_name='logo'
+                                            ) }}"
+                                            alt="Logo"
+                                        >
+                                    {% elif settings.show_logo and settings.logo_url %}
+                                        <img
+                                            src="{{ settings.logo_url }}"
+                                            alt="Logo"
+                                        >
+                                    {% else %}
+                                        <div class="preview-empty-image">
+                                            Logo
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="report-preview-school">
+                                    <h3>
+                                        {{ settings.display_name or "Your School" }}
+                                    </h3>
+
+                                    <p>
+                                        {{ settings.motto or
+                                           "Excellence Through Education" }}
+                                    </p>
+                                </div>
+
+                                <div class="report-preview-stamp">
+                                    {% if settings.show_stamp and settings.stamp_data %}
+                                        <img
+                                            src="{{ url_for(
+                                                'school_settings_asset',
+                                                school_id=selected_school_id,
+                                                asset_name='stamp'
+                                            ) }}"
+                                            alt="Stamp"
+                                        >
+                                    {% else %}
+                                        <div class="preview-empty-image">
+                                            Stamp
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                            </div>
+
+                            <div class="report-preview-title">
+                                {{ settings.report_header or
+                                   "Academic Progress Report" }}
+                            </div>
+
+                            <div class="student-summary">
+                                <div>
+                                    Student:
+                                    <strong>John Doe</strong>
+                                </div>
+
+                                <div>
+                                    Class:
+                                    <strong>Grade 7</strong>
+                                </div>
+
+                                <div>
+                                    Term:
+                                    <strong>Term 1</strong>
+                                </div>
+
+                                <div>
+                                    Year:
+                                    <strong>2026</strong>
+                                </div>
+                            </div>
+
+                            <table class="preview-results">
+                                <thead>
+                                    <tr>
+                                        <th>Subject</th>
+                                        <th>Mark</th>
+                                        <th>Grade</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+                                    <tr>
+                                        <td>English</td>
+                                        <td>78%</td>
+                                        <td>B+</td>
+                                    </tr>
+
+                                    <tr>
+                                        <td>Mathematics</td>
+                                        <td>91%</td>
+                                        <td>A</td>
+                                    </tr>
+
+                                    <tr>
+                                        <td>Science</td>
+                                        <td>86%</td>
+                                        <td>A</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            {% if settings.show_position
+                                  or settings.show_attendance
+                                  or settings.show_conduct %}
+
+                                <div class="report-extra-row">
+
+                                    {% if settings.show_position %}
+                                        <span>
+                                            Position:
+                                            <strong>3 / 32</strong>
+                                        </span>
+                                    {% endif %}
+
+                                    {% if settings.show_attendance %}
+                                        <span>
+                                            Attendance:
+                                            <strong>94%</strong>
+                                        </span>
+                                    {% endif %}
+
+                                    {% if settings.show_conduct %}
+                                        <span>
+                                            Conduct:
+                                            <strong>Excellent</strong>
+                                        </span>
+                                    {% endif %}
+
+                                </div>
+
+                            {% endif %}
+
+                            <div class="signature-preview-row">
+
+                                <div class="signature-preview">
+
+                                    {% if settings.show_head_signature
+                                          and settings.head_signature_data %}
+
+                                        <img
+                                            src="{{ url_for(
+                                                'school_settings_asset',
+                                                school_id=selected_school_id,
+                                                asset_name='head_signature'
+                                            ) }}"
+                                            alt="Headteacher signature"
+                                        >
+
+                                    {% endif %}
+
+                                    Headteacher Signature
+                                </div>
+
+                                <div class="signature-preview">
+
+                                    {% if settings.show_bursar_signature
+                                          and settings.bursar_signature_data %}
+
+                                        <img
+                                            src="{{ url_for(
+                                                'school_settings_asset',
+                                                school_id=selected_school_id,
+                                                asset_name='bursar_signature'
+                                            ) }}"
+                                            alt="Bursar signature"
+                                        >
+
+                                    {% endif %}
+
+                                    Bursar Signature
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </form>
+
+            </section>
+
+        {% endif %}
+
+
+        <!-- =================================================
+             PREVIEW TAB
+        ================================================== -->
+
+        {% if active_tab == "preview" %}
+
+            <section class="branding-panel">
+
+                <div class="panel-heading">
+                    <div>
+                        <h2>Branding Preview</h2>
+                        <p>
+                            Review how the school's saved identity and
+                            report branding will appear.
+                        </p>
+                    </div>
+
+                    <span class="panel-step">Step 5 of 5</span>
+                </div>
+
+
+                <div class="full-preview-layout">
+
+                    <div class="preview-information-card">
+
+                        <h3>Current School Identity</h3>
+
+                        <p>
+                            This information is currently saved in the
+                            Branding Center.
+                        </p>
+
+                        <div class="preview-detail">
+                            <span>School Name</span>
+                            <strong>
+                                {{ settings.display_name or "Not configured" }}
+                            </strong>
+                        </div>
+
+                        <div class="preview-detail">
+                            <span>Motto</span>
+                            <strong>
+                                {{ settings.motto or "Not configured" }}
+                            </strong>
+                        </div>
+
+                        <div class="preview-detail">
+                            <span>Phone</span>
+                            <strong>
+                                {{ settings.phone or "Not configured" }}
+                            </strong>
+                        </div>
+
+                        <div class="preview-detail">
+                            <span>Email</span>
+                            <strong>
+                                {{ settings.email or "Not configured" }}
+                            </strong>
+                        </div>
+
+                        <div class="preview-detail">
+                            <span>Report Template</span>
+                            <strong>
+                                {{ (settings.report_template or "classic")
+                                   |title }}
+                            </strong>
+                        </div>
+
+                        <div class="preview-detail">
+                            <span>Primary Color</span>
+                            <strong>{{ primary }}</strong>
+                        </div>
+
+                        <div class="preview-detail">
+                            <span>Secondary Color</span>
+                            <strong>{{ secondary }}</strong>
+                        </div>
+
+                        <div class="preview-detail">
+                            <span>Accent Color</span>
+                            <strong>{{ accent }}</strong>
+                        </div>
+
+                    </div>
+
+
+                    <div class="report-preview-card">
+
+                        <div class="report-preview-top">
+
+                            <div class="report-preview-logo">
+
+                                {% if settings.show_logo and settings.logo_data %}
+                                    <img
+                                        src="{{ url_for(
+                                            'school_settings_asset',
+                                            school_id=selected_school_id,
+                                            asset_name='logo'
+                                        ) }}"
+                                        alt="Logo"
+                                    >
+                                {% elif settings.show_logo and settings.logo_url %}
+                                    <img
+                                        src="{{ settings.logo_url }}"
+                                        alt="Logo"
+                                    >
+                                {% else %}
+                                    <div class="preview-empty-image">
+                                        Logo
+                                    </div>
+                                {% endif %}
+
+                            </div>
+
+                            <div class="report-preview-school">
+                                <h3>
+                                    {{ settings.display_name or "Your School" }}
+                                </h3>
+
+                                <p>
+                                    {{ settings.motto or
+                                       "Excellence Through Education" }}
+                                </p>
+                            </div>
+
+                            <div class="report-preview-stamp">
+
+                                {% if settings.show_stamp and settings.stamp_data %}
+                                    <img
+                                        src="{{ url_for(
+                                            'school_settings_asset',
+                                            school_id=selected_school_id,
+                                            asset_name='stamp'
+                                        ) }}"
+                                        alt="Stamp"
+                                    >
+                                {% else %}
+                                    <div class="preview-empty-image">
+                                        Stamp
+                                    </div>
+                                {% endif %}
+
+                            </div>
+
+                        </div>
+
+                        <div class="report-preview-title">
+                            {{ settings.report_header or
+                               "Academic Progress Report" }}
+                        </div>
+
+                        <div class="student-summary">
+                            <div>
+                                Student:
+                                <strong>John Doe</strong>
+                            </div>
+
+                            <div>
+                                Class:
+                                <strong>Grade 7</strong>
+                            </div>
+
+                            <div>
+                                Term:
+                                <strong>Term 1</strong>
+                            </div>
+
+                            <div>
+                                Year:
+                                <strong>2026</strong>
+                            </div>
+                        </div>
+
+                        <table class="preview-results">
+                            <thead>
+                                <tr>
+                                    <th>Subject</th>
+                                    <th>Mark</th>
+                                    <th>Grade</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                <tr>
+                                    <td>English</td>
+                                    <td>78%</td>
+                                    <td>B+</td>
+                                </tr>
+
+                                <tr>
+                                    <td>Mathematics</td>
+                                    <td>91%</td>
+                                    <td>A</td>
+                                </tr>
+
+                                <tr>
+                                    <td>Science</td>
+                                    <td>86%</td>
+                                    <td>A</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        {% if settings.show_position
+                              or settings.show_attendance
+                              or settings.show_conduct %}
+
+                            <div class="report-extra-row">
+
+                                {% if settings.show_position %}
+                                    <span>
+                                        Position:
+                                        <strong>3 / 32</strong>
+                                    </span>
+                                {% endif %}
+
+                                {% if settings.show_attendance %}
+                                    <span>
+                                        Attendance:
+                                        <strong>94%</strong>
+                                    </span>
+                                {% endif %}
+
+                                {% if settings.show_conduct %}
+                                    <span>
+                                        Conduct:
+                                        <strong>Excellent</strong>
+                                    </span>
+                                {% endif %}
+
+                            </div>
+
+                        {% endif %}
+
+                        <div class="signature-preview-row">
+
+                            <div class="signature-preview">
+
+                                {% if settings.show_head_signature
+                                      and settings.head_signature_data %}
+
+                                    <img
+                                        src="{{ url_for(
+                                            'school_settings_asset',
+                                            school_id=selected_school_id,
+                                            asset_name='head_signature'
+                                        ) }}"
+                                        alt="Headteacher signature"
+                                    >
+
+                                {% endif %}
+
+                                Headteacher Signature
+                            </div>
+
+                            <div class="signature-preview">
+
+                                {% if settings.show_bursar_signature
+                                      and settings.bursar_signature_data %}
+
+                                    <img
+                                        src="{{ url_for(
+                                            'school_settings_asset',
+                                            school_id=selected_school_id,
+                                            asset_name='bursar_signature'
+                                        ) }}"
+                                        alt="Bursar signature"
+                                    >
+
+                                {% endif %}
+
+                                Bursar Signature
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+        {% endif %}
+
+
+    {% else %}
+
+        <section class="no-school-selected">
+
+            <div class="no-school-selected-icon">
+                🏫
+            </div>
+
+            <h2>Select a school</h2>
+
+            <p>
+                Choose a school above to open its Branding Center.
+            </p>
+
+        </section>
+
+    {% endif %}
+
+</div>
+
+
+<script>
+    function previewBrandingImage(
+        input,
+        imageId,
+        placeholderId
+    ) {
+        const file = input.files && input.files[0];
+
+        if (!file) {
+            return;
+        }
+
+        const image = document.getElementById(imageId);
+        const placeholder = document.getElementById(placeholderId);
+        const reader = new FileReader();
+
+        reader.onload = function(event) {
+            if (image) {
+                image.src = event.target.result;
+                image.style.display = "block";
+            }
+
+            if (placeholder) {
+                placeholder.style.display = "none";
+            }
+        };
+
+        reader.readAsDataURL(file);
+    }
+
+
+    function updateColorCode(colorInputId, codeInputId) {
+        const colorInput = document.getElementById(colorInputId);
+        const codeInput = document.getElementById(codeInputId);
+
+        if (colorInput && codeInput) {
+            codeInput.value = colorInput.value.toUpperCase();
+        }
+    }
+
+
+    function updateThemePreview() {
+        const primaryInput =
+            document.getElementById("primary-color");
+
+        const secondaryInput =
+            document.getElementById("secondary-color");
+
+        const accentInput =
+            document.getElementById("accent-color");
+
+        const previewHeader =
+            document.getElementById("theme-preview-header");
+
+        const previewButton =
+            document.getElementById("theme-preview-button");
+
+        if (
+            primaryInput &&
+            secondaryInput &&
+            previewHeader
+        ) {
+            previewHeader.style.background =
+                "linear-gradient(135deg, "
+                + primaryInput.value
+                + ", "
+                + secondaryInput.value
+                + ")";
+        }
+
+        if (accentInput && previewButton) {
+            previewButton.style.background =
+                accentInput.value;
+        }
+    }
+</script>
 
 {% endblock %}

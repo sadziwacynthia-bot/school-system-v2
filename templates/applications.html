@@ -1,60 +1,972 @@
 {% extends "base_premium.html" %}
-{% block title %}Applications{% endblock %}
+
+{% block title %}Applications | EduTrack{% endblock %}
 
 {% block content %}
-<div class="page-header-card">
-  <h1>Applications</h1>
-  <p>Review waiting list applications, uploaded documents, and admissions status.</p>
+
+{% set stats = namespace(
+    total=0,
+    pending=0,
+    approved=0,
+    rejected=0,
+    enrolled=0,
+    documents=0
+) %}
+
+{% for application in applications %}
+    {% set stats.total = stats.total + 1 %}
+
+    {% if application.status == "Approved" %}
+        {% set stats.approved = stats.approved + 1 %}
+    {% elif application.status == "Rejected" %}
+        {% set stats.rejected = stats.rejected + 1 %}
+    {% elif application.status == "Enrolled" %}
+        {% set stats.enrolled = stats.enrolled + 1 %}
+    {% else %}
+        {% set stats.pending = stats.pending + 1 %}
+    {% endif %}
+
+    {% if application.birth_certificate_file %}
+        {% set stats.documents = stats.documents + 1 %}
+    {% endif %}
+
+    {% if application.latest_results_file %}
+        {% set stats.documents = stats.documents + 1 %}
+    {% endif %}
+
+    {% if application.other_document_file %}
+        {% set stats.documents = stats.documents + 1 %}
+    {% endif %}
+{% endfor %}
+
+
+<style>
+    .applications-page {
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+    }
+
+    .applications-hero {
+        position: relative;
+        overflow: hidden;
+        padding: 30px;
+        border-radius: 22px;
+        color: white;
+        background:
+            radial-gradient(
+                circle at top right,
+                rgba(255, 255, 255, 0.20),
+                transparent 35%
+            ),
+            linear-gradient(135deg, #1e3a8a, #4f46e5 55%, #7c3aed);
+        box-shadow: 0 20px 45px rgba(79, 70, 229, 0.20);
+    }
+
+    .applications-hero::after {
+        content: "";
+        position: absolute;
+        width: 220px;
+        height: 220px;
+        right: -70px;
+        bottom: -100px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.10);
+    }
+
+    .hero-content {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 22px;
+        flex-wrap: wrap;
+    }
+
+    .hero-text h1 {
+        margin: 0 0 8px;
+        font-size: clamp(1.8rem, 3vw, 2.5rem);
+        font-weight: 800;
+        letter-spacing: -0.03em;
+    }
+
+    .hero-text p {
+        margin: 0;
+        max-width: 680px;
+        color: rgba(255, 255, 255, 0.88);
+        line-height: 1.65;
+    }
+
+    .new-application-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        padding: 13px 19px;
+        border-radius: 12px;
+        color: #312e81;
+        background: white;
+        text-decoration: none;
+        font-weight: 750;
+        white-space: nowrap;
+        box-shadow: 0 12px 26px rgba(15, 23, 42, 0.18);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .new-application-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 16px 30px rgba(15, 23, 42, 0.22);
+    }
+
+    .application-stats {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(150px, 1fr));
+        gap: 16px;
+    }
+
+    .application-stat-card {
+        position: relative;
+        overflow: hidden;
+        padding: 20px;
+        border: 1px solid #e5e7eb;
+        border-radius: 17px;
+        background: white;
+        box-shadow: 0 9px 24px rgba(15, 23, 42, 0.06);
+    }
+
+    .application-stat-card::after {
+        content: "";
+        position: absolute;
+        width: 70px;
+        height: 70px;
+        right: -23px;
+        top: -24px;
+        border-radius: 50%;
+        background: var(--stat-soft);
+    }
+
+    .stat-icon {
+        display: grid;
+        place-items: center;
+        width: 42px;
+        height: 42px;
+        margin-bottom: 15px;
+        border-radius: 12px;
+        color: var(--stat-color);
+        background: var(--stat-soft);
+        font-size: 20px;
+    }
+
+    .application-stat-card span {
+        display: block;
+        margin-bottom: 6px;
+        color: #64748b;
+        font-size: 0.83rem;
+        font-weight: 650;
+    }
+
+    .application-stat-card strong {
+        color: #0f172a;
+        font-size: 1.75rem;
+        font-weight: 800;
+    }
+
+    .stat-total {
+        --stat-color: #2563eb;
+        --stat-soft: #dbeafe;
+    }
+
+    .stat-pending {
+        --stat-color: #d97706;
+        --stat-soft: #fef3c7;
+    }
+
+    .stat-approved {
+        --stat-color: #059669;
+        --stat-soft: #d1fae5;
+    }
+
+    .stat-enrolled {
+        --stat-color: #7c3aed;
+        --stat-soft: #ede9fe;
+    }
+
+    .stat-documents {
+        --stat-color: #0891b2;
+        --stat-soft: #cffafe;
+    }
+
+    .applications-panel {
+        overflow: hidden;
+        border: 1px solid #e5e7eb;
+        border-radius: 20px;
+        background: white;
+        box-shadow: 0 12px 32px rgba(15, 23, 42, 0.07);
+    }
+
+    .panel-heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        padding: 22px 24px;
+        border-bottom: 1px solid #e5e7eb;
+        flex-wrap: wrap;
+    }
+
+    .panel-heading h2 {
+        margin: 0 0 5px;
+        color: #0f172a;
+        font-size: 1.2rem;
+        font-weight: 800;
+    }
+
+    .panel-heading p {
+        margin: 0;
+        color: #64748b;
+        font-size: 0.9rem;
+    }
+
+    .record-count {
+        padding: 8px 12px;
+        border-radius: 999px;
+        color: #4338ca;
+        background: #eef2ff;
+        font-size: 0.82rem;
+        font-weight: 750;
+    }
+
+    .applications-table-wrap {
+        width: 100%;
+        overflow-x: auto;
+    }
+
+    .applications-table {
+        width: 100%;
+        min-width: 1150px;
+        border-collapse: collapse;
+    }
+
+    .applications-table th {
+        padding: 14px 17px;
+        color: #64748b;
+        background: #f8fafc;
+        border-bottom: 1px solid #e5e7eb;
+        text-align: left;
+        font-size: 0.76rem;
+        font-weight: 800;
+        letter-spacing: 0.045em;
+        text-transform: uppercase;
+    }
+
+    .applications-table td {
+        padding: 17px;
+        border-bottom: 1px solid #edf0f4;
+        color: #334155;
+        font-size: 0.9rem;
+        vertical-align: middle;
+    }
+
+    .applications-table tbody tr {
+        transition: background 0.18s ease;
+    }
+
+    .applications-table tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    .applications-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .applicant-cell {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .applicant-avatar {
+        display: grid;
+        place-items: center;
+        min-width: 42px;
+        height: 42px;
+        border-radius: 13px;
+        color: #4338ca;
+        background: linear-gradient(135deg, #eef2ff, #ede9fe);
+        font-weight: 850;
+        text-transform: uppercase;
+    }
+
+    .applicant-details strong {
+        display: block;
+        margin-bottom: 3px;
+        color: #0f172a;
+        font-weight: 750;
+    }
+
+    .applicant-details small {
+        color: #94a3b8;
+    }
+
+    .guardian-details strong {
+        display: block;
+        margin-bottom: 4px;
+        color: #334155;
+        font-weight: 700;
+    }
+
+    .guardian-details small {
+        display: block;
+        margin-top: 2px;
+        color: #64748b;
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 10px;
+        border-radius: 999px;
+        font-size: 0.76rem;
+        font-weight: 800;
+    }
+
+    .status-badge::before {
+        content: "";
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: currentColor;
+    }
+
+    .status-pending {
+        color: #b45309;
+        background: #fef3c7;
+    }
+
+    .status-approved {
+        color: #047857;
+        background: #d1fae5;
+    }
+
+    .status-rejected {
+        color: #b91c1c;
+        background: #fee2e2;
+    }
+
+    .status-enrolled {
+        color: #6d28d9;
+        background: #ede9fe;
+    }
+
+    .documents-list {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .document-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 6px 8px;
+        border: 1px solid #dbe4ee;
+        border-radius: 8px;
+        color: #334155;
+        background: #f8fafc;
+        text-decoration: none;
+        font-size: 0.73rem;
+        font-weight: 700;
+    }
+
+    .document-link:hover {
+        color: #4338ca;
+        border-color: #c7d2fe;
+        background: #eef2ff;
+    }
+
+    .no-documents {
+        color: #94a3b8;
+        font-size: 0.82rem;
+    }
+
+    .application-actions {
+        display: flex;
+        gap: 7px;
+        flex-wrap: wrap;
+    }
+
+    .application-actions form {
+        margin: 0;
+    }
+
+    .action-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 34px;
+        padding: 7px 10px;
+        border: 1px solid transparent;
+        border-radius: 9px;
+        cursor: pointer;
+        font-size: 0.74rem;
+        font-weight: 750;
+        transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .action-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 5px 12px rgba(15, 23, 42, 0.10);
+    }
+
+    .approve-btn {
+        color: #047857;
+        background: #ecfdf5;
+        border-color: #a7f3d0;
+    }
+
+    .reject-btn {
+        color: #b91c1c;
+        background: #fff1f2;
+        border-color: #fecdd3;
+    }
+
+    .enroll-btn {
+        color: white;
+        background: linear-gradient(135deg, #4f46e5, #7c3aed);
+        border: none;
+    }
+
+    .completed-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 10px;
+        border-radius: 9px;
+        color: #6d28d9;
+        background: #f5f3ff;
+        font-size: 0.76rem;
+        font-weight: 750;
+    }
+
+    .empty-applications {
+        padding: 65px 25px;
+        text-align: center;
+    }
+
+    .empty-icon {
+        display: grid;
+        place-items: center;
+        width: 72px;
+        height: 72px;
+        margin: 0 auto 18px;
+        border-radius: 20px;
+        color: #4f46e5;
+        background: #eef2ff;
+        font-size: 32px;
+    }
+
+    .empty-applications h3 {
+        margin: 0 0 8px;
+        color: #0f172a;
+        font-size: 1.2rem;
+    }
+
+    .empty-applications p {
+        max-width: 500px;
+        margin: 0 auto 20px;
+        color: #64748b;
+        line-height: 1.6;
+    }
+
+    @media (max-width: 1200px) {
+        .application-stats {
+            grid-template-columns: repeat(3, minmax(160px, 1fr));
+        }
+    }
+
+    @media (max-width: 760px) {
+        .applications-hero {
+            padding: 24px 20px;
+        }
+
+        .hero-content {
+            align-items: stretch;
+            flex-direction: column;
+        }
+
+        .new-application-btn {
+            justify-content: center;
+            width: 100%;
+        }
+
+        .application-stats {
+            grid-template-columns: repeat(2, minmax(135px, 1fr));
+        }
+
+        .panel-heading {
+            padding: 19px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .application-stats {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+
+<div class="applications-page">
+
+    <!-- Premium page header -->
+    <section class="applications-hero">
+        <div class="hero-content">
+
+            <div class="hero-text">
+                <h1>Student Applications</h1>
+
+                <p>
+                    Manage prospective students, review admission documents,
+                    approve applications and enroll successful applicants.
+                </p>
+            </div>
+
+            <a
+                href="{{ url_for('add_application') }}"
+                class="new-application-btn"
+            >
+                <span>＋</span>
+                New Application
+            </a>
+
+        </div>
+    </section>
+
+
+    <!-- Statistics -->
+    <section class="application-stats">
+
+        <article class="application-stat-card stat-total">
+            <div class="stat-icon">📋</div>
+            <span>Total Applications</span>
+            <strong>{{ stats.total }}</strong>
+        </article>
+
+        <article class="application-stat-card stat-pending">
+            <div class="stat-icon">⏳</div>
+            <span>Pending Review</span>
+            <strong>{{ stats.pending }}</strong>
+        </article>
+
+        <article class="application-stat-card stat-approved">
+            <div class="stat-icon">✓</div>
+            <span>Approved</span>
+            <strong>{{ stats.approved }}</strong>
+        </article>
+
+        <article class="application-stat-card stat-enrolled">
+            <div class="stat-icon">🎓</div>
+            <span>Enrolled</span>
+            <strong>{{ stats.enrolled }}</strong>
+        </article>
+
+        <article class="application-stat-card stat-documents">
+            <div class="stat-icon">📎</div>
+            <span>Uploaded Documents</span>
+            <strong>{{ stats.documents }}</strong>
+        </article>
+
+    </section>
+
+
+    <!-- Application records -->
+    <section class="applications-panel">
+
+        <div class="panel-heading">
+            <div>
+                <h2>Application Records</h2>
+                <p>
+                    Review applicant information, supporting documents and
+                    admission status.
+                </p>
+            </div>
+
+            <span class="record-count">
+                {{ stats.total }}
+                {% if stats.total == 1 %}
+                    record
+                {% else %}
+                    records
+                {% endif %}
+            </span>
+        </div>
+
+
+        {% if applications %}
+
+            <div class="applications-table-wrap">
+
+                <table class="applications-table">
+
+                    <thead>
+                        <tr>
+                            <th>Applicant</th>
+
+                            {% if session.get("role") == "super_admin" %}
+                                <th>School</th>
+                            {% endif %}
+
+                            <th>Admission</th>
+                            <th>Guardian</th>
+                            <th>Documents</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                        {% for application in applications %}
+
+                            <tr>
+
+                                <!-- Applicant -->
+                                <td>
+                                    <div class="applicant-cell">
+
+                                        <div class="applicant-avatar">
+                                            {{ application.first_name[0] if application.first_name else "A" }}
+                                            {{ application.last_name[0] if application.last_name else "" }}
+                                        </div>
+
+                                        <div class="applicant-details">
+                                            <strong>
+                                                {{ application.first_name or "" }}
+                                                {{ application.last_name or "" }}
+                                            </strong>
+
+                                            <small>
+                                                {% if application.gender %}
+                                                    {{ application.gender }}
+                                                {% else %}
+                                                    Gender not provided
+                                                {% endif %}
+
+                                                {% if application.date_of_birth %}
+                                                    · DOB:
+                                                    {{ application.date_of_birth }}
+                                                {% endif %}
+                                            </small>
+                                        </div>
+
+                                    </div>
+                                </td>
+
+
+                                <!-- School for super admin -->
+                                {% if session.get("role") == "super_admin" %}
+                                    <td>
+                                        {{ application.school_name or
+                                           ("School #" ~ application.school_id) }}
+                                    </td>
+                                {% endif %}
+
+
+                                <!-- Admission information -->
+                                <td>
+                                    <strong>
+                                        {{ application.applied_class or "-" }}
+                                    </strong>
+
+                                    <div style="
+                                        margin-top: 4px;
+                                        color: #64748b;
+                                        font-size: 0.8rem;
+                                    ">
+                                        Year:
+                                        {{ application.applied_year or "-" }}
+                                    </div>
+                                </td>
+
+
+                                <!-- Guardian -->
+                                <td>
+                                    <div class="guardian-details">
+
+                                        <strong>
+                                            {{ application.guardian_name or "-" }}
+                                        </strong>
+
+                                        {% if application.guardian_phone %}
+                                            <small>
+                                                ☎ {{ application.guardian_phone }}
+                                            </small>
+                                        {% endif %}
+
+                                        {% if application.guardian_email %}
+                                            <small>
+                                                ✉ {{ application.guardian_email }}
+                                            </small>
+                                        {% endif %}
+
+                                    </div>
+                                </td>
+
+
+                                <!-- Documents -->
+                                <td>
+                                    <div class="documents-list">
+
+                                        {% if application.birth_certificate_file %}
+                                            <a
+                                                href="{{ url_for(
+                                                    'static',
+                                                    filename=application.birth_certificate_file
+                                                ) }}"
+                                                class="document-link"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                            >
+                                                📄 Birth Certificate
+                                            </a>
+                                        {% endif %}
+
+                                        {% if application.latest_results_file %}
+                                            <a
+                                                href="{{ url_for(
+                                                    'static',
+                                                    filename=application.latest_results_file
+                                                ) }}"
+                                                class="document-link"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                            >
+                                                📊 Results
+                                            </a>
+                                        {% endif %}
+
+                                        {% if application.other_document_file %}
+                                            <a
+                                                href="{{ url_for(
+                                                    'static',
+                                                    filename=application.other_document_file
+                                                ) }}"
+                                                class="document-link"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                            >
+                                                📎 Other
+                                            </a>
+                                        {% endif %}
+
+                                        {% if not application.birth_certificate_file
+                                              and not application.latest_results_file
+                                              and not application.other_document_file %}
+                                            <span class="no-documents">
+                                                No documents
+                                            </span>
+                                        {% endif %}
+
+                                    </div>
+                                </td>
+
+
+                                <!-- Status -->
+                                <td>
+                                    {% if application.status == "Approved" %}
+
+                                        <span class="status-badge status-approved">
+                                            Approved
+                                        </span>
+
+                                    {% elif application.status == "Rejected" %}
+
+                                        <span class="status-badge status-rejected">
+                                            Rejected
+                                        </span>
+
+                                    {% elif application.status == "Enrolled" %}
+
+                                        <span class="status-badge status-enrolled">
+                                            Enrolled
+                                        </span>
+
+                                    {% else %}
+
+                                        <span class="status-badge status-pending">
+                                            {{ application.status or "Pending" }}
+                                        </span>
+
+                                    {% endif %}
+                                </td>
+
+
+                                <!-- Actions -->
+                                <td>
+                                    <div class="application-actions">
+
+                                        {% if application.status == "Enrolled" %}
+
+                                            <span class="completed-label">
+                                                ✓ Student enrolled
+                                            </span>
+
+                                        {% elif application.status == "Approved" %}
+
+                                            <form
+                                                method="POST"
+                                                action="{{ url_for(
+                                                    'enroll_application',
+                                                    application_id=application.id
+                                                ) }}"
+                                                onsubmit="
+                                                    return confirm(
+                                                        'Enroll this applicant as an active student?'
+                                                    );
+                                                "
+                                            >
+                                                <button
+                                                    type="submit"
+                                                    class="action-btn enroll-btn"
+                                                >
+                                                    Enroll Student
+                                                </button>
+                                            </form>
+
+                                            <form
+                                                method="POST"
+                                                action="{{ url_for(
+                                                    'reject_application',
+                                                    application_id=application.id
+                                                ) }}"
+                                                onsubmit="
+                                                    return confirm(
+                                                        'Reject this approved application?'
+                                                    );
+                                                "
+                                            >
+                                                <button
+                                                    type="submit"
+                                                    class="action-btn reject-btn"
+                                                >
+                                                    Reject
+                                                </button>
+                                            </form>
+
+                                        {% elif application.status == "Rejected" %}
+
+                                            <form
+                                                method="POST"
+                                                action="{{ url_for(
+                                                    'approve_application',
+                                                    application_id=application.id
+                                                ) }}"
+                                                onsubmit="
+                                                    return confirm(
+                                                        'Approve this application?'
+                                                    );
+                                                "
+                                            >
+                                                <button
+                                                    type="submit"
+                                                    class="action-btn approve-btn"
+                                                >
+                                                    Reconsider
+                                                </button>
+                                            </form>
+
+                                        {% else %}
+
+                                            <form
+                                                method="POST"
+                                                action="{{ url_for(
+                                                    'approve_application',
+                                                    application_id=application.id
+                                                ) }}"
+                                                onsubmit="
+                                                    return confirm(
+                                                        'Approve this application?'
+                                                    );
+                                                "
+                                            >
+                                                <button
+                                                    type="submit"
+                                                    class="action-btn approve-btn"
+                                                >
+                                                    Approve
+                                                </button>
+                                            </form>
+
+                                            <form
+                                                method="POST"
+                                                action="{{ url_for(
+                                                    'reject_application',
+                                                    application_id=application.id
+                                                ) }}"
+                                                onsubmit="
+                                                    return confirm(
+                                                        'Reject this application?'
+                                                    );
+                                                "
+                                            >
+                                                <button
+                                                    type="submit"
+                                                    class="action-btn reject-btn"
+                                                >
+                                                    Reject
+                                                </button>
+                                            </form>
+
+                                        {% endif %}
+
+                                    </div>
+                                </td>
+
+                            </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        {% else %}
+
+            <div class="empty-applications">
+
+                <div class="empty-icon">📋</div>
+
+                <h3>No applications yet</h3>
+
+                <p>
+                    Applications submitted for admission will appear here.
+                    Start by adding the first prospective student.
+                </p>
+
+                <a
+                    href="{{ url_for('add_application') }}"
+                    class="new-application-btn"
+                    style="
+                        color: white;
+                        background: linear-gradient(
+                            135deg,
+                            #4f46e5,
+                            #7c3aed
+                        );
+                    "
+                >
+                    ＋ Add First Application
+                </a>
+
+            </div>
+
+        {% endif %}
+
+    </section>
+
 </div>
 
-<div class="premium-grid">
-  <div class="stat-card card-blue">
-    <span>Total Applications</span>
-    <strong>{{ total_applications or 0 }}</strong>
-  </div>
-  <div class="stat-card card-orange">
-    <span>Pending</span>
-    <strong>{{ pending_count or 0 }}</strong>
-  </div>
-  <div class="stat-card card-green">
-    <span>Approved</span>
-    <strong>{{ approved_count or 0 }}</strong>
-  </div>
-  <div class="stat-card card-purple">
-    <span>Documents</span>
-    <strong>{{ document_count or 0 }}</strong>
-  </div>
-</div>
-
-<div class="premium-card">
-  <div class="section-title">
-    <h2>Application Records</h2>
-    <a href="#" class="premium-btn">+ New Application</a>
-  </div>
-
-  {% if applications %}
-  <table class="premium-table">
-    <thead>
-      <tr>
-        <th>Applicant</th>
-        <th>Class</th>
-        <th>Guardian</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for app in applications %}
-      <tr>
-        <td><strong>{{ app.student_name or app.name or '-' }}</strong></td>
-        <td>{{ app.class_name or '-' }}</td>
-        <td>{{ app.guardian_name or app.parent_name or '-' }}</td>
-        <td><span class="badge badge-warning">{{ app.status or 'Pending' }}</span></td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  <div class="empty-box">No applications found yet.</div>
-  {% endif %}
-</div>
 {% endblock %}
