@@ -1,0 +1,45 @@
+{% extends "base_premium.html" %}
+{% block title %}Add Parent | EduTrack{% endblock %}
+{% block content %}
+<style>
+.wrap{max-width:900px;margin:30px auto;padding:0 20px}.card{background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:24px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.field{margin-bottom:16px}.field label{display:block;font-weight:700;margin-bottom:7px}.input{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:10px;padding:11px}.students{max-height:310px;overflow:auto;border:1px solid #e2e8f0;border-radius:12px;padding:12px}.student{display:flex;gap:10px;padding:9px;border-bottom:1px solid #f1f5f9}.actions{display:flex;gap:10px;margin-top:20px}.btn{border:0;border-radius:10px;padding:11px 17px;font-weight:700;text-decoration:none;cursor:pointer}.primary{background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff}.light{background:#eef2ff;color:#3730a3}@media(max-width:700px){.grid{grid-template-columns:1fr}}
+</style>
+<div class="wrap">
+  <div class="card">
+    <h1>Add Parent</h1>
+    <p>Create the login account and optionally link children now.</p>
+    <form method="post">
+      {% if session.role == 'super_admin' %}
+      <div class="field"><label>School</label>
+        <select class="input" name="school_id" required onchange="this.form.submit()">
+          <option value="">Select school</option>
+          {% for school in schools %}
+          <option value="{{ school.id }}" {% if selected_school_id == school.id %}selected{% endif %}>{{ school.school_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      <div class="grid">
+        <div class="field"><label>Parent full name</label><input class="input" name="full_name" required></div>
+        <div class="field"><label>Username</label><input class="input" name="username" required autocomplete="off"></div>
+        <div class="field"><label>Temporary password</label><input class="input" type="password" name="password" minlength="8" required></div>
+      </div>
+      <div class="field">
+        <label>Link children</label>
+        <div class="students">
+          {% for student in students %}
+          <label class="student">
+            <input type="checkbox" name="student_ids" value="{{ student.id }}">
+            <span><strong>{{ student.first_name }} {{ student.last_name }}</strong><br>{{ student.student_number or '' }} · {{ student.class_name or 'No class' }}</span>
+          </label>
+          {% else %}<p>No students available for the selected school.</p>{% endfor %}
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn primary" type="submit">Create Parent</button>
+        <a class="btn light" href="{{ url_for('parents') }}">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

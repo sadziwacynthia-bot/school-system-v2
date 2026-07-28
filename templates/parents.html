@@ -1,0 +1,93 @@
+{% extends "base_premium.html" %}
+{% block title %}Parent Management | EduTrack{% endblock %}
+
+{% block content %}
+<style>
+.parent-page{padding:24px}.page-head{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:22px}
+.page-head h1{margin:0;font-size:28px}.muted{color:#64748b}.btn{display:inline-flex;align-items:center;gap:8px;border:0;border-radius:10px;padding:10px 16px;text-decoration:none;cursor:pointer;font-weight:700}
+.btn-primary{background:linear-gradient(135deg,#2563eb,#7c3aed);color:white}.btn-light{background:#eef2ff;color:#3730a3}.btn-danger{background:#fee2e2;color:#b91c1c}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:20px}.stat{background:white;border:1px solid #e2e8f0;border-radius:16px;padding:18px}
+.stat b{font-size:26px;display:block;margin-top:8px}.filters{background:white;border:1px solid #e2e8f0;border-radius:16px;padding:16px;display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:12px;margin-bottom:20px}
+.input{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:10px;padding:11px 12px;background:white}
+.card{background:white;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden}.table{width:100%;border-collapse:collapse}.table th,.table td{padding:14px;border-bottom:1px solid #e2e8f0;text-align:left;vertical-align:top}
+.table th{background:#f8fafc;font-size:13px;color:#475569}.badge{display:inline-block;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:700}.active{background:#dcfce7;color:#166534}.inactive{background:#fee2e2;color:#991b1b}
+.child{display:inline-block;background:#f1f5f9;border-radius:999px;padding:5px 9px;margin:2px;font-size:12px}.actions{display:flex;gap:7px;flex-wrap:wrap}.pagination{display:flex;justify-content:center;gap:8px;padding:18px}.empty{text-align:center;padding:50px;color:#64748b}
+@media(max-width:900px){.stats{grid-template-columns:repeat(2,1fr)}.filters{grid-template-columns:1fr}.table-wrap{overflow-x:auto}}
+</style>
+
+<div class="parent-page">
+  <div class="page-head">
+    <div>
+      <h1>Parent Management</h1>
+      <div class="muted">Manage parent accounts and link them to students.</div>
+    </div>
+    <a class="btn btn-primary" href="{{ url_for('add_parent') }}">＋ Add Parent</a>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><span class="muted">Total Parents</span><b>{{ total_parents }}</b></div>
+    <div class="stat"><span class="muted">Active Accounts</span><b>{{ active_parents }}</b></div>
+    <div class="stat"><span class="muted">Inactive Accounts</span><b>{{ inactive_parents }}</b></div>
+    <div class="stat"><span class="muted">Linked Students</span><b>{{ linked_students }}</b></div>
+  </div>
+
+  <form class="filters" method="get">
+    <input class="input" name="search" value="{{ search }}" placeholder="Search parent, username or student…">
+    <select class="input" name="status">
+      <option value="">All statuses</option>
+      <option value="active" {% if status == 'active' %}selected{% endif %}>Active</option>
+      <option value="inactive" {% if status == 'inactive' %}selected{% endif %}>Inactive</option>
+    </select>
+    <select class="input" name="class_name">
+      <option value="">All classes</option>
+      {% for class_row in classes %}
+      <option value="{{ class_row.class_name }}" {% if class_name == class_row.class_name %}selected{% endif %}>{{ class_row.class_name }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-primary" type="submit">Filter</button>
+  </form>
+
+  <div class="card table-wrap">
+    {% if parents %}
+    <table class="table">
+      <thead><tr><th>Parent</th><th>School</th><th>Children</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>
+      {% for parent in parents %}
+      <tr>
+        <td><strong>{{ parent.full_name }}</strong><br><span class="muted">@{{ parent.username }}</span></td>
+        <td>{{ parent.school_name or '—' }}</td>
+        <td>
+          {% if parent.children %}
+            {% for child in parent.children %}
+            <span class="child">{{ child.first_name }} {{ child.last_name }} · {{ child.class_name or 'No class' }}</span>
+            {% endfor %}
+          {% else %}<span class="muted">No linked students</span>{% endif %}
+        </td>
+        <td>
+          {% if parent.is_active %}<span class="badge active">Active</span>
+          {% else %}<span class="badge inactive">Inactive</span>{% endif %}
+        </td>
+        <td><div class="actions">
+          <a class="btn btn-light" href="{{ url_for('parent_profile', parent_id=parent.id) }}">View</a>
+          <a class="btn btn-light" href="{{ url_for('edit_parent', parent_id=parent.id) }}">Edit</a>
+        </div></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="pagination">
+      {% if page > 1 %}
+      <a class="btn btn-light" href="{{ url_for('parents', page=page-1, search=search, status=status, class_name=class_name) }}">← Previous</a>
+      {% endif %}
+      <span class="btn btn-light">Page {{ page }} of {{ total_pages }}</span>
+      {% if page < total_pages %}
+      <a class="btn btn-light" href="{{ url_for('parents', page=page+1, search=search, status=status, class_name=class_name) }}">Next →</a>
+      {% endif %}
+    </div>
+    {% else %}
+    <div class="empty">No parents matched your filters.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

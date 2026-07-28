@@ -1,0 +1,68 @@
+{% extends "base_premium.html" %}
+{% block title %}Parent Profile | EduTrack{% endblock %}
+{% block content %}
+<style>
+.wrap{max-width:1050px;margin:28px auto;padding:0 20px}.head,.card{background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:22px}.head{display:flex;justify-content:space-between;gap:18px;align-items:center;margin-bottom:18px}.grid{display:grid;grid-template-columns:1.2fr .8fr;gap:18px}.child{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:10px}.btn{display:inline-flex;border:0;border-radius:10px;padding:10px 14px;font-weight:700;text-decoration:none;cursor:pointer}.primary{background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff}.light{background:#eef2ff;color:#3730a3}.danger{background:#fee2e2;color:#991b1b}.success{background:#dcfce7;color:#166534}.input{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:10px;padding:11px;margin-bottom:10px}.stack form{margin-bottom:10px}.muted{color:#64748b}@media(max-width:800px){.grid{grid-template-columns:1fr}.head{align-items:flex-start;flex-direction:column}}
+</style>
+<div class="wrap">
+  <div class="head">
+    <div>
+      <h1>{{ parent.full_name }}</h1>
+      <div class="muted">@{{ parent.username }} · {{ school.school_name if school else 'School' }}</div>
+    </div>
+    <div>
+      <a class="btn light" href="{{ url_for('parents') }}">← Parents</a>
+      <a class="btn primary" href="{{ url_for('edit_parent', parent_id=parent.id) }}">Edit</a>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Linked Children</h2>
+      {% for child in children %}
+      <div class="child">
+        <div><strong>{{ child.first_name }} {{ child.last_name }}</strong><br><span class="muted">{{ child.student_number or '' }} · {{ child.class_name or 'No class' }}</span></div>
+        <form method="post" action="{{ url_for('unlink_parent_child', parent_id=parent.id, student_id=child.id) }}" onsubmit="return confirm('Remove this child from the parent account?')">
+          <button class="btn danger" type="submit">Unlink</button>
+        </form>
+      </div>
+      {% else %}<p class="muted">No children are linked yet.</p>{% endfor %}
+
+      <hr>
+      <h3>Link another child</h3>
+      <form method="post" action="{{ url_for('link_parent_child', parent_id=parent.id) }}">
+        <select class="input" name="student_id" required>
+          <option value="">Select student</option>
+          {% for student in available_students %}
+          <option value="{{ student.id }}">{{ student.first_name }} {{ student.last_name }} — {{ student.class_name or 'No class' }}</option>
+          {% endfor %}
+        </select>
+        <button class="btn primary" type="submit">Link Student</button>
+      </form>
+    </div>
+
+    <div class="card stack">
+      <h2>Account Controls</h2>
+      <p>Status:
+        {% if parent.is_active %}<strong style="color:#166534">Active</strong>
+        {% else %}<strong style="color:#991b1b">Inactive</strong>{% endif %}
+      </p>
+
+      <form method="post" action="{{ url_for('reset_parent_password', parent_id=parent.id) }}">
+        <input class="input" type="text" name="new_password" minlength="8" placeholder="New password, or leave blank to generate">
+        <button class="btn light" type="submit">Reset Password</button>
+      </form>
+
+      {% if parent.is_active %}
+      <form method="post" action="{{ url_for('deactivate_parent', parent_id=parent.id) }}" onsubmit="return confirm('Deactivate this parent account?')">
+        <button class="btn danger" type="submit">Deactivate Account</button>
+      </form>
+      {% else %}
+      <form method="post" action="{{ url_for('activate_parent', parent_id=parent.id) }}">
+        <button class="btn success" type="submit">Activate Account</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

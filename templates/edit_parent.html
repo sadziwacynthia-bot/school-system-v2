@@ -1,0 +1,18 @@
+{% extends "base_premium.html" %}
+{% block title %}Edit Parent | EduTrack{% endblock %}
+{% block content %}
+<style>
+.wrap{max-width:650px;margin:35px auto;padding:0 20px}.card{background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:25px}.field{margin-bottom:17px}.field label{display:block;font-weight:700;margin-bottom:7px}.input{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:10px;padding:11px}.actions{display:flex;gap:10px}.btn{border:0;border-radius:10px;padding:11px 17px;font-weight:700;text-decoration:none;cursor:pointer}.primary{background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff}.light{background:#eef2ff;color:#3730a3}
+</style>
+<div class="wrap"><div class="card">
+<h1>Edit Parent</h1>
+<form method="post">
+  <div class="field"><label>Full name</label><input class="input" name="full_name" value="{{ parent.full_name }}" required></div>
+  <div class="field"><label>Username</label><input class="input" name="username" value="{{ parent.username }}" required></div>
+  <div class="actions">
+    <button class="btn primary" type="submit">Save Changes</button>
+    <a class="btn light" href="{{ url_for('parent_profile', parent_id=parent.id) }}">Cancel</a>
+  </div>
+</form>
+</div></div>
+{% endblock %}

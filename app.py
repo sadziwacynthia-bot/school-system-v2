@@ -57,6 +57,7 @@ from utils.branding import (
     save_report_options,
 )
 from dotenv import load_dotenv
+from routes.parents import register_parent_routes
 
 load_dotenv()
 UPLOAD_FOLDER = os.path.join("static", "uploads", "resources")
@@ -97,6 +98,7 @@ register_application_routes(app)
 register_fee_routes(app)
 register_teacher_routes(app)
 register_admin_routes(app)
+register_parent_routes(app)
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "school_v2.db")
 
