@@ -8214,7 +8214,7 @@ def update_database():
                 f"Database verification error: {error}"
             )
 
-        try:
+    try:
         verification = fetch_one("""
             SELECT
                 to_regclass('school_events') AS school_events_table,
