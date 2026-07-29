@@ -7956,6 +7956,269 @@ def fix_old_data_school():
     flash("Old data has been assigned to the default school.", "success")
     return redirect(url_for("dashboard"))
 
+@app.route("/admin/update-database", methods=["GET"])
+@login_required
+@roles_required("super_admin")
+def update_database():
+    """
+    Safely update the production database schema.
+
+    This route:
+    - Creates the school_events table if it is missing.
+    - Adds missing announcement columns.
+    - Does not delete existing records.
+    """
+
+    updates = []
+    errors = []
+
+    # -------------------------------------------------
+    # 1. CREATE SCHOOL EVENTS TABLE
+    # -------------------------------------------------
+
+    try:
+        execute_commit("""
+            CREATE TABLE IF NOT EXISTS school_events (
+                id SERIAL PRIMARY KEY,
+                school_id INTEGER NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                description TEXT,
+                event_type VARCHAR(50),
+                audience VARCHAR(50) DEFAULT 'Everyone',
+                class_name VARCHAR(100),
+                start_date DATE NOT NULL,
+                end_date DATE,
+                start_time TIME,
+                end_time TIME,
+                location VARCHAR(255),
+                status VARCHAR(20) DEFAULT 'Draft',
+                created_by INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        updates.append(
+            "School events table checked or created successfully."
+        )
+
+    except Exception as error:
+        errors.append(
+            f"School events table error: {error}"
+        )
+
+    # -------------------------------------------------
+    # 2. UPDATE ANNOUNCEMENTS TABLE
+    # -------------------------------------------------
+
+    announcement_columns = [
+        (
+            "priority",
+            "VARCHAR(20) DEFAULT 'Normal'"
+        ),
+        (
+            "category",
+            "VARCHAR(50) DEFAULT 'General'"
+        ),
+        (
+            "audience",
+            "VARCHAR(50) DEFAULT 'Everyone'"
+        ),
+        (
+            "class_name",
+            "VARCHAR(100)"
+        ),
+        (
+            "status",
+            "VARCHAR(20) DEFAULT 'Draft'"
+        ),
+        (
+            "published_at",
+            "TIMESTAMP"
+        ),
+        (
+            "updated_at",
+            "TIMESTAMP"
+        )
+    ]
+
+    for column_name, column_definition in announcement_columns:
+
+        try:
+            execute_commit(f"""
+                ALTER TABLE announcements
+                ADD COLUMN IF NOT EXISTS
+                {column_name} {column_definition}
+            """)
+
+            updates.append(
+                f"Announcements column '{column_name}' checked."
+            )
+
+        except Exception as error:
+            errors.append(
+                f"Announcements column '{column_name}' error: {error}"
+            )
+
+    # -------------------------------------------------
+    # 3. UPDATE EXISTING NULL VALUES
+    # -------------------------------------------------
+
+    try:
+        execute_commit("""
+            UPDATE announcements
+            SET priority = 'Normal'
+            WHERE priority IS NULL
+               OR TRIM(priority) = ''
+        """)
+
+        execute_commit("""
+            UPDATE announcements
+            SET category = 'General'
+            WHERE category IS NULL
+               OR TRIM(category) = ''
+        """)
+
+        execute_commit("""
+            UPDATE announcements
+            SET audience = 'Everyone'
+            WHERE audience IS NULL
+               OR TRIM(audience) = ''
+        """)
+
+        execute_commit("""
+            UPDATE announcements
+            SET status = 'Draft'
+            WHERE status IS NULL
+               OR TRIM(status) = ''
+        """)
+
+        updates.append(
+            "Existing announcement records updated with safe defaults."
+        )
+
+    except Exception as error:
+        errors.append(
+            f"Announcement default-value update error: {error}"
+        )
+
+    # -------------------------------------------------
+    # RESULT PAGE
+    # -------------------------------------------------
+
+    update_items = "".join(
+        f"<li style='margin-bottom:8px;'>✅ {item}</li>"
+        for item in updates
+    )
+
+    error_items = "".join(
+        f"<li style='margin-bottom:8px;'>❌ {item}</li>"
+        for item in errors
+    )
+
+    status_heading = (
+        "Database update completed"
+        if not errors
+        else "Database update completed with some warnings"
+    )
+
+    return f"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0"
+        >
+        <title>EduTrack Database Update</title>
+
+        <style>
+            body {{
+                margin: 0;
+                padding: 30px;
+                font-family: Arial, sans-serif;
+                color: #0f172a;
+                background: #eef4ff;
+            }}
+
+            .update-card {{
+                max-width: 800px;
+                margin: 40px auto;
+                padding: 30px;
+                border-radius: 24px;
+                background: white;
+                box-shadow: 0 20px 50px rgba(15, 23, 42, 0.12);
+            }}
+
+            h1 {{
+                margin-top: 0;
+                color: #1d4ed8;
+            }}
+
+            h2 {{
+                margin-top: 25px;
+                font-size: 18px;
+            }}
+
+            ul {{
+                padding-left: 22px;
+            }}
+
+            .dashboard-link {{
+                display: inline-block;
+                margin-top: 24px;
+                padding: 13px 20px;
+                border-radius: 14px;
+                color: white;
+                background: #2563eb;
+                text-decoration: none;
+                font-weight: bold;
+            }}
+
+            .warning {{
+                padding: 14px;
+                border-radius: 14px;
+                color: #92400e;
+                background: #fef3c7;
+            }}
+        </style>
+    </head>
+
+    <body>
+
+        <div class="update-card">
+
+            <h1>{status_heading}</h1>
+
+            <p class="warning">
+                This page is restricted to the EduTrack super administrator.
+            </p>
+
+            <h2>Successful checks</h2>
+
+            <ul>
+                {update_items or "<li>No successful updates were recorded.</li>"}
+            </ul>
+
+            <h2>Warnings or errors</h2>
+
+            <ul>
+                {error_items or "<li>✅ No database errors occurred.</li>"}
+            </ul>
+
+            <a
+                href="/dashboard"
+                class="dashboard-link"
+            >
+                Return to Dashboard
+            </a>
+
+        </div>
+
+    </body>
+    </html>
+    """
+
 @app.route("/import_students", methods=["GET", "POST"])
 @login_required
 @roles_required("super_admin")
