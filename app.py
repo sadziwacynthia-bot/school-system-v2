@@ -7973,6 +7973,26 @@ def update_database():
     errors = []
 
     # -------------------------------------------------
+    # DATABASE CONNECTION CHECK
+    # -------------------------------------------------
+
+    try:
+        database_info = fetch_one("""
+            SELECT
+                current_database() AS database_name,
+                current_schema() AS schema_name
+        """)
+
+        updates.append(
+            f"Connected to database: {database_info['database_name']} "
+            f"| Schema: {database_info['schema_name']}"
+        )
+
+    except Exception as error:
+        errors.append(
+            f"Database connection check error: {error}"
+        )
+    # -------------------------------------------------
     # 1. CREATE SCHOOL EVENTS TABLE
     # -------------------------------------------------
 
@@ -8138,7 +8158,48 @@ def update_database():
         errors.append(
             f"Announcement default-value update error: {error}"
         )
+    # -------------------------------------------------
+    # VERIFY LIVE POSTGRESQL STRUCTURE
+    # -------------------------------------------------
 
+    if is_postgres():
+        try:
+            announcement_check = fetch_all("""
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_schema = current_schema()
+                  AND table_name = 'announcements'
+                ORDER BY ordinal_position
+            """)
+
+            announcement_column_names = [
+                row["column_name"]
+                for row in announcement_check
+            ]
+
+            updates.append(
+                "Verified announcements columns: "
+                + ", ".join(announcement_column_names)
+            )
+
+            school_events_check = fetch_one("""
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM information_schema.tables
+                    WHERE table_schema = current_schema()
+                      AND table_name = 'school_events'
+                ) AS table_exists
+            """)
+
+            updates.append(
+                "Verified school_events exists: "
+                f"{school_events_check['table_exists']}"
+            )
+
+        except Exception as error:
+            errors.append(
+                f"Database verification error: {error}"
+            )
     # -------------------------------------------------
     # RESULT PAGE
     # -------------------------------------------------
