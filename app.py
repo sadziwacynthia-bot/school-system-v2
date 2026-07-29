@@ -8005,59 +8005,97 @@ def update_database():
         errors.append(
             f"School events table error: {error}"
         )
-
     # -------------------------------------------------
-    # 2. UPDATE ANNOUNCEMENTS TABLE
+    # 2. CREATE OR UPDATE ANNOUNCEMENTS TABLE
     # -------------------------------------------------
 
-    announcement_columns = [
-        (
-            "priority",
-            "VARCHAR(20) DEFAULT 'Normal'"
-        ),
-        (
-            "category",
-            "VARCHAR(50) DEFAULT 'General'"
-        ),
-        (
-            "audience",
-            "VARCHAR(50) DEFAULT 'Everyone'"
-        ),
-        (
-            "class_name",
-            "VARCHAR(100)"
-        ),
-        (
-            "status",
-            "VARCHAR(20) DEFAULT 'Draft'"
-        ),
-        (
-            "published_at",
-            "TIMESTAMP"
-        ),
-        (
-            "updated_at",
-            "TIMESTAMP"
+    database_url = os.getenv("DATABASE_URL", "")
+    using_postgres = database_url.startswith(
+        ("postgres://", "postgresql://")
+    )
+
+    if using_postgres:
+        announcement_id_definition = "SERIAL PRIMARY KEY"
+    else:
+        announcement_id_definition = (
+            "INTEGER PRIMARY KEY AUTOINCREMENT"
         )
+
+    # First create the table if it does not exist.
+    try:
+        execute_commit(f"""
+            CREATE TABLE IF NOT EXISTS announcements (
+                id {announcement_id_definition},
+                school_id INTEGER NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                message TEXT,
+                content TEXT,
+                category VARCHAR(50) DEFAULT 'General',
+                priority VARCHAR(20) DEFAULT 'Normal',
+                audience VARCHAR(50) DEFAULT 'Everyone',
+                class_name VARCHAR(100),
+                status VARCHAR(20) DEFAULT 'Draft',
+                created_by INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                published_at TIMESTAMP,
+                updated_at TIMESTAMP
+            )
+        """)
+
+        updates.append(
+            "Announcements table checked or created successfully."
+        )
+
+    except Exception as error:
+        errors.append(
+            f"Announcements table error: {error}"
+        )
+
+    # These columns will be checked on older databases.
+    announcement_columns = [
+        ("priority", "VARCHAR(20) DEFAULT 'Normal'"),
+        ("category", "VARCHAR(50) DEFAULT 'General'"),
+        ("audience", "VARCHAR(50) DEFAULT 'Everyone'"),
+        ("class_name", "VARCHAR(100)"),
+        ("status", "VARCHAR(20) DEFAULT 'Draft'"),
+        ("published_at", "TIMESTAMP"),
+        ("updated_at", "TIMESTAMP")
     ]
 
     for column_name, column_definition in announcement_columns:
-
         try:
-            execute_commit(f"""
-                ALTER TABLE announcements
-                ADD COLUMN IF NOT EXISTS
-                {column_name} {column_definition}
-            """)
+            if using_postgres:
+                execute_commit(f"""
+                    ALTER TABLE announcements
+                    ADD COLUMN IF NOT EXISTS
+                    {column_name} {column_definition}
+                """)
+            else:
+                execute_commit(f"""
+                    ALTER TABLE announcements
+                    ADD COLUMN {column_name} {column_definition}
+                """)
 
             updates.append(
                 f"Announcements column '{column_name}' checked."
             )
 
         except Exception as error:
-            errors.append(
-                f"Announcements column '{column_name}' error: {error}"
-            )
+            error_message = str(error).lower()
+
+            if (
+                "duplicate column" in error_message
+                or "already exists" in error_message
+            ):
+                updates.append(
+                    f"Announcements column "
+                    f"'{column_name}' already exists."
+                )
+            else:
+                errors.append(
+                    f"Announcements column "
+                    f"'{column_name}' error: {error}"
+                )
 
     # -------------------------------------------------
     # 3. UPDATE EXISTING NULL VALUES
