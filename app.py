@@ -7972,6 +7972,19 @@ def update_database():
     updates = []
     errors = []
 
+    try:
+        database_info = fetch_one("""
+            SELECT
+                current_database() AS database_name,
+                current_schema() AS schema_name
+        """)
+
+        updates.append(
+            f"Database: {database_info['database_name']} | "
+            f"Schema: {database_info['schema_name']}"
+        )
+    except Exception as error:
+        errors.append(f"Database check failed: {error}")
     # -------------------------------------------------
     # DATABASE CONNECTION CHECK
     # -------------------------------------------------
@@ -8200,6 +8213,31 @@ def update_database():
             errors.append(
                 f"Database verification error: {error}"
             )
+
+        try:
+        verification = fetch_one("""
+            SELECT
+                to_regclass('school_events') AS school_events_table,
+                EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_name = 'announcements'
+                    AND column_name = 'priority'
+                ) AS priority_exists
+        """)
+
+        updates.append(
+            f"school_events verification: "
+            f"{verification['school_events_table']}"
+        )
+
+        updates.append(
+            f"announcements.priority verification: "
+            f"{verification['priority_exists']}"
+        )
+
+    except Exception as error:
+        errors.append(f"Final verification failed: {error}")
     # -------------------------------------------------
     # RESULT PAGE
     # -------------------------------------------------
