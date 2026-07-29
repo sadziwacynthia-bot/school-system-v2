@@ -17,6 +17,8 @@
     rel="stylesheet"
     href="{{ url_for('static', filename='css/premium.css') }}"
   >
+
+  {% block extra_css %}{% endblock %}
 </head>
 
 <body>
@@ -25,35 +27,61 @@
 
   {% if session.get('user_id') %}
 
-  <aside class="premium-sidebar">
+  <!-- Mobile dark overlay -->
+  <div
+    class="sidebar-overlay"
+    id="sidebarOverlay"
+    onclick="closeMobileMenu()"
+  ></div>
 
-    <div class="premium-logo">
+  <!-- Sidebar -->
+  <aside
+    class="premium-sidebar"
+    id="premiumSidebar"
+  >
 
-      {% if session.get("logo_url") %}
+    <div class="premium-sidebar-header">
 
-      <img
-        src="{{ session.get('logo_url') }}"
-        class="school-logo"
-        alt="School Logo"
+      <div class="premium-logo">
+
+        {% if session.get("logo_url") %}
+
+        <img
+          src="{{ session.get('logo_url') }}"
+          class="school-logo"
+          alt="School Logo"
+        >
+
+        {% else %}
+
+        <div class="premium-logo-circle">
+          E
+        </div>
+
+        {% endif %}
+
+        <div class="premium-logo-text">
+
+          <strong>
+            {{ session.get("school_name", "EduTrack") }}
+          </strong>
+
+          <span>
+            Premium School Suite
+          </span>
+
+        </div>
+
+      </div>
+
+      <button
+        type="button"
+        class="sidebar-close-button"
+        onclick="closeMobileMenu()"
+        aria-label="Close navigation menu"
       >
-
-      {% else %}
-
-      <div class="premium-logo-circle">
-        E
-      </div>
-
-      {% endif %}
-
-      <div class="premium-logo-text">
-        <strong>
-          {{ session.get("school_name", "EduTrack") }}
-        </strong>
-
-        <span>
-          Premium School Suite
-        </span>
-      </div>
+        ×
+      </button>
 
     </div>
 
@@ -64,62 +92,76 @@
       {% if role in ['super_admin', 'school_admin', 'director', 'admin'] %}
 
       <a href="{{ url_for('dashboard') }}">
-        🏠 Dashboard
+        <span class="nav-icon">🏠</span>
+        <span>Dashboard</span>
       </a>
-<div class="nav-section">
-  SCHOOL
-</div>
 
-<a href="{{ url_for('students') }}">
-  🎓 Students
-</a>
+      <div class="nav-section">
+        SCHOOL
+      </div>
 
-<a href="{{ url_for('parents') }}">
-  👨‍👩‍👧 Parents
-</a>
+      <a href="{{ url_for('students') }}">
+        <span class="nav-icon">🎓</span>
+        <span>Students</span>
+      </a>
 
-<a href="{{ url_for('teachers') }}">
-  👨‍🏫 Teachers
-</a>
+      <a href="{{ url_for('parents') }}">
+        <span class="nav-icon">👨‍👩‍👧</span>
+        <span>Parents</span>
+      </a>
 
-<a href="{{ url_for('classes') }}">
-  🏫 Classes
-</a>
+      <a href="{{ url_for('teachers') }}">
+        <span class="nav-icon">👨‍🏫</span>
+        <span>Teachers</span>
+      </a>
 
-<a href="{{ url_for('applications') }}">
-  📝 Applications
-</a>
+      <a href="{{ url_for('classes') }}">
+        <span class="nav-icon">🏫</span>
+        <span>Classes</span>
+      </a>
 
-<a href="{{ url_for('users') }}">
-  👥 Users
-</a>
+      <a href="{{ url_for('applications') }}">
+        <span class="nav-icon">📝</span>
+        <span>Applications</span>
+      </a>
 
-<a href="{{ url_for('school_settings') }}">
-  ⚙️ School Settings
-</a>
+      <a href="{{ url_for('users') }}">
+        <span class="nav-icon">👥</span>
+        <span>Users</span>
+      </a>
+
+      <a href="{{ url_for('school_settings') }}">
+        <span class="nav-icon">⚙️</span>
+        <span>School Settings</span>
+      </a>
 
       <div class="nav-section">
         ACADEMICS
       </div>
 
       <a href="{{ url_for('subjects') }}">
-        📚 Subjects
+        <span class="nav-icon">📚</span>
+        <span>Subjects</span>
       </a>
 
       <a href="{{ url_for('timetable') }}">
-        🕒 Timetable
+        <span class="nav-icon">🕒</span>
+        <span>Timetable</span>
       </a>
 
       <a href="{{ url_for('assignments') }}">
-        📘 Assignments
+        <span class="nav-icon">📘</span>
+        <span>Assignments</span>
       </a>
 
       <a href="{{ url_for('results') }}">
-        📊 Results
+        <span class="nav-icon">📊</span>
+        <span>Results</span>
       </a>
 
       <a href="{{ url_for('attendance') }}">
-        📋 Attendance
+        <span class="nav-icon">📋</span>
+        <span>Attendance</span>
       </a>
 
       <div class="nav-section">
@@ -127,27 +169,47 @@
       </div>
 
       <a href="{{ url_for('fees') }}">
-        💰 Fees
+        <span class="nav-icon">💰</span>
+        <span>Fees</span>
       </a>
 
       <a href="{{ url_for('cashbook') }}">
-        📒 Cashbook
+        <span class="nav-icon">📒</span>
+        <span>Cashbook</span>
       </a>
 
       <a href="{{ url_for('fee_analytics') }}">
-        📈 Analytics
+        <span class="nav-icon">📈</span>
+        <span>Analytics</span>
       </a>
 
       <div class="nav-section">
         COMMUNICATION
       </div>
 
+      <a href="{{ url_for('communications') }}">
+        <span class="nav-icon">📢</span>
+        <span>Announcements</span>
+      </a>
+
       <a href="{{ url_for('teacher_resources') }}">
-        📁 Resources
+        <span class="nav-icon">📁</span>
+        <span>Resources</span>
+      </a>
+
+      <a href="{{ url_for('school_calendar') }}">
+        <span class="nav-icon">📅</span>
+        <span>School Calendar</span>
       </a>
 
       <a href="{{ url_for('fee_reminders') }}">
-        🔔 Reminders
+        <span class="nav-icon">🔔</span>
+        <span>Fee Reminders</span>
+      </a>
+
+      <a href="#">
+        <span class="nav-icon">✉️</span>
+        <span>Email Center</span>
       </a>
 
       <div class="nav-section">
@@ -155,18 +217,22 @@
       </div>
 
       <a href="{{ url_for('reports') }}">
-        📊 Report Center
+        <span class="nav-icon">📊</span>
+        <span>Report Center</span>
       </a>
 
       <a href="{{ url_for('audit_logs') }}">
-        🛡️ Audit Trail
+        <span class="nav-icon">🛡️</span>
+        <span>Audit Trail</span>
       </a>
 
       <a href="{{ url_for('year_end_promotion') }}">
-        🎯 Year-End
+        <span class="nav-icon">🎯</span>
+        <span>Year-End</span>
       </a>
 
       {% endif %}
+
 
       {% if role == 'super_admin' %}
 
@@ -175,23 +241,28 @@
       </div>
 
       <a href="{{ url_for('schools') }}">
-        🏢 Schools
+        <span class="nav-icon">🏢</span>
+        <span>Schools</span>
       </a>
 
       <a href="{{ url_for('add_school_admin') }}">
-        👤 Add School Admin
+        <span class="nav-icon">👤</span>
+        <span>Add School Admin</span>
       </a>
 
       <a href="{{ url_for('billing_dashboard') }}">
-        💳 Billing
+        <span class="nav-icon">💳</span>
+        <span>Billing</span>
       </a>
 
       {% endif %}
 
+
       {% if role == 'teacher' %}
 
       <a href="{{ url_for('teacher_dashboard') }}">
-        🏠 Dashboard
+        <span class="nav-icon">🏠</span>
+        <span>Dashboard</span>
       </a>
 
       <div class="nav-section">
@@ -199,35 +270,48 @@
       </div>
 
       <a href="{{ url_for('attendance') }}">
-        📋 Attendance
+        <span class="nav-icon">📋</span>
+        <span>Attendance</span>
       </a>
 
       <a href="{{ url_for('results') }}">
-        📊 Results
+        <span class="nav-icon">📊</span>
+        <span>Results</span>
       </a>
 
       <a href="{{ url_for('assignments') }}">
-        📘 Assignments
+        <span class="nav-icon">📘</span>
+        <span>Assignments</span>
       </a>
 
       <a href="{{ url_for('timetable') }}">
-        🕒 Timetable
+        <span class="nav-icon">🕒</span>
+        <span>Timetable</span>
       </a>
 
       <a href="{{ url_for('teacher_resources') }}">
-        📁 Resources
+        <span class="nav-icon">📁</span>
+        <span>Resources</span>
       </a>
 
       <a href="{{ url_for('upload_resource') }}">
-        ☁️ Upload Resource
+        <span class="nav-icon">☁️</span>
+        <span>Upload Resource</span>
+      </a>
+
+      <a href="{{ url_for('school_calendar') }}">
+        <span class="nav-icon">📅</span>
+        <span>School Calendar</span>
       </a>
 
       {% endif %}
 
+
       {% if role == 'parent' %}
 
       <a href="{{ url_for('parent_dashboard') }}">
-        🏠 Dashboard
+        <span class="nav-icon">🏠</span>
+        <span>Dashboard</span>
       </a>
 
       <div class="nav-section">
@@ -235,33 +319,45 @@
       </div>
 
       <a href="{{ url_for('parent_fees') }}">
-        💰 Fees
+        <span class="nav-icon">💰</span>
+        <span>Fees</span>
       </a>
 
       <a href="{{ url_for('parent_results') }}">
-        📊 Results
+        <span class="nav-icon">📊</span>
+        <span>Results</span>
       </a>
 
       <a href="{{ url_for('parent_attendance') }}">
-        📋 Attendance
+        <span class="nav-icon">📋</span>
+        <span>Attendance</span>
       </a>
 
       <a href="{{ url_for('parent_assignments') }}">
-        📘 Assignments
+        <span class="nav-icon">📘</span>
+        <span>Assignments</span>
       </a>
 
       <a href="{{ url_for('teacher_resources') }}">
-        📁 Resources
+        <span class="nav-icon">📁</span>
+        <span>Resources</span>
+      </a>
+
+      <a href="{{ url_for('school_calendar') }}">
+        <span class="nav-icon">📅</span>
+        <span>School Calendar</span>
       </a>
 
       {% endif %}
+
 
       <div class="nav-section">
         ACCOUNT
       </div>
 
       <a href="{{ url_for('logout') }}">
-        🚪 Logout
+        <span class="nav-icon">🚪</span>
+        <span>Logout</span>
       </a>
 
     </nav>
@@ -270,20 +366,38 @@
 
   {% endif %}
 
+
   <main class="premium-main">
 
     {% if session.get('user_id') %}
 
-    <div class="premium-topbar">
+    <header class="premium-topbar">
 
-      <div class="premium-title">
-        <h1>
-          {{ session.get("school_name", "EduTrack") }}
-        </h1>
+      <div class="premium-topbar-left">
 
-        <p>
-          Smart School Management System
-        </p>
+        <button
+          type="button"
+          class="mobile-menu-button"
+          onclick="openMobileMenu()"
+          aria-label="Open navigation menu"
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+
+        <div class="premium-title">
+
+          <h1>
+            {{ session.get("school_name", "EduTrack") }}
+          </h1>
+
+          <p>
+            Smart School Management System
+          </p>
+
+        </div>
+
       </div>
 
       {% if session.get('role') in ['super_admin', 'school_admin', 'director', 'admin'] %}
@@ -293,12 +407,15 @@
         method="GET"
         class="premium-search"
       >
+
         <input
-          type="text"
+          type="search"
           name="q"
           placeholder="Search students, teachers..."
+          aria-label="Search EduTrack"
           required
         >
+
       </form>
 
       {% endif %}
@@ -315,9 +432,10 @@
 
       </div>
 
-    </div>
+    </header>
 
     {% endif %}
+
 
     {% with messages = get_flashed_messages(with_categories=true) %}
 
@@ -335,12 +453,68 @@
 
     {% endwith %}
 
-    {% block content %}
-    {% endblock %}
+
+    <div class="premium-content">
+
+      {% block content %}
+      {% endblock %}
+
+    </div>
 
   </main>
 
 </div>
+
+
+<script>
+  const premiumSidebar =
+    document.getElementById("premiumSidebar");
+
+  const sidebarOverlay =
+    document.getElementById("sidebarOverlay");
+
+  function openMobileMenu() {
+    if (!premiumSidebar || !sidebarOverlay) {
+      return;
+    }
+
+    premiumSidebar.classList.add("sidebar-open");
+    sidebarOverlay.classList.add("overlay-visible");
+    document.body.classList.add("menu-open");
+  }
+
+  function closeMobileMenu() {
+    if (!premiumSidebar || !sidebarOverlay) {
+      return;
+    }
+
+    premiumSidebar.classList.remove("sidebar-open");
+    sidebarOverlay.classList.remove("overlay-visible");
+    document.body.classList.remove("menu-open");
+  }
+
+  document.querySelectorAll(".premium-nav a").forEach(function (link) {
+    link.addEventListener("click", function () {
+      if (window.innerWidth <= 1000) {
+        closeMobileMenu();
+      }
+    });
+  });
+
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape") {
+      closeMobileMenu();
+    }
+  });
+
+  window.addEventListener("resize", function () {
+    if (window.innerWidth > 1000) {
+      closeMobileMenu();
+    }
+  });
+</script>
+
+{% block extra_js %}{% endblock %}
 
 </body>
 </html>

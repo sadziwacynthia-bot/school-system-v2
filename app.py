@@ -2427,28 +2427,55 @@ def parent_dashboard():
     school_id = session.get("school_id")
     user_id = session.get("user_id")
 
-    # Get linked student
-    student = fetch_one("""
-        SELECT s.*
+    # Get every student linked to this parent
+    students = fetch_all("""
+        SELECT DISTINCT s.*
         FROM students s
         JOIN guardians g ON s.id = g.student_id
         WHERE g.parent_user_id = ?
           AND s.school_id = ?
-        LIMIT 1
+        ORDER BY s.first_name, s.last_name
     """, (user_id, school_id))
 
-    # If no student linked, still load page safely
-    if not student:
+    # No linked children
+    if not students:
         return render_template(
             "parent_dashboard.html",
+            students=[],
             student=None,
             fee_summary={
                 "total_amount": 0,
                 "total_paid": 0,
                 "total_balance": 0
             },
+            attendance_summary={
+                "total_days": 0,
+                "present_days": 0,
+                "absent_days": 0,
+                "attendance_rate": 0
+            },
+            recent_assignments=[],
+            recent_results=[],
             notices=[]
         )
+
+    # Allow the parent to select one of their linked children
+    selected_student_id = request.args.get("student_id", type=int)
+
+    student = None
+
+    if selected_student_id:
+        for linked_student in students:
+            if linked_student["id"] == selected_student_id:
+                student = linked_student
+                break
+
+    # Default to the first linked student
+    if not student:
+        student = students[0]
+
+    student_id = student["id"]
+    class_name = student["class_name"]
 
     # Fee summary
     fee_summary = fetch_one("""
@@ -2459,26 +2486,115 @@ def parent_dashboard():
         FROM fees
         WHERE student_id = ?
           AND school_id = ?
-    """, (student["id"], school_id))
+    """, (student_id, school_id))
 
-    # Safe notices (no crash even if table missing)
+    if not fee_summary:
+        fee_summary = {
+            "total_amount": 0,
+            "total_paid": 0,
+            "total_balance": 0
+        }
+
+    # Attendance summary
+    attendance_summary = fetch_one("""
+        SELECT
+            COUNT(*) AS total_days,
+
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN LOWER(status) = 'present' THEN 1
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS present_days,
+
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN LOWER(status) = 'absent' THEN 1
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS absent_days
+
+        FROM attendance
+        WHERE student_id = ?
+          AND school_id = ?
+    """, (student_id, school_id))
+
+    if not attendance_summary:
+        attendance_summary = {
+            "total_days": 0,
+            "present_days": 0,
+            "absent_days": 0
+        }
+
+    total_days = int(attendance_summary["total_days"] or 0)
+    present_days = int(attendance_summary["present_days"] or 0)
+
+    attendance_rate = 0
+
+    if total_days > 0:
+        attendance_rate = round((present_days / total_days) * 100, 1)
+
+    attendance_summary = {
+        "total_days": total_days,
+        "present_days": present_days,
+        "absent_days": int(attendance_summary["absent_days"] or 0),
+        "attendance_rate": attendance_rate
+    }
+
+    # Recent assignments for the selected student's class
+    recent_assignments = fetch_all("""
+        SELECT *
+        FROM assignments
+        WHERE school_id = ?
+          AND class_name = ?
+        ORDER BY due_date ASC, id DESC
+        LIMIT 5
+    """, (school_id, class_name))
+
+    # Recent results
+    recent_results = fetch_all("""
+        SELECT *
+        FROM results
+        WHERE school_id = ?
+          AND student_id = ?
+        ORDER BY id DESC
+        LIMIT 5
+    """, (school_id, student_id))
+
+    # School notices
     notices = []
+
     try:
         notices = fetch_all("""
-    SELECT *
-    FROM notices
-    WHERE (school_id = ? OR school_id IS NULL)
-      AND (class_name = ? OR class_name IS NULL OR class_name = '')
-    ORDER BY date DESC, id DESC
-    LIMIT 5
-""", (school_id, student["class_name"]))
+            SELECT *
+            FROM notices
+            WHERE (school_id = ? OR school_id IS NULL)
+              AND (
+                    class_name = ?
+                    OR class_name IS NULL
+                    OR class_name = ''
+                  )
+            ORDER BY date DESC, id DESC
+            LIMIT 5
+        """, (school_id, class_name))
+
     except Exception:
         notices = []
 
     return render_template(
         "parent_dashboard.html",
+        students=students,
         student=student,
         fee_summary=fee_summary,
+        attendance_summary=attendance_summary,
+        recent_assignments=recent_assignments,
+        recent_results=recent_results,
         notices=notices
     )
 
@@ -2612,6 +2728,84 @@ def parent_fees():
 # =========================================================
 # NOTICES
 # =========================================================
+@app.route("/check_notices_table")
+@login_required
+@roles_required("super_admin", "school_admin")
+def check_notices_table():
+    rows = fetch_all("PRAGMA table_info(notices)")
+
+    columns = [dict(row) for row in rows]
+
+    return {
+        "columns": columns
+    }
+
+@app.route("/upgrade_notices_table")
+@login_required
+@roles_required("super_admin")
+def upgrade_notices_table():
+    upgrades = [
+        ("category", "TEXT"),
+        ("priority", "TEXT"),
+        ("audience", "TEXT"),
+        ("publish_date", "TEXT"),
+        ("expiry_date", "TEXT"),
+        ("attachment", "TEXT"),
+        ("status", "TEXT"),
+        ("created_at", "TEXT")
+    ]
+
+    added = []
+    already_exists = []
+    errors = []
+
+    for column_name, column_type in upgrades:
+        try:
+            execute_commit(
+                f"ALTER TABLE notices ADD COLUMN {column_name} {column_type}"
+            )
+            added.append(column_name)
+
+        except Exception as error:
+            error_message = str(error).lower()
+
+            if (
+                "duplicate column" in error_message
+                or "already exists" in error_message
+            ):
+                already_exists.append(column_name)
+            else:
+                errors.append({
+                    "column": column_name,
+                    "error": str(error)
+                })
+
+    # Give existing notices sensible default values
+    try:
+        execute_commit("""
+            UPDATE notices
+            SET category = COALESCE(NULLIF(category, ''), 'General'),
+                priority = COALESCE(NULLIF(priority, ''), 'Normal'),
+                audience = COALESCE(NULLIF(audience, ''), 'Everyone'),
+                publish_date = COALESCE(
+                    NULLIF(publish_date, ''),
+                    date
+                ),
+                status = COALESCE(NULLIF(status, ''), 'Published'),
+                created_at = COALESCE(NULLIF(created_at, ''), date)
+        """)
+    except Exception as error:
+        errors.append({
+            "column": "default values",
+            "error": str(error)
+        })
+
+    return {
+        "message": "Notices table upgrade completed.",
+        "added": added,
+        "already_exists": already_exists,
+        "errors": errors
+    }
 
 @app.route("/notices")
 @login_required
@@ -2637,6 +2831,637 @@ def notices():
 
     return render_template("notices.html", notices=notice_list)
 
+@app.route("/communications")
+@login_required
+@roles_required("super_admin", "school_admin")
+def communications():
+    school_id = session.get("school_id")
+
+    announcements = fetch_all("""
+        SELECT *
+        FROM notices
+        WHERE school_id = ?
+        ORDER BY
+            CASE
+                WHEN LOWER(priority) = 'urgent' THEN 1
+                WHEN LOWER(priority) = 'important' THEN 2
+                ELSE 3
+            END,
+            COALESCE(publish_date, date) DESC,
+            id DESC
+    """, (school_id,))
+
+    return render_template(
+        "communications.html",
+        announcements=announcements
+    )
+
+
+@app.route("/communications/new", methods=["GET", "POST"])
+@login_required
+@roles_required("super_admin", "school_admin")
+def create_announcement():
+    school_id = session.get("school_id")
+    user_id = session.get("user_id")
+
+    classes = fetch_all("""
+        SELECT DISTINCT class_name
+        FROM students
+        WHERE school_id = ?
+          AND class_name IS NOT NULL
+          AND class_name != ''
+        ORDER BY class_name
+    """, (school_id,))
+
+    if request.method == "POST":
+        title = request.form.get("title", "").strip()
+        message = request.form.get("message", "").strip()
+        category = request.form.get("category", "General").strip()
+        priority = request.form.get("priority", "Normal").strip()
+        audience = request.form.get("audience", "Everyone").strip()
+        class_name = request.form.get("class_name", "").strip()
+        publish_date = request.form.get("publish_date", "").strip()
+        expiry_date = request.form.get("expiry_date", "").strip()
+        status = request.form.get("status", "Published").strip()
+
+        if not title or not message:
+            flash("The announcement title and message are required.", "danger")
+
+            return render_template(
+                "create_announcement.html",
+                classes=classes
+            )
+
+        if audience != "Specific Class":
+            class_name = ""
+
+        if not publish_date:
+            publish_date = datetime.now().strftime("%Y-%m-%d")
+
+        execute_commit("""
+            INSERT INTO notices (
+                school_id,
+                title,
+                message,
+                date,
+                created_by,
+                class_name,
+                category,
+                priority,
+                audience,
+                publish_date,
+                expiry_date,
+                attachment,
+                status,
+                created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            school_id,
+            title,
+            message,
+            publish_date,
+            str(user_id),
+            class_name,
+            category,
+            priority,
+            audience,
+            publish_date,
+            expiry_date or None,
+            None,
+            status,
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        ))
+
+        flash("Announcement created successfully.", "success")
+        return redirect(url_for("communications"))
+
+    return render_template(
+        "create_announcement.html",
+        classes=classes
+    )
+
+
+@app.route("/communications/<int:announcement_id>/edit", methods=["GET", "POST"])
+@login_required
+@roles_required("super_admin", "school_admin")
+def edit_announcement(announcement_id):
+    school_id = session.get("school_id")
+
+    announcement = fetch_one("""
+        SELECT *
+        FROM notices
+        WHERE id = ?
+          AND school_id = ?
+    """, (announcement_id, school_id))
+
+    if not announcement:
+        flash("Announcement not found.", "danger")
+        return redirect(url_for("communications"))
+
+    classes = fetch_all("""
+        SELECT DISTINCT class_name
+        FROM students
+        WHERE school_id = ?
+          AND class_name IS NOT NULL
+          AND class_name != ''
+        ORDER BY class_name
+    """, (school_id,))
+
+    if request.method == "POST":
+        title = request.form.get("title", "").strip()
+        message = request.form.get("message", "").strip()
+        category = request.form.get("category", "General").strip()
+        priority = request.form.get("priority", "Normal").strip()
+        audience = request.form.get("audience", "Everyone").strip()
+        class_name = request.form.get("class_name", "").strip()
+        publish_date = request.form.get("publish_date", "").strip()
+        expiry_date = request.form.get("expiry_date", "").strip()
+        status = request.form.get("status", "Published").strip()
+
+        if not title or not message:
+            flash("The announcement title and message are required.", "danger")
+
+            return render_template(
+                "edit_announcement.html",
+                announcement=announcement,
+                classes=classes
+            )
+
+        if audience != "Specific Class":
+            class_name = ""
+
+        execute_commit("""
+            UPDATE notices
+            SET title = ?,
+                message = ?,
+                date = ?,
+                class_name = ?,
+                category = ?,
+                priority = ?,
+                audience = ?,
+                publish_date = ?,
+                expiry_date = ?,
+                status = ?
+            WHERE id = ?
+              AND school_id = ?
+        """, (
+            title,
+            message,
+            publish_date,
+            class_name,
+            category,
+            priority,
+            audience,
+            publish_date,
+            expiry_date or None,
+            status,
+            announcement_id,
+            school_id
+        ))
+
+        flash("Announcement updated successfully.", "success")
+        return redirect(url_for("communications"))
+
+    return render_template(
+        "edit_announcement.html",
+        announcement=announcement,
+        classes=classes
+    )
+
+
+@app.route(
+    "/communications/<int:announcement_id>/toggle-status",
+    methods=["POST"]
+)
+@login_required
+@roles_required("super_admin", "school_admin")
+def toggle_announcement_status(announcement_id):
+    school_id = session.get("school_id")
+
+    announcement = fetch_one("""
+        SELECT id, status
+        FROM notices
+        WHERE id = ?
+          AND school_id = ?
+    """, (announcement_id, school_id))
+
+    if not announcement:
+        flash("Announcement not found.", "danger")
+        return redirect(url_for("communications"))
+
+    current_status = announcement["status"] or "Published"
+
+    if current_status.lower() == "published":
+        new_status = "Draft"
+    else:
+        new_status = "Published"
+
+    execute_commit("""
+        UPDATE notices
+        SET status = ?
+        WHERE id = ?
+          AND school_id = ?
+    """, (
+        new_status,
+        announcement_id,
+        school_id
+    ))
+
+    flash(
+        f"Announcement status changed to {new_status}.",
+        "success"
+    )
+
+    return redirect(url_for("communications"))
+
+@app.route("/create_school_events_table")
+@login_required
+@roles_required("super_admin")
+def create_school_events_table():
+    try:
+        execute_commit("""
+            CREATE TABLE IF NOT EXISTS school_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                school_id INTEGER NOT NULL,
+                title TEXT NOT NULL,
+                description TEXT,
+                event_type TEXT DEFAULT 'General',
+                audience TEXT DEFAULT 'Everyone',
+                class_name TEXT,
+                start_date TEXT NOT NULL,
+                end_date TEXT,
+                start_time TEXT,
+                end_time TEXT,
+                location TEXT,
+                status TEXT DEFAULT 'Published',
+                created_by TEXT,
+                created_at TEXT
+            )
+        """)
+
+        return {
+            "message": "School calendar table created successfully.",
+            "table": "school_events",
+            "errors": []
+        }
+
+    except Exception as error:
+        return {
+            "message": "School calendar table could not be created.",
+            "errors": [str(error)]
+        }, 500
+@app.route("/school-calendar")
+@login_required
+@roles_required("super_admin", "school_admin", "director", "admin")
+def school_calendar():
+    school_id = session.get("school_id")
+
+    events = fetch_all("""
+        SELECT *
+        FROM school_events
+        WHERE school_id = ?
+        ORDER BY
+            start_date ASC,
+            COALESCE(start_time, '23:59') ASC,
+            id DESC
+    """, (school_id,))
+
+    return render_template(
+        "school_calendar.html",
+        events=events
+    )
+
+
+@app.route("/school-calendar/new", methods=["GET", "POST"])
+@login_required
+@roles_required("super_admin", "school_admin", "director", "admin")
+def create_school_event():
+    school_id = session.get("school_id")
+    user_id = session.get("user_id")
+
+    classes = fetch_all("""
+        SELECT DISTINCT class_name
+        FROM students
+        WHERE school_id = ?
+          AND class_name IS NOT NULL
+          AND TRIM(class_name) != ''
+        ORDER BY class_name
+    """, (school_id,))
+
+    if request.method == "POST":
+        title = request.form.get("title", "").strip()
+        description = request.form.get("description", "").strip()
+        event_type = request.form.get("event_type", "General").strip()
+        audience = request.form.get("audience", "Everyone").strip()
+        class_name = request.form.get("class_name", "").strip()
+        start_date = request.form.get("start_date", "").strip()
+        end_date = request.form.get("end_date", "").strip()
+        start_time = request.form.get("start_time", "").strip()
+        end_time = request.form.get("end_time", "").strip()
+        location = request.form.get("location", "").strip()
+        status = request.form.get("status", "Published").strip()
+
+        if not title or not start_date:
+            flash(
+                "The event title and start date are required.",
+                "danger"
+            )
+
+            return render_template(
+                "create_school_event.html",
+                classes=classes
+            )
+
+        if audience != "Specific Class":
+            class_name = ""
+
+        if end_date and end_date < start_date:
+            flash(
+                "The end date cannot be before the start date.",
+                "danger"
+            )
+
+            return render_template(
+                "create_school_event.html",
+                classes=classes
+            )
+
+        execute_commit("""
+            INSERT INTO school_events (
+                school_id,
+                title,
+                description,
+                event_type,
+                audience,
+                class_name,
+                start_date,
+                end_date,
+                start_time,
+                end_time,
+                location,
+                status,
+                created_by,
+                created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            school_id,
+            title,
+            description,
+            event_type,
+            audience,
+            class_name or None,
+            start_date,
+            end_date or None,
+            start_time or None,
+            end_time or None,
+            location or None,
+            status,
+            str(user_id),
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        ))
+
+        flash("Calendar event created successfully.", "success")
+        return redirect(url_for("school_calendar"))
+
+    return render_template(
+        "create_school_event.html",
+        classes=classes
+    )
+
+@app.route(
+    "/school-calendar/<int:event_id>/edit",
+    methods=["GET", "POST"]
+)
+@login_required
+@roles_required("super_admin", "school_admin", "director", "admin")
+def edit_school_event(event_id):
+    school_id = session.get("school_id")
+
+    event = fetch_one("""
+        SELECT *
+        FROM school_events
+        WHERE id = ?
+          AND school_id = ?
+    """, (event_id, school_id))
+
+    if not event:
+        flash("Calendar event not found.", "danger")
+        return redirect(url_for("school_calendar"))
+
+    classes = fetch_all("""
+        SELECT DISTINCT class_name
+        FROM students
+        WHERE school_id = ?
+          AND class_name IS NOT NULL
+          AND TRIM(class_name) != ''
+        ORDER BY class_name
+    """, (school_id,))
+
+    if request.method == "POST":
+        title = request.form.get("title", "").strip()
+        description = request.form.get("description", "").strip()
+        event_type = request.form.get("event_type", "General").strip()
+        audience = request.form.get("audience", "Everyone").strip()
+        class_name = request.form.get("class_name", "").strip()
+        start_date = request.form.get("start_date", "").strip()
+        end_date = request.form.get("end_date", "").strip()
+        start_time = request.form.get("start_time", "").strip()
+        end_time = request.form.get("end_time", "").strip()
+        location = request.form.get("location", "").strip()
+        status = request.form.get("status", "Published").strip()
+
+        if not title or not start_date:
+            flash(
+                "The event title and start date are required.",
+                "danger"
+            )
+
+            return render_template(
+                "edit_school_event.html",
+                event=event,
+                classes=classes
+            )
+
+        if audience != "Specific Class":
+            class_name = ""
+
+        if end_date and end_date < start_date:
+            flash(
+                "The end date cannot be before the start date.",
+                "danger"
+            )
+
+            return render_template(
+                "edit_school_event.html",
+                event=event,
+                classes=classes
+            )
+
+        if start_time and end_time and end_time < start_time:
+            flash(
+                "The end time cannot be before the start time.",
+                "danger"
+            )
+
+            return render_template(
+                "edit_school_event.html",
+                event=event,
+                classes=classes
+            )
+
+        execute_commit("""
+            UPDATE school_events
+            SET title = ?,
+                description = ?,
+                event_type = ?,
+                audience = ?,
+                class_name = ?,
+                start_date = ?,
+                end_date = ?,
+                start_time = ?,
+                end_time = ?,
+                location = ?,
+                status = ?
+            WHERE id = ?
+              AND school_id = ?
+        """, (
+            title,
+            description,
+            event_type,
+            audience,
+            class_name or None,
+            start_date,
+            end_date or None,
+            start_time or None,
+            end_time or None,
+            location or None,
+            status,
+            event_id,
+            school_id
+        ))
+
+        flash("Calendar event updated successfully.", "success")
+        return redirect(url_for("school_calendar"))
+
+    return render_template(
+        "edit_school_event.html",
+        event=event,
+        classes=classes
+    )
+
+
+@app.route(
+    "/school-calendar/<int:event_id>/toggle-status",
+    methods=["POST"]
+)
+@login_required
+@roles_required("super_admin", "school_admin", "director", "admin")
+def toggle_school_event_status(event_id):
+    school_id = session.get("school_id")
+
+    event = fetch_one("""
+        SELECT id, status
+        FROM school_events
+        WHERE id = ?
+          AND school_id = ?
+    """, (event_id, school_id))
+
+    if not event:
+        flash("Calendar event not found.", "danger")
+        return redirect(url_for("school_calendar"))
+
+    current_status = event["status"] or "Published"
+
+    new_status = (
+        "Draft"
+        if current_status.lower() == "published"
+        else "Published"
+    )
+
+    execute_commit("""
+        UPDATE school_events
+        SET status = ?
+        WHERE id = ?
+          AND school_id = ?
+    """, (
+        new_status,
+        event_id,
+        school_id
+    ))
+
+    flash(
+        f"Calendar event status changed to {new_status}.",
+        "success"
+    )
+
+    return redirect(url_for("school_calendar"))
+
+
+@app.route(
+    "/school-calendar/<int:event_id>/delete",
+    methods=["POST"]
+)
+@login_required
+@roles_required("super_admin", "school_admin", "director", "admin")
+def delete_school_event(event_id):
+    school_id = session.get("school_id")
+
+    event = fetch_one("""
+        SELECT id
+        FROM school_events
+        WHERE id = ?
+          AND school_id = ?
+    """, (event_id, school_id))
+
+    if not event:
+        flash("Calendar event not found.", "danger")
+        return redirect(url_for("school_calendar"))
+
+    execute_commit("""
+        DELETE FROM school_events
+        WHERE id = ?
+          AND school_id = ?
+    """, (
+        event_id,
+        school_id
+    ))
+
+    flash("Calendar event deleted successfully.", "success")
+    return redirect(url_for("school_calendar"))
+
+@app.route(
+    "/communications/<int:announcement_id>/delete",
+    methods=["POST"]
+)
+@login_required
+@roles_required("super_admin", "school_admin")
+def delete_announcement(announcement_id):
+    school_id = session.get("school_id")
+
+    announcement = fetch_one("""
+        SELECT id
+        FROM notices
+        WHERE id = ?
+          AND school_id = ?
+    """, (announcement_id, school_id))
+
+    if not announcement:
+        flash("Announcement not found.", "danger")
+        return redirect(url_for("communications"))
+
+    execute_commit("""
+        DELETE FROM notices
+        WHERE id = ?
+          AND school_id = ?
+    """, (
+        announcement_id,
+        school_id
+    ))
+
+    flash("Announcement deleted successfully.", "success")
+    return redirect(url_for("communications"))
 
 @app.route("/add_notice", methods=["GET", "POST"])
 @login_required

@@ -1,0 +1,282 @@
+{% extends "base_premium.html" %}
+
+{% block title %}New Announcement | EduTrack{% endblock %}
+
+{% block content %}
+
+<style>
+    .form-page {
+        padding: 25px;
+        background: #f4f6f9;
+        min-height: 100vh;
+    }
+
+    .form-card {
+        max-width: 900px;
+        margin: auto;
+        background: white;
+        border-radius: 18px;
+        padding: 26px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+    }
+
+    .form-card h1 {
+        margin-top: 0;
+        color: #111827;
+    }
+
+    .form-card p {
+        color: #6b7280;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+    }
+
+    .form-group {
+        margin-bottom: 16px;
+    }
+
+    .form-group.full {
+        grid-column: 1 / -1;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 7px;
+        font-weight: 700;
+        color: #374151;
+    }
+
+    .form-control {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 11px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 10px;
+        font: inherit;
+    }
+
+    textarea.form-control {
+        min-height: 160px;
+        resize: vertical;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+    }
+
+    .button {
+        border: none;
+        border-radius: 10px;
+        padding: 11px 17px;
+        font-weight: 800;
+        cursor: pointer;
+        text-decoration: none;
+    }
+
+    .save-button {
+        background: #2563eb;
+        color: white;
+    }
+
+    .cancel-button {
+        background: #e5e7eb;
+        color: #374151;
+    }
+
+    @media (max-width: 700px) {
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="form-page">
+
+    <div class="form-card">
+
+        <h1>New Announcement</h1>
+        <p>Publish an update to the selected school audience.</p>
+
+        <form method="POST">
+
+            <div class="form-grid">
+
+                <div class="form-group full">
+                    <label for="title">Announcement Title</label>
+
+                    <input
+                        type="text"
+                        id="title"
+                        name="title"
+                        class="form-control"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="category">Category</label>
+
+                    <select
+                        id="category"
+                        name="category"
+                        class="form-control"
+                    >
+                        <option>General</option>
+                        <option>Academic</option>
+                        <option>Finance</option>
+                        <option>Sports</option>
+                        <option>Examination</option>
+                        <option>Event</option>
+                        <option>Emergency</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="priority">Priority</label>
+
+                    <select
+                        id="priority"
+                        name="priority"
+                        class="form-control"
+                    >
+                        <option>Normal</option>
+                        <option>Important</option>
+                        <option>Urgent</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="audience">Audience</label>
+
+                    <select
+                        id="audience"
+                        name="audience"
+                        class="form-control"
+                        onchange="toggleClassField()"
+                    >
+                        <option>Everyone</option>
+                        <option>Parents</option>
+                        <option>Teachers</option>
+                        <option>Students</option>
+                        <option>Specific Class</option>
+                    </select>
+                </div>
+
+                <div
+                    class="form-group"
+                    id="class-field"
+                    style="display:none;"
+                >
+                    <label for="class_name">Class</label>
+
+                    <select
+                        id="class_name"
+                        name="class_name"
+                        class="form-control"
+                    >
+                        <option value="">Select class</option>
+
+                        {% for school_class in classes %}
+                        <option value="{{ school_class.class_name }}">
+                            {{ school_class.class_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="publish_date">Publish Date</label>
+
+                    <input
+                        type="date"
+                        id="publish_date"
+                        name="publish_date"
+                        class="form-control"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="expiry_date">Expiry Date</label>
+
+                    <input
+                        type="date"
+                        id="expiry_date"
+                        name="expiry_date"
+                        class="form-control"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="status">Status</label>
+
+                    <select
+                        id="status"
+                        name="status"
+                        class="form-control"
+                    >
+                        <option>Published</option>
+                        <option>Draft</option>
+                    </select>
+                </div>
+
+                <div class="form-group full">
+                    <label for="message">Message</label>
+
+                    <textarea
+                        id="message"
+                        name="message"
+                        class="form-control"
+                        required
+                    ></textarea>
+                </div>
+
+            </div>
+
+            <div class="form-actions">
+
+                <button
+                    type="submit"
+                    class="button save-button"
+                >
+                    Publish Announcement
+                </button>
+
+                <a
+                    href="{{ url_for('communications') }}"
+                    class="button cancel-button"
+                >
+                    Cancel
+                </a>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+<script>
+    function toggleClassField() {
+        const audience = document.getElementById("audience").value;
+        const classField = document.getElementById("class-field");
+
+        if (audience === "Specific Class") {
+            classField.style.display = "block";
+        } else {
+            classField.style.display = "none";
+            document.getElementById("class_name").value = "";
+        }
+    }
+
+    toggleClassField();
+</script>
+
+{% endblock %}

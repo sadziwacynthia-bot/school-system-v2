@@ -1,6 +1,6 @@
 {% extends "base_premium.html" %}
 
-{% block title %}Parent Dashboard{% endblock %}
+{% block title %}Parent Dashboard | EduTrack{% endblock %}
 
 {% block content %}
 
@@ -12,12 +12,19 @@
     }
 
     .parent-header {
-        background: linear-gradient(135deg, #1e3a8a, #2563eb);
+        background: linear-gradient(135deg, #1e3a8a, #7c3aed);
         color: white;
-        padding: 24px;
-        border-radius: 18px;
-        margin-bottom: 24px;
-        box-shadow: 0 8px 18px rgba(0,0,0,0.12);
+        padding: 26px;
+        border-radius: 20px;
+        margin-bottom: 22px;
+        box-shadow: 0 10px 25px rgba(30, 58, 138, 0.20);
+    }
+
+    .parent-header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 20px;
     }
 
     .parent-header h1 {
@@ -30,9 +37,30 @@
         opacity: 0.9;
     }
 
+    .student-selector {
+        min-width: 240px;
+    }
+
+    .student-selector label {
+        display: block;
+        font-size: 13px;
+        margin-bottom: 6px;
+        font-weight: 700;
+    }
+
+    .student-selector select {
+        width: 100%;
+        padding: 11px 12px;
+        border: none;
+        border-radius: 10px;
+        background: white;
+        color: #111827;
+        font-weight: 700;
+    }
+
     .stats-grid {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 16px;
         margin-bottom: 22px;
     }
@@ -42,30 +70,47 @@
         background: white;
         border-radius: 16px;
         padding: 20px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     }
 
     .stats-label {
         color: #6b7280;
-        font-size: 14px;
-        font-weight: 600;
+        font-size: 13px;
+        font-weight: 700;
     }
 
     .stats-value {
         margin-top: 8px;
-        font-size: 24px;
+        font-size: 23px;
         font-weight: 800;
         color: #111827;
     }
 
+    .stats-value.balance {
+        color: #dc2626;
+    }
+
+    .stats-value.rate {
+        color: #059669;
+    }
+
     .main-grid {
         display: grid;
-        grid-template-columns: 1.3fr 1fr;
+        grid-template-columns: 1.25fr 1fr;
         gap: 18px;
     }
 
     .panel {
         margin-bottom: 18px;
+    }
+
+    .panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
     }
 
     .panel h3 {
@@ -76,19 +121,27 @@
 
     .panel-subtitle {
         color: #6b7280;
-        margin: 5px 0 18px;
+        margin: 5px 0 0;
         font-size: 14px;
+    }
+
+    .view-link {
+        color: #2563eb;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 13px;
     }
 
     .summary-list {
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 11px;
     }
 
     .summary-item {
         display: flex;
         justify-content: space-between;
+        align-items: center;
         gap: 12px;
         padding: 12px;
         background: #f9fafb;
@@ -125,7 +178,8 @@
     }
 
     .quick-action:hover {
-        background: #dbeafe;
+        background: #eef2ff;
+        border-color: #c7d2fe;
         transform: translateY(-2px);
     }
 
@@ -133,17 +187,36 @@
         font-size: 22px;
     }
 
-    .notice-list {
+    .record-list {
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 10px;
+    }
+
+    .record-item {
+        background: #f9fafb;
+        padding: 13px;
+        border-radius: 12px;
+        border: 1px solid #eef2f7;
+    }
+
+    .record-title {
+        color: #1f2937;
+        font-weight: 800;
+        margin-bottom: 5px;
+    }
+
+    .record-details {
+        color: #6b7280;
+        font-size: 13px;
     }
 
     .notice-item {
         background: #f9fafb;
         padding: 13px;
         border-radius: 12px;
-        border-left: 4px solid #2563eb;
+        border-left: 4px solid #7c3aed;
+        margin-bottom: 10px;
     }
 
     .notice-title {
@@ -155,7 +228,7 @@
     .notice-message {
         color: #4b5563;
         font-size: 14px;
-        line-height: 1.4;
+        line-height: 1.5;
     }
 
     .notice-date {
@@ -173,19 +246,50 @@
         line-height: 1.5;
     }
 
-    .empty-box {
-        background: white;
-        padding: 25px;
-        border-radius: 16px;
+    .empty-message {
+        padding: 18px;
+        background: #f9fafb;
         color: #6b7280;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        text-align: center;
+        border-radius: 12px;
     }
 
-    @media (max-width: 900px) {
+    .empty-box {
+        background: white;
+        padding: 30px;
+        border-radius: 16px;
+        color: #6b7280;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    @media (max-width: 1050px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .main-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 700px) {
+        .parent-page {
+            padding: 15px;
+        }
+
+        .parent-header-row {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
         .stats-grid,
-        .main-grid,
         .quick-actions {
             grid-template-columns: 1fr;
+        }
+
+        .student-selector {
+            min-width: 100%;
         }
     }
 </style>
@@ -193,142 +297,500 @@
 <div class="parent-page">
 
     <div class="parent-header">
-        <h1>Parent Dashboard</h1>
-        <p>View your child’s school information in one place.</p>
+
+        <div class="parent-header-row">
+
+            <div>
+                <h1>Parent Dashboard</h1>
+
+                <p>
+                    View fees, attendance, assignments, results and school
+                    updates in one place.
+                </p>
+            </div>
+
+            {% if students and students|length > 1 %}
+
+            <form
+                method="GET"
+                action="{{ url_for('parent_dashboard') }}"
+                class="student-selector"
+            >
+
+                <label for="student_id">
+                    Viewing child
+                </label>
+
+                <select
+                    id="student_id"
+                    name="student_id"
+                    onchange="this.form.submit()"
+                >
+
+                    {% for linked_student in students %}
+
+                    <option
+                        value="{{ linked_student.id }}"
+                        {% if student and linked_student.id == student.id %}
+                        selected
+                        {% endif %}
+                    >
+                        {{ linked_student.first_name }}
+                        {{ linked_student.last_name }}
+                        — {{ linked_student.class_name or 'No class' }}
+                    </option>
+
+                    {% endfor %}
+
+                </select>
+
+            </form>
+
+            {% endif %}
+
+        </div>
+
     </div>
 
     {% if student %}
 
     <div class="stats-grid">
+
         <div class="stats-card">
-            <div class="stats-label">Student Name</div>
-            <div class="stats-value">{{ student.first_name }} {{ student.last_name }}</div>
+            <div class="stats-label">
+                Student
+            </div>
+
+            <div class="stats-value">
+                {{ student.first_name }} {{ student.last_name }}
+            </div>
         </div>
 
         <div class="stats-card">
-            <div class="stats-label">Class</div>
-            <div class="stats-value">{{ student.class_name or 'Not Assigned' }}</div>
+            <div class="stats-label">
+                Class
+            </div>
+
+            <div class="stats-value">
+                {{ student.class_name or 'Not Assigned' }}
+            </div>
         </div>
 
         <div class="stats-card">
-            <div class="stats-label">Outstanding Balance</div>
-            <div class="stats-value">${{ "%.2f"|format(fee_summary.total_balance or 0) }}</div>
+            <div class="stats-label">
+                Outstanding Balance
+            </div>
+
+            <div class="stats-value balance">
+                ${{ "%.2f"|format(fee_summary.total_balance or 0) }}
+            </div>
         </div>
+
+        <div class="stats-card">
+            <div class="stats-label">
+                Attendance Rate
+            </div>
+
+            <div class="stats-value rate">
+                {{ attendance_summary.attendance_rate }}%
+            </div>
+        </div>
+
     </div>
 
     <div class="main-grid">
 
         <div>
+
             <div class="panel">
-                <h3>Student Information</h3>
-                <p class="panel-subtitle">Basic learner details</p>
+
+                <div class="panel-header">
+                    <div>
+                        <h3>Student Information</h3>
+                        <p class="panel-subtitle">
+                            Current learner details
+                        </p>
+                    </div>
+                </div>
 
                 <div class="summary-list">
+
                     <div class="summary-item">
                         <span>Student Number</span>
-                        <strong>{{ student.student_number or '-' }}</strong>
+
+                        <strong>
+                            {{ student.student_number or '-' }}
+                        </strong>
                     </div>
 
                     <div class="summary-item">
                         <span>Full Name</span>
-                        <strong>{{ student.first_name }} {{ student.last_name }}</strong>
+
+                        <strong>
+                            {{ student.first_name }}
+                            {{ student.last_name }}
+                        </strong>
                     </div>
 
                     <div class="summary-item">
                         <span>Class</span>
-                        <strong>{{ student.class_name or '-' }}</strong>
+
+                        <strong>
+                            {{ student.class_name or '-' }}
+                        </strong>
                     </div>
 
                     <div class="summary-item">
                         <span>Status</span>
-                        <strong>{{ student.current_status or 'Active' }}</strong>
+
+                        <strong>
+                            {{ student.current_status or 'Active' }}
+                        </strong>
                     </div>
+
                 </div>
+
             </div>
 
             <div class="panel">
-                <h3>Quick Parent Actions</h3>
-                <p class="panel-subtitle">Open the sections you need most</p>
+
+                <div class="panel-header">
+                    <div>
+                        <h3>Quick Parent Actions</h3>
+
+                        <p class="panel-subtitle">
+                            Open the sections you need
+                        </p>
+                    </div>
+                </div>
 
                 <div class="quick-actions">
-                    <a href="{{ url_for('parent_fees') }}" class="quick-action">
+
+                    <a
+                        href="{{ url_for('parent_fees') }}"
+                        class="quick-action"
+                    >
                         <span class="quick-icon">💳</span>
                         <span>View Fees</span>
                     </a>
 
-                    <a href="{{ url_for('parent_results') }}" class="quick-action">
+                    <a
+                        href="{{ url_for('parent_results') }}"
+                        class="quick-action"
+                    >
                         <span class="quick-icon">📘</span>
                         <span>View Results</span>
                     </a>
 
-                    <a href="{{ url_for('parent_attendance') }}" class="quick-action">
+                    <a
+                        href="{{ url_for('parent_attendance') }}"
+                        class="quick-action"
+                    >
                         <span class="quick-icon">✅</span>
                         <span>View Attendance</span>
                     </a>
 
-                    <a href="{{ url_for('parent_assignments') }}" class="quick-action">
+                    <a
+                        href="{{ url_for('parent_assignments') }}"
+                        class="quick-action"
+                    >
                         <span class="quick-icon">📚</span>
                         <span>View Assignments</span>
                     </a>
-                    <a href="{{ url_for('teacher_resources') }}" class="quick-action">
-    <span class="quick-icon">📁</span>
-    <span>Class Resources</span>
-</a>
+
+                    <a
+                        href="{{ url_for('teacher_resources') }}"
+                        class="quick-action"
+                    >
+                        <span class="quick-icon">📁</span>
+                        <span>Class Resources</span>
+                    </a>
+
                 </div>
+
             </div>
+
+            <div class="panel">
+
+                <div class="panel-header">
+
+                    <div>
+                        <h3>Upcoming Assignments</h3>
+
+                        <p class="panel-subtitle">
+                            Latest work for {{ student.class_name or 'the class' }}
+                        </p>
+                    </div>
+
+                    <a
+                        href="{{ url_for('parent_assignments') }}"
+                        class="view-link"
+                    >
+                        View all
+                    </a>
+
+                </div>
+
+                {% if recent_assignments %}
+
+                <div class="record-list">
+
+                    {% for assignment in recent_assignments %}
+
+                    <div class="record-item">
+
+                        <div class="record-title">
+                            {{ assignment.title or assignment.subject or 'Assignment' }}
+                        </div>
+
+                        <div class="record-details">
+                            Due date:
+                            {{ assignment.due_date or 'Not provided' }}
+                        </div>
+
+                    </div>
+
+                    {% endfor %}
+
+                </div>
+
+                {% else %}
+
+                <div class="empty-message">
+                    No assignments are currently available.
+                </div>
+
+                {% endif %}
+
+            </div>
+
         </div>
 
         <div>
+
             <div class="panel">
-                <h3>Fees Summary</h3>
-                <p class="panel-subtitle">Current fee overview</p>
+
+                <div class="panel-header">
+
+                    <div>
+                        <h3>Fees Summary</h3>
+
+                        <p class="panel-subtitle">
+                            Current account overview
+                        </p>
+                    </div>
+
+                    <a
+                        href="{{ url_for('parent_fees') }}"
+                        class="view-link"
+                    >
+                        View fees
+                    </a>
+
+                </div>
 
                 <div class="summary-list">
+
                     <div class="summary-item">
                         <span>Total Fees</span>
-                        <strong>${{ "%.2f"|format(fee_summary.total_amount or 0) }}</strong>
+
+                        <strong>
+                            ${{ "%.2f"|format(fee_summary.total_amount or 0) }}
+                        </strong>
                     </div>
 
                     <div class="summary-item">
                         <span>Total Paid</span>
-                        <strong>${{ "%.2f"|format(fee_summary.total_paid or 0) }}</strong>
+
+                        <strong>
+                            ${{ "%.2f"|format(fee_summary.total_paid or 0) }}
+                        </strong>
                     </div>
 
                     <div class="summary-item">
                         <span>Total Balance</span>
-                        <strong>${{ "%.2f"|format(fee_summary.total_balance or 0) }}</strong>
+
+                        <strong>
+                            ${{ "%.2f"|format(fee_summary.total_balance or 0) }}
+                        </strong>
                     </div>
+
                 </div>
+
             </div>
 
             <div class="panel">
-                <h3>School Notices</h3>
-                <p class="panel-subtitle">Latest updates from the school</p>
+
+                <div class="panel-header">
+
+                    <div>
+                        <h3>Attendance Summary</h3>
+
+                        <p class="panel-subtitle">
+                            Current attendance overview
+                        </p>
+                    </div>
+
+                    <a
+                        href="{{ url_for('parent_attendance') }}"
+                        class="view-link"
+                    >
+                        View attendance
+                    </a>
+
+                </div>
+
+                <div class="summary-list">
+
+                    <div class="summary-item">
+                        <span>Total Recorded Days</span>
+
+                        <strong>
+                            {{ attendance_summary.total_days }}
+                        </strong>
+                    </div>
+
+                    <div class="summary-item">
+                        <span>Present</span>
+
+                        <strong>
+                            {{ attendance_summary.present_days }}
+                        </strong>
+                    </div>
+
+                    <div class="summary-item">
+                        <span>Absent</span>
+
+                        <strong>
+                            {{ attendance_summary.absent_days }}
+                        </strong>
+                    </div>
+
+                    <div class="summary-item">
+                        <span>Attendance Rate</span>
+
+                        <strong>
+                            {{ attendance_summary.attendance_rate }}%
+                        </strong>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="panel">
+
+                <div class="panel-header">
+
+                    <div>
+                        <h3>Recent Results</h3>
+
+                        <p class="panel-subtitle">
+                            Recently recorded subjects
+                        </p>
+                    </div>
+
+                    <a
+                        href="{{ url_for('parent_results') }}"
+                        class="view-link"
+                    >
+                        View results
+                    </a>
+
+                </div>
+
+                {% if recent_results %}
+
+                <div class="record-list">
+
+                    {% for result in recent_results %}
+
+                    <div class="record-item">
+
+                        <div class="record-title">
+                            {{ result.subject or 'Subject Result' }}
+                        </div>
+
+                        <div class="record-details">
+                            Term: {{ result.term or 'Not specified' }}
+                        </div>
+
+                    </div>
+
+                    {% endfor %}
+
+                </div>
+
+                {% else %}
+
+                <div class="empty-message">
+                    No results have been recorded yet.
+                </div>
+
+                {% endif %}
+
+            </div>
+
+            <div class="panel">
+
+                <div class="panel-header">
+                    <div>
+                        <h3>School Notices</h3>
+
+                        <p class="panel-subtitle">
+                            Latest school updates
+                        </p>
+                    </div>
+                </div>
 
                 {% if notices %}
-                    <div class="notice-list">
-                        {% for n in notices %}
-                        <div class="notice-item">
-                            <div class="notice-title">{{ n.title }}</div>
-                            <div class="notice-message">{{ n.message }}</div>
-                            <div class="notice-date">{{ n.date }}</div>
+
+                    {% for notice in notices %}
+
+                    <div class="notice-item">
+
+                        <div class="notice-title">
+                            {{ notice.title }}
                         </div>
-                        {% endfor %}
+
+                        <div class="notice-message">
+                            {{ notice.message }}
+                        </div>
+
+                        <div class="notice-date">
+                            {{ notice.date }}
+                        </div>
+
                     </div>
+
+                    {% endfor %}
+
                 {% else %}
-                    <p style="color:#6b7280;">No notices available.</p>
+
+                <div class="empty-message">
+                    No notices are currently available.
+                </div>
+
                 {% endif %}
+
             </div>
 
             <div class="panel">
-                <h3>Parent Note</h3>
-                <p class="panel-subtitle">Important reminder</p>
+
+                <h3>Parent Reminder</h3>
+
+                <p class="panel-subtitle">
+                    Keep up with your child’s progress
+                </p>
 
                 <div class="note-box">
-                    Use this portal to track your child’s fees, results, attendance, assignments, and school notices.
-                    Keep your login details safe.
+                    Use this portal regularly to monitor fees, attendance,
+                    assignments, academic results and school notices. Keep
+                    your login information private and secure.
                 </div>
+
             </div>
+
         </div>
 
     </div>
@@ -336,8 +798,14 @@
     {% else %}
 
     <div class="empty-box">
+
         <h3>No Linked Student Found</h3>
-        <p>Your account is not yet connected to a student profile.</p>
+
+        <p>
+            Your parent account has not yet been connected to a student.
+            Please contact the school administrator for assistance.
+        </p>
+
     </div>
 
     {% endif %}

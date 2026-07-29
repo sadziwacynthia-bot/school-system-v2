@@ -1,0 +1,398 @@
+{% extends "base_premium.html" %}
+
+{% block title %}Edit Calendar Event | EduTrack{% endblock %}
+
+{% block content %}
+
+<style>
+    .event-form-page {
+        padding: 25px;
+        min-height: 100vh;
+        background: #f4f6f9;
+    }
+
+    .event-form-card {
+        max-width: 900px;
+        margin: auto;
+        padding: 26px;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 18px;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+    }
+
+    .event-form-card h1 {
+        margin: 0 0 8px;
+        color: #111827;
+    }
+
+    .event-form-card > p {
+        margin: 0 0 24px;
+        color: #6b7280;
+    }
+
+    .event-form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+    }
+
+    .form-group {
+        margin-bottom: 16px;
+    }
+
+    .form-group.full {
+        grid-column: 1 / -1;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 7px;
+        font-weight: 700;
+        color: #374151;
+    }
+
+    .form-control {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 11px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 10px;
+        background: white;
+        color: #111827;
+        font: inherit;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    textarea.form-control {
+        min-height: 150px;
+        resize: vertical;
+    }
+
+    .form-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 10px;
+    }
+
+    .button {
+        display: inline-block;
+        padding: 11px 17px;
+        border: none;
+        border-radius: 10px;
+        font: inherit;
+        font-weight: 800;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .save-button {
+        background: #2563eb;
+        color: white;
+    }
+
+    .save-button:hover {
+        background: #1d4ed8;
+    }
+
+    .cancel-button {
+        background: #e5e7eb;
+        color: #374151;
+    }
+
+    .cancel-button:hover {
+        background: #d1d5db;
+    }
+
+    @media (max-width: 700px) {
+        .event-form-page {
+            padding: 15px;
+        }
+
+        .event-form-card {
+            padding: 20px;
+        }
+
+        .event-form-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .form-group.full {
+            grid-column: auto;
+        }
+    }
+</style>
+
+<div class="event-form-page">
+
+    <div class="event-form-card">
+
+        <h1>Edit Calendar Event</h1>
+
+        <p>
+            Update the event information below.
+        </p>
+
+        <form method="POST">
+
+            <div class="event-form-grid">
+
+                <div class="form-group full">
+                    <label for="title">Event Title</label>
+
+                    <input
+                        type="text"
+                        id="title"
+                        name="title"
+                        value="{{ event.title or '' }}"
+                        class="form-control"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="event_type">Event Type</label>
+
+                    <select
+                        id="event_type"
+                        name="event_type"
+                        class="form-control"
+                    >
+                        {% for value in [
+                            'General',
+                            'Academic',
+                            'Examination',
+                            'Sports',
+                            'Holiday',
+                            'Meeting',
+                            'Trip',
+                            'Deadline',
+                            'Celebration'
+                        ] %}
+
+                        <option
+                            value="{{ value }}"
+                            {% if (event.event_type or 'General') == value %}
+                                selected
+                            {% endif %}
+                        >
+                            {{ value }}
+                        </option>
+
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="audience">Audience</label>
+
+                    <select
+                        id="audience"
+                        name="audience"
+                        class="form-control"
+                        onchange="toggleClassField()"
+                    >
+                        {% for value in [
+                            'Everyone',
+                            'Parents',
+                            'Teachers',
+                            'Students',
+                            'Specific Class'
+                        ] %}
+
+                        <option
+                            value="{{ value }}"
+                            {% if (event.audience or 'Everyone') == value %}
+                                selected
+                            {% endif %}
+                        >
+                            {{ value }}
+                        </option>
+
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div
+                    class="form-group full"
+                    id="class-field"
+                >
+                    <label for="class_name">Class</label>
+
+                    <select
+                        id="class_name"
+                        name="class_name"
+                        class="form-control"
+                    >
+                        <option value="">
+                            Select class
+                        </option>
+
+                        {% for school_class in classes %}
+
+                        <option
+                            value="{{ school_class.class_name }}"
+                            {% if event.class_name == school_class.class_name %}
+                                selected
+                            {% endif %}
+                        >
+                            {{ school_class.class_name }}
+                        </option>
+
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="start_date">Start Date</label>
+
+                    <input
+                        type="date"
+                        id="start_date"
+                        name="start_date"
+                        value="{{ event.start_date or '' }}"
+                        class="form-control"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="end_date">End Date</label>
+
+                    <input
+                        type="date"
+                        id="end_date"
+                        name="end_date"
+                        value="{{ event.end_date or '' }}"
+                        class="form-control"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="start_time">Start Time</label>
+
+                    <input
+                        type="time"
+                        id="start_time"
+                        name="start_time"
+                        value="{{ event.start_time or '' }}"
+                        class="form-control"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="end_time">End Time</label>
+
+                    <input
+                        type="time"
+                        id="end_time"
+                        name="end_time"
+                        value="{{ event.end_time or '' }}"
+                        class="form-control"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="location">Location</label>
+
+                    <input
+                        type="text"
+                        id="location"
+                        name="location"
+                        value="{{ event.location or '' }}"
+                        class="form-control"
+                        placeholder="e.g. School Hall"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="status">Status</label>
+
+                    <select
+                        id="status"
+                        name="status"
+                        class="form-control"
+                    >
+                        <option
+                            value="Published"
+                            {% if (event.status or 'Published') == 'Published' %}
+                                selected
+                            {% endif %}
+                        >
+                            Published
+                        </option>
+
+                        <option
+                            value="Draft"
+                            {% if event.status == 'Draft' %}
+                                selected
+                            {% endif %}
+                        >
+                            Draft
+                        </option>
+                    </select>
+                </div>
+
+                <div class="form-group full">
+                    <label for="description">Description</label>
+
+                    <textarea
+                        id="description"
+                        name="description"
+                        class="form-control"
+                        placeholder="Enter event details..."
+                    >{{ event.description or '' }}</textarea>
+                </div>
+
+            </div>
+
+            <div class="form-actions">
+
+                <button
+                    type="submit"
+                    class="button save-button"
+                >
+                    Save Changes
+                </button>
+
+                <a
+                    href="{{ url_for('school_calendar') }}"
+                    class="button cancel-button"
+                >
+                    Cancel
+                </a>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+<script>
+    function toggleClassField() {
+        const audience = document.getElementById("audience").value;
+        const classField = document.getElementById("class-field");
+        const classSelect = document.getElementById("class_name");
+
+        if (audience === "Specific Class") {
+            classField.style.display = "block";
+            classSelect.required = true;
+        } else {
+            classField.style.display = "none";
+            classSelect.required = false;
+            classSelect.value = "";
+        }
+    }
+
+    toggleClassField();
+</script>
+
+{% endblock %}

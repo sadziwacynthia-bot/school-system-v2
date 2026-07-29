@@ -286,33 +286,6 @@ body {
   border-bottom: none;
 }
 
-@media (max-width: 1000px) {
-  .premium-shell {
-    flex-direction: column;
-  }
-
-  .premium-sidebar {
-    width: 100%;
-    min-width: 100%;
-    flex: none;
-    height: auto;
-    max-height: none;
-    position: relative;
-  }
-
-  .premium-main {
-    width: 100%;
-    padding: 24px;
-  }
-}
-
-  .premium-grid,
-  .hero-stats,
-  .dashboard-layout,
-  .quick-action-grid {
-    grid-template-columns: 1fr;
-  }
-
 .top-info-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -4213,4 +4186,519 @@ min-width:120px;
     .dashboard-hero-meta {
         flex-direction: column;
     }
+}
+/* =====================================================
+   EDUTRACK MOBILE RESPONSIVE LAYOUT
+===================================================== */
+
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+body.menu-open {
+  overflow: hidden;
+}
+
+.premium-shell {
+  width: 100%;
+  min-height: 100vh;
+}
+
+.premium-sidebar-header {
+  position: relative;
+}
+
+.school-logo {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  object-fit: cover;
+  border-radius: 16px;
+  background: white;
+}
+
+.nav-icon {
+  width: 23px;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.premium-topbar-left {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 14px;
+}
+
+.premium-content {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.mobile-menu-button {
+  display: none;
+  width: 45px;
+  height: 45px;
+  flex-shrink: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+  cursor: pointer;
+}
+
+.mobile-menu-button span {
+  display: block;
+  width: 100%;
+  height: 2px;
+  margin: 5px 0;
+  border-radius: 999px;
+  background: #0f172a;
+}
+
+.sidebar-close-button {
+  display: none;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 13px;
+  color: white;
+  background: rgba(255, 255, 255, 0.08);
+  font-family: inherit;
+  font-size: 27px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 998;
+  visibility: hidden;
+  background: rgba(2, 6, 23, 0.62);
+  opacity: 0;
+  backdrop-filter: blur(3px);
+  transition:
+    opacity 0.25s ease,
+    visibility 0.25s ease;
+}
+
+.sidebar-overlay.overlay-visible {
+  visibility: visible;
+  opacity: 1;
+}
+
+.table-responsive {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-responsive table {
+  margin-bottom: 0;
+}
+
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
+}
+
+@media (max-width: 1200px) {
+  .premium-main {
+    padding: 28px;
+  }
+
+  .premium-search input,
+  .premium-search-input {
+    min-width: 230px;
+  }
+
+  .premium-grid,
+  .hero-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .quick-action-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1000px) {
+  .premium-shell {
+    display: block;
+  }
+
+  .premium-sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 999;
+    width: min(86vw, 310px);
+    min-width: 0;
+    height: 100dvh;
+    padding: 20px 18px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    transform: translateX(-105%);
+    transition: transform 0.28s ease;
+    box-shadow: 24px 0 55px rgba(2, 6, 23, 0.35);
+  }
+
+  .premium-sidebar.sidebar-open {
+    transform: translateX(0);
+  }
+
+  .premium-sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .premium-logo {
+    min-width: 0;
+    margin-bottom: 25px;
+  }
+
+  .premium-logo-text {
+    min-width: 0;
+  }
+
+  .premium-logo-text strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sidebar-close-button {
+    display: grid;
+    place-items: center;
+  }
+
+  .mobile-menu-button {
+    display: block;
+  }
+
+  .premium-main {
+    width: 100%;
+    min-height: 100vh;
+    padding: 22px;
+  }
+
+  .premium-topbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: center;
+  }
+
+  .premium-topbar-left {
+    min-width: 0;
+  }
+
+  .premium-title {
+    min-width: 0;
+  }
+
+  .premium-title h1 {
+    overflow: hidden;
+    font-size: 25px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .premium-title p {
+    margin-top: 4px;
+    font-size: 13px;
+  }
+
+  .premium-search {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+    order: 3;
+  }
+
+  .premium-search input,
+  .premium-search-input {
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+  }
+
+  .premium-user {
+    max-width: 180px;
+  }
+
+  .premium-user strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .premium-grid,
+  .hero-stats,
+  .dashboard-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .quick-action-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  main form,
+  main table,
+  main .container,
+  main .card,
+  main .box {
+    max-width: 100%;
+  }
+
+  main table {
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 700px) {
+  .premium-main {
+    padding: 16px;
+  }
+
+  .premium-topbar {
+    margin-bottom: 18px;
+  }
+
+  .premium-title h1 {
+    font-size: 20px;
+  }
+
+  .premium-title p {
+    display: none;
+  }
+
+  .premium-user {
+    max-width: 125px;
+    padding: 9px 11px;
+    border-radius: 13px;
+  }
+
+  .premium-user span {
+    font-size: 10px;
+  }
+
+  .premium-user strong {
+    font-size: 12px;
+  }
+
+  .mobile-menu-button {
+    width: 41px;
+    height: 41px;
+    border-radius: 12px;
+  }
+
+  .page-header-card,
+  .hero-card,
+  .dashboard-hero,
+  .student-hero {
+    padding: 21px;
+    border-radius: 20px;
+  }
+
+  .page-header-card h1,
+  .hero-card h2 {
+    font-size: 25px;
+  }
+
+  .premium-card,
+  .premium-form-card {
+    padding: 18px;
+    border-radius: 20px;
+  }
+
+  .premium-grid,
+  .hero-stats,
+  .quick-action-grid,
+  .top-info-grid,
+  .form-grid,
+  .module-card-grid,
+  .report-summary-grid,
+  .report-category-grid,
+  .resources-summary-grid,
+  .resources-card-grid,
+  .attendance-summary-grid,
+  .student-stat-grid,
+  .student-profile-grid,
+  .student-info-grid,
+  .profile-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .module-toolbar,
+  .section-title,
+  .resources-page-header,
+  .reports-header,
+  .report-coming-next {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .module-search {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .module-actions,
+  .action-row,
+  .form-actions,
+  .resource-upload-actions,
+  .attendance-save-row,
+  .student-toolbar-actions,
+  .student-profile-actions {
+    width: 100%;
+  }
+
+  .module-actions > *,
+  .action-row > *,
+  .form-actions > *,
+  .resource-upload-actions > *,
+  .attendance-save-row > button,
+  .student-toolbar-actions > * {
+    flex: 1;
+    min-height: 44px;
+    text-align: center;
+  }
+
+  .premium-btn,
+  main button,
+  main .btn,
+  main input[type="submit"] {
+    min-height: 44px;
+    padding: 12px 15px;
+  }
+
+  main input,
+  main select,
+  main textarea {
+    min-height: 46px;
+    font-size: 16px;
+  }
+
+  .profile-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 10px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .profile-tabs a {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .table-responsive {
+    margin-right: -2px;
+    padding-bottom: 6px;
+  }
+
+  .premium-table,
+  .premium-record-table,
+  .report-table,
+  .attendance-marking-table {
+    min-width: 760px;
+  }
+
+  .record-actions-dropdown {
+    position: fixed;
+    top: auto;
+    right: 14px;
+    bottom: 14px;
+    left: 14px;
+    width: auto;
+    max-height: 70vh;
+    overflow-y: auto;
+    border-radius: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .premium-main {
+    padding: 12px;
+  }
+
+  .premium-topbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .premium-topbar-left {
+    width: 100%;
+  }
+
+  .premium-user {
+    display: none;
+  }
+
+  .premium-search {
+    grid-column: 1;
+  }
+
+  .premium-title h1 {
+    max-width: calc(100vw - 90px);
+  }
+
+  .premium-card,
+  .premium-form-card {
+    padding: 15px;
+  }
+
+  .page-header-card,
+  .hero-card,
+  .dashboard-hero,
+  .student-hero {
+    padding: 18px;
+  }
+
+  .dashboard-hero h1,
+  .student-hero-details h1 {
+    font-size: 23px;
+  }
+
+  .premium-btn,
+  main button,
+  main .btn {
+    width: 100%;
+  }
+
+  .event-actions,
+  .report-filter-actions,
+  .resources-filter-actions {
+    flex-direction: column;
+  }
+
+  .event-actions > *,
+  .report-filter-actions > *,
+  .resources-filter-actions > * {
+    width: 100%;
+  }
+}
+
+@media print {
+  .mobile-menu-button,
+  .sidebar-close-button,
+  .sidebar-overlay {
+    display: none !important;
+  }
 }

@@ -1,0 +1,335 @@
+{% extends "base_premium.html" %}
+
+{% block title %}Communication Center | EduTrack{% endblock %}
+
+{% block content %}
+
+<style>
+    .communication-page {
+        padding: 25px;
+        background: #f4f6f9;
+        min-height: 100vh;
+    }
+
+    .communication-header {
+        background: linear-gradient(135deg, #1e3a8a, #7c3aed);
+        color: white;
+        padding: 26px;
+        border-radius: 20px;
+        margin-bottom: 22px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 20px;
+        box-shadow: 0 10px 25px rgba(30, 58, 138, 0.18);
+    }
+
+    .communication-header h1 {
+        margin: 0;
+        font-size: 30px;
+    }
+
+    .communication-header p {
+        margin: 8px 0 0;
+        opacity: 0.9;
+    }
+
+    .new-button {
+        background: white;
+        color: #1e3a8a;
+        text-decoration: none;
+        padding: 12px 18px;
+        border-radius: 11px;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .announcement-grid {
+        display: grid;
+        gap: 16px;
+    }
+
+    .announcement-card {
+        background: white;
+        border-radius: 16px;
+        padding: 20px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .announcement-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 18px;
+        align-items: flex-start;
+    }
+
+    .announcement-title {
+        margin: 0;
+        color: #111827;
+        font-size: 20px;
+    }
+
+    .badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        margin: 10px 0;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 5px 9px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 800;
+        background: #eef2ff;
+        color: #3730a3;
+    }
+
+    .priority-urgent {
+        background: #fee2e2;
+        color: #b91c1c;
+    }
+
+    .priority-important {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .priority-normal {
+        background: #dbeafe;
+        color: #1d4ed8;
+    }
+
+    .status-draft {
+        background: #e5e7eb;
+        color: #4b5563;
+    }
+
+    .status-published {
+        background: #d1fae5;
+        color: #047857;
+    }
+
+    .announcement-message {
+        color: #4b5563;
+        line-height: 1.6;
+        margin: 12px 0;
+        white-space: pre-line;
+    }
+
+    .announcement-meta {
+        color: #6b7280;
+        font-size: 13px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .announcement-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 16px;
+    }
+
+    .action-button {
+        border: none;
+        border-radius: 9px;
+        padding: 9px 12px;
+        font-weight: 700;
+        cursor: pointer;
+        text-decoration: none;
+        font-size: 13px;
+    }
+
+    .edit-button {
+        background: #dbeafe;
+        color: #1d4ed8;
+    }
+
+    .status-button {
+        background: #ede9fe;
+        color: #6d28d9;
+    }
+
+    .delete-button {
+        background: #fee2e2;
+        color: #b91c1c;
+    }
+
+    .empty-box {
+        background: white;
+        border-radius: 16px;
+        padding: 35px;
+        text-align: center;
+        border: 1px solid #e5e7eb;
+        color: #6b7280;
+    }
+
+    @media (max-width: 700px) {
+        .communication-page {
+            padding: 15px;
+        }
+
+        .communication-header,
+        .announcement-top {
+            flex-direction: column;
+            align-items: stretch;
+        }
+    }
+</style>
+
+<div class="communication-page">
+
+    <div class="communication-header">
+        <div>
+            <h1>📢 Communication Center</h1>
+            <p>Create and manage school announcements.</p>
+        </div>
+
+        <a
+            href="{{ url_for('create_announcement') }}"
+            class="new-button"
+        >
+            + New Announcement
+        </a>
+    </div>
+
+    {% if announcements %}
+
+    <div class="announcement-grid">
+
+        {% for announcement in announcements %}
+
+        <div class="announcement-card">
+
+            <div class="announcement-top">
+
+                <div>
+                    <h3 class="announcement-title">
+                        {{ announcement.title }}
+                    </h3>
+
+                    <div class="badges">
+
+                        <span class="badge">
+                            {{ announcement.category or 'General' }}
+                        </span>
+
+                        <span class="badge
+                            priority-{{ (announcement.priority or 'Normal')|lower }}">
+                            {{ announcement.priority or 'Normal' }}
+                        </span>
+
+                        <span class="badge">
+                            {{ announcement.audience or 'Everyone' }}
+                        </span>
+
+                        {% if announcement.class_name %}
+                        <span class="badge">
+                            {{ announcement.class_name }}
+                        </span>
+                        {% endif %}
+
+                        <span class="badge
+                            status-{{ (announcement.status or 'Published')|lower }}">
+                            {{ announcement.status or 'Published' }}
+                        </span>
+
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="announcement-message">
+                {{ announcement.message }}
+            </div>
+
+            <div class="announcement-meta">
+
+                <span>
+                    Publish:
+                    {{ announcement.publish_date or announcement.date or '-' }}
+                </span>
+
+                <span>
+                    Expiry:
+                    {{ announcement.expiry_date or 'No expiry' }}
+                </span>
+
+            </div>
+
+            <div class="announcement-actions">
+
+                <a
+                    href="{{ url_for(
+                        'edit_announcement',
+                        announcement_id=announcement.id
+                    ) }}"
+                    class="action-button edit-button"
+                >
+                    Edit
+                </a>
+
+                <form
+                    method="POST"
+                    action="{{ url_for(
+                        'toggle_announcement_status',
+                        announcement_id=announcement.id
+                    ) }}"
+                >
+                    <button
+                        type="submit"
+                        class="action-button status-button"
+                    >
+                        {% if
+                            (announcement.status or 'Published')|lower
+                            == 'published'
+                        %}
+                            Move to Draft
+                        {% else %}
+                            Publish
+                        {% endif %}
+                    </button>
+                </form>
+
+                <form
+                    method="POST"
+                    action="{{ url_for(
+                        'delete_announcement',
+                        announcement_id=announcement.id
+                    ) }}"
+                    onsubmit="return confirm(
+                        'Delete this announcement permanently?'
+                    );"
+                >
+                    <button
+                        type="submit"
+                        class="action-button delete-button"
+                    >
+                        Delete
+                    </button>
+                </form>
+
+            </div>
+
+        </div>
+
+        {% endfor %}
+
+    </div>
+
+    {% else %}
+
+    <div class="empty-box">
+        <h3>No announcements yet</h3>
+        <p>Create the first school announcement.</p>
+    </div>
+
+    {% endif %}
+
+</div>
+
+{% endblock %}

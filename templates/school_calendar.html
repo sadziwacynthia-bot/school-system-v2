@@ -1,0 +1,392 @@
+{% extends "base_premium.html" %}
+
+{% block title %}School Calendar | EduTrack{% endblock %}
+
+{% block content %}
+
+<style>
+    .calendar-page {
+        padding: 25px;
+        min-height: 100vh;
+        background: #f4f6f9;
+    }
+
+    .calendar-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 20px;
+        padding: 26px;
+        margin-bottom: 22px;
+        border-radius: 20px;
+        color: white;
+        background: linear-gradient(135deg, #1e3a8a, #7c3aed);
+        box-shadow: 0 10px 25px rgba(30, 58, 138, 0.18);
+    }
+
+    .calendar-header h1 {
+        margin: 0;
+        font-size: 30px;
+    }
+
+    .calendar-header p {
+        margin: 8px 0 0;
+        opacity: 0.9;
+    }
+
+    .new-event-button {
+        padding: 12px 18px;
+        border-radius: 11px;
+        background: white;
+        color: #1e3a8a;
+        font-weight: 800;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+    .calendar-grid {
+        display: grid;
+        gap: 16px;
+    }
+
+    .event-card {
+        display: grid;
+        grid-template-columns: 110px 1fr;
+        gap: 20px;
+        padding: 20px;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .event-date-box {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-height: 100px;
+        padding: 12px;
+        text-align: center;
+        border-radius: 14px;
+        background: #eef2ff;
+        color: #3730a3;
+    }
+
+    .event-date-box strong {
+        font-size: 28px;
+    }
+
+    .event-date-box span {
+        margin-top: 4px;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .event-title {
+        margin: 0;
+        color: #111827;
+        font-size: 21px;
+    }
+
+    .event-description {
+        margin: 12px 0;
+        color: #4b5563;
+        line-height: 1.6;
+        white-space: pre-line;
+    }
+
+    .event-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        margin: 10px 0;
+    }
+
+    .event-badge {
+        display: inline-block;
+        padding: 5px 9px;
+        border-radius: 999px;
+        background: #eef2ff;
+        color: #3730a3;
+        font-size: 12px;
+        font-weight: 800;
+    }
+
+    .status-published {
+        background: #d1fae5;
+        color: #047857;
+    }
+
+    .status-draft {
+        background: #e5e7eb;
+        color: #4b5563;
+    }
+
+    .event-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        margin-top: 12px;
+        color: #6b7280;
+        font-size: 13px;
+    }
+
+    .event-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 17px;
+    }
+
+    .event-actions form {
+        margin: 0;
+    }
+
+    .event-action {
+        display: inline-block;
+        padding: 9px 13px;
+        border: none;
+        border-radius: 9px;
+        font: inherit;
+        font-size: 13px;
+        font-weight: 800;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .edit-event {
+        background: #dbeafe;
+        color: #1d4ed8;
+    }
+
+    .status-event {
+        background: #ede9fe;
+        color: #6d28d9;
+    }
+
+    .delete-event {
+        background: #fee2e2;
+        color: #b91c1c;
+    }
+
+    .empty-calendar {
+        padding: 40px;
+        text-align: center;
+        background: white;
+        color: #6b7280;
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+    }
+
+    @media (max-width: 700px) {
+        .calendar-page {
+            padding: 15px;
+        }
+
+        .calendar-header {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .event-card {
+            grid-template-columns: 1fr;
+        }
+
+        .event-date-box {
+            min-height: 70px;
+        }
+    }
+</style>
+
+<div class="calendar-page">
+
+    <div class="calendar-header">
+
+        <div>
+            <h1>📅 School Calendar</h1>
+
+            <p>
+                Manage important school dates, activities and events.
+            </p>
+        </div>
+
+        <a
+            href="{{ url_for('create_school_event') }}"
+            class="new-event-button"
+        >
+            + Add Event
+        </a>
+
+    </div>
+
+    {% if events %}
+
+    <div class="calendar-grid">
+
+        {% for event in events %}
+
+        <div class="event-card">
+
+            <div class="event-date-box">
+
+                <strong>
+                    {{ event.start_date[8:10] }}
+                </strong>
+
+                <span>
+                    {{ event.start_date }}
+                </span>
+
+            </div>
+
+            <div>
+
+                <h3 class="event-title">
+                    {{ event.title }}
+                </h3>
+
+                <div class="event-badges">
+
+                    <span class="event-badge">
+                        {{ event.event_type or 'General' }}
+                    </span>
+
+                    <span class="event-badge">
+                        {{ event.audience or 'Everyone' }}
+                    </span>
+
+                    {% if event.class_name %}
+
+                    <span class="event-badge">
+                        {{ event.class_name }}
+                    </span>
+
+                    {% endif %}
+
+                    <span
+                        class="event-badge status-{{ (event.status or 'Published')|lower }}"
+                    >
+                        {{ event.status or 'Published' }}
+                    </span>
+
+                </div>
+
+                {% if event.description %}
+
+                <div class="event-description">
+                    {{ event.description }}
+                </div>
+
+                {% endif %}
+
+                <div class="event-meta">
+
+                    <span>
+                        📅 {{ event.start_date }}
+
+                        {% if event.end_date %}
+                            to {{ event.end_date }}
+                        {% endif %}
+                    </span>
+
+                    {% if event.start_time %}
+
+                    <span>
+                        🕒 {{ event.start_time }}
+
+                        {% if event.end_time %}
+                            - {{ event.end_time }}
+                        {% endif %}
+                    </span>
+
+                    {% endif %}
+
+                    {% if event.location %}
+
+                    <span>
+                        📍 {{ event.location }}
+                    </span>
+
+                    {% endif %}
+
+                </div>
+
+                <div class="event-actions">
+
+                    <a
+                        href="{{ url_for(
+                            'edit_school_event',
+                            event_id=event.id
+                        ) }}"
+                        class="event-action edit-event"
+                    >
+                        ✏️ Edit
+                    </a>
+
+                    <form
+                        method="POST"
+                        action="{{ url_for(
+                            'toggle_school_event_status',
+                            event_id=event.id
+                        ) }}"
+                    >
+                        <button
+                            type="submit"
+                            class="event-action status-event"
+                        >
+                            {% if
+                                (event.status or 'Published')|lower
+                                == 'published'
+                            %}
+                                Move to Draft
+                            {% else %}
+                                Publish
+                            {% endif %}
+                        </button>
+                    </form>
+
+                    <form
+                        method="POST"
+                        action="{{ url_for(
+                            'delete_school_event',
+                            event_id=event.id
+                        ) }}"
+                        onsubmit="return confirm(
+                            'Are you sure you want to delete this event?'
+                        );"
+                    >
+                        <button
+                            type="submit"
+                            class="event-action delete-event"
+                        >
+                            🗑️ Delete
+                        </button>
+                    </form>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        {% endfor %}
+
+    </div>
+
+    {% else %}
+
+    <div class="empty-calendar">
+
+        <h3>No calendar events yet</h3>
+
+        <p>
+            Add the first school event.
+        </p>
+
+    </div>
+
+    {% endif %}
+
+</div>
+
+{% endblock %}
