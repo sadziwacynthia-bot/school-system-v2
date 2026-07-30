@@ -2830,7 +2830,6 @@ def notices():
         """, (school_id,))
 
     return render_template("notices.html", notices=notice_list)
-
 @app.route("/communications")
 @login_required
 @roles_required("super_admin", "school_admin")
@@ -2842,11 +2841,6 @@ def communications():
         FROM notices
         WHERE school_id = ?
         ORDER BY
-            CASE
-                WHEN LOWER(priority) = 'urgent' THEN 1
-                WHEN LOWER(priority) = 'important' THEN 2
-                ELSE 3
-            END,
             COALESCE(publish_date, date) DESC,
             id DESC
     """, (school_id,))
