@@ -2841,7 +2841,7 @@ def communications():
         FROM notices
         WHERE school_id = ?
         ORDER BY
-            COALESCE(publish_date, date) DESC,
+            date DESC,
             id DESC
     """, (school_id,))
 
@@ -2849,6 +2849,7 @@ def communications():
         "communications.html",
         announcements=announcements
     )
+
 @app.route("/admin/check-notices")
 @login_required
 @roles_required("super_admin")
