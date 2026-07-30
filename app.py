@@ -8355,6 +8355,60 @@ def update_database():
     </body>
     </html>
     """
+@app.route("/admin/fix-announcements")
+@login_required
+@roles_required("super_admin")
+def fix_announcements():
+    results = []
+    errors = []
+
+    try:
+        execute_commit("""
+            ALTER TABLE announcements
+            ADD COLUMN IF NOT EXISTS priority VARCHAR(20)
+            DEFAULT 'normal'
+        """)
+        results.append("priority column added or already exists")
+    except Exception as error:
+        errors.append(f"priority error: {error}")
+
+    try:
+        execute_commit("""
+            UPDATE announcements
+            SET priority = 'normal'
+            WHERE priority IS NULL
+               OR TRIM(priority) = ''
+        """)
+        results.append("existing announcement priorities updated")
+    except Exception as error:
+        errors.append(f"priority update error: {error}")
+
+    try:
+        verification = fetch_one("""
+            SELECT EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = current_schema()
+                  AND table_name = 'announcements'
+                  AND column_name = 'priority'
+            ) AS priority_exists
+        """)
+
+        results.append(
+            f"Verified priority exists: {verification['priority_exists']}"
+        )
+    except Exception as error:
+        errors.append(f"verification error: {error}")
+
+    return f"""
+        <h2>Announcement Database Repair</h2>
+
+        <h3>Completed</h3>
+        <pre>{chr(10).join(results)}</pre>
+
+        <h3>Errors</h3>
+        <pre>{chr(10).join(errors) if errors else 'No errors occurred.'}</pre>
+    """
 
 @app.route("/import_students", methods=["GET", "POST"])
 @login_required
