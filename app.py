@@ -8364,22 +8364,22 @@ def fix_announcements():
 
     try:
         execute_commit("""
-            ALTER TABLE announcements
+            ALTER TABLE notices
             ADD COLUMN IF NOT EXISTS priority VARCHAR(20)
             DEFAULT 'normal'
         """)
-        results.append("priority column added or already exists")
+        results.append("priority column added to notices or already exists")
     except Exception as error:
         errors.append(f"priority error: {error}")
 
     try:
         execute_commit("""
-            UPDATE announcements
+            UPDATE notices
             SET priority = 'normal'
             WHERE priority IS NULL
                OR TRIM(priority) = ''
         """)
-        results.append("existing announcement priorities updated")
+        results.append("existing notice priorities updated")
     except Exception as error:
         errors.append(f"priority update error: {error}")
 
@@ -8389,19 +8389,20 @@ def fix_announcements():
                 SELECT 1
                 FROM information_schema.columns
                 WHERE table_schema = current_schema()
-                  AND table_name = 'announcements'
+                  AND table_name = 'notices'
                   AND column_name = 'priority'
             ) AS priority_exists
         """)
 
         results.append(
-            f"Verified priority exists: {verification['priority_exists']}"
+            f"Verified notices.priority exists: "
+            f"{verification['priority_exists']}"
         )
     except Exception as error:
         errors.append(f"verification error: {error}")
 
     return f"""
-        <h2>Announcement Database Repair</h2>
+        <h2>Notice Database Repair</h2>
 
         <h3>Completed</h3>
         <pre>{chr(10).join(results)}</pre>
