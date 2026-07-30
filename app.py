@@ -2849,7 +2849,19 @@ def communications():
         "communications.html",
         announcements=announcements
     )
+@app.route("/admin/check-notices")
+@login_required
+@roles_required("super_admin")
+def check_notices():
 
+    columns = fetch_all("""
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_name = 'notices'
+        ORDER BY ordinal_position
+    """)
+
+    return "<br>".join([c["column_name"] for c in columns])
 
 @app.route("/communications/new", methods=["GET", "POST"])
 @login_required
