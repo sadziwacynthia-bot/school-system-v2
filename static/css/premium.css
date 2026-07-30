@@ -4703,85 +4703,112 @@ svg {
   }
 }
 /* =====================================================
-   FINAL SIDEBAR AND DESKTOP LAYOUT FIX
-   Keep this at the very bottom of premium.css
+   ABSOLUTE FINAL SIDEBAR FIX
+   MUST REMAIN AT THE BOTTOM OF premium.css
 ===================================================== */
 
-/* Desktop layout */
-@media (min-width: 1001px) {
+/* Desktop and laptop */
+@media screen and (min-width: 769px) {
+
+  html,
+  body {
+    width: 100%;
+    min-height: 100%;
+    overflow-x: hidden;
+  }
 
   .premium-shell {
-    display: block;
-    width: 100%;
-    min-height: 100vh;
+    display: block !important;
+    width: 100% !important;
+    min-height: 100vh !important;
   }
 
   .premium-sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
 
-    width: 280px;
-    min-width: 280px;
-    height: 100vh;
+    width: 280px !important;
+    min-width: 280px !important;
+    max-width: 280px !important;
+    height: 100vh !important;
 
-    padding: 26px 22px;
+    margin: 0 !important;
+    padding: 26px 22px !important;
 
-    overflow-x: hidden;
-    overflow-y: auto;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
 
-    transform: none;
-    z-index: 1000;
+    transform: translateX(0) !important;
+    z-index: 1000 !important;
   }
 
   .premium-main {
-    width: calc(100% - 280px);
-    min-width: 0;
-    min-height: 100vh;
+    display: block !important;
 
-    margin-left: 280px;
-    padding: 34px 42px;
+    width: calc(100% - 280px) !important;
+    max-width: calc(100% - 280px) !important;
+    min-width: 0 !important;
+    min-height: 100vh !important;
 
-    overflow-x: hidden;
+    margin: 0 0 0 280px !important;
+    padding: 34px 42px !important;
+
+    overflow: visible !important;
   }
 
-  .sidebar-overlay,
+  .premium-content {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .mobile-menu-button,
   .sidebar-close-button,
-  .mobile-menu-button {
+  .sidebar-overlay {
     display: none !important;
   }
 }
 
-/* Tablet and mobile layout */
-@media (max-width: 1000px) {
+/* Phones only */
+@media screen and (max-width: 768px) {
 
   .premium-shell {
-    display: block;
-    width: 100%;
+    display: block !important;
   }
 
   .premium-main {
-    width: 100%;
-    min-width: 0;
-    margin-left: 0;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    padding: 16px !important;
   }
 
   .premium-sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
 
-    width: min(86vw, 310px);
-    min-width: 0;
-    height: 100dvh;
+    width: min(86vw, 310px) !important;
+    min-width: 0 !important;
+    max-width: 310px !important;
+    height: 100dvh !important;
 
-    transform: translateX(-105%);
-    z-index: 999;
+    transform: translateX(-105%) !important;
+    z-index: 999 !important;
   }
 
   .premium-sidebar.sidebar-open {
-    transform: translateX(0);
+    transform: translateX(0) !important;
+  }
+
+  .mobile-menu-button {
+    display: block !important;
+  }
+
+  .sidebar-close-button {
+    display: grid !important;
   }
 }

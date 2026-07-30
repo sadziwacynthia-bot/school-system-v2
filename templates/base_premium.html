@@ -14,9 +14,9 @@
   </title>
 
   <link
-    rel="stylesheet"
-    href="{{ url_for('static', filename='css/premium.css') }}"
-  >
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/premium.css') }}?v=20260730-2"
+>
 
   {% block extra_css %}{% endblock %}
 </head>
@@ -495,7 +495,7 @@
 
   document.querySelectorAll(".premium-nav a").forEach(function (link) {
     link.addEventListener("click", function () {
-      if (window.innerWidth <= 1000) {
+      if (window.innerWidth <= 768) {
         closeMobileMenu();
       }
     });
@@ -508,7 +508,7 @@
   });
 
   window.addEventListener("resize", function () {
-    if (window.innerWidth > 1000) {
+    if (window.innerWidth > 768) {
       closeMobileMenu();
     }
   });
