@@ -10,7 +10,7 @@ import csv
 from io import StringIO
 from flask import Response
 import psycopg2
-from psycopg2.extras import RealDictCursor
+from psycopg2.extras import RealDictCursor, execute_values
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from io import BytesIO
@@ -26,6 +26,7 @@ from utils.db import (
     execute_commit,
     insert_and_get_id
 )
+from psycopg2.extras import execute_values
 from utils.auth import login_required, roles_required
 from utils.audit import log_audit, run_audit_migration
 from utils.helpers import (
@@ -8418,125 +8419,314 @@ def fix_announcements():
         <pre>{chr(10).join(errors) if errors else 'No errors occurred.'}</pre>
     """
 
+
+
+
 @app.route("/import_students", methods=["GET", "POST"])
 @login_required
 @roles_required("super_admin")
 def import_students():
-    school_id = session.get("school_id")
-    role = session.get("role")
+    schools = fetch_all("""
+        SELECT id, school_name
+        FROM schools
+        ORDER BY school_name
+    """)
 
-    schools = fetch_all("SELECT * FROM schools ORDER BY school_name") if role == "super_admin" else []
+    if request.method == "GET":
+        return render_template(
+            "import_students.html",
+            schools=schools
+        )
 
-    if request.method == "POST":
-        if role == "super_admin":
-            school_id = request.form.get("school_id")
+    school_id = request.form.get("school_id")
+    uploaded_file = (
+        request.files.get("student_file")
+        or request.files.get("file")
+    )
 
-        file = request.files.get("student_file")
+    if not school_id:
+        flash("Please select the school receiving the students.", "danger")
+        return redirect(url_for("import_students"))
 
-        if not school_id:
-            flash("School is required.", "danger")
+    if not uploaded_file or not uploaded_file.filename:
+        flash("Please select an Excel file.", "danger")
+        return redirect(url_for("import_students"))
+
+    try:
+        school_id = int(school_id)
+    except (TypeError, ValueError):
+        flash("The selected school is invalid.", "danger")
+        return redirect(url_for("import_students"))
+
+    conn = None
+    cursor = None
+
+    try:
+        df = pd.read_excel(uploaded_file)
+
+        # Remove accidental spaces from Excel headings.
+        df.columns = [
+            str(column).strip()
+            for column in df.columns
+        ]
+
+        required_columns = [
+            "first_name",
+            "last_name",
+            "gender",
+            "birthday",
+            "class_name",
+            "guardian1_name",
+            "guardian1_phone",
+            "guardian1_email",
+        ]
+
+        missing_columns = [
+            column
+            for column in required_columns
+            if column not in df.columns
+        ]
+
+        if missing_columns:
+            flash(
+                "Missing columns: "
+                + ", ".join(missing_columns),
+                "danger"
+            )
             return redirect(url_for("import_students"))
 
-        if not file or not file.filename:
-            flash("Please upload an Excel file.", "danger")
+        df = df.fillna("")
+
+        conn = get_db()
+        cursor = conn.cursor()
+
+        # Confirm the selected school exists.
+        cursor.execute(
+            convert_query("""
+                SELECT id, school_name
+                FROM schools
+                WHERE id = ?
+            """),
+            (school_id,)
+        )
+
+        selected_school = cursor.fetchone()
+
+        if not selected_school:
+            flash("The selected school could not be found.", "danger")
             return redirect(url_for("import_students"))
 
-        try:
-            df = pd.read_excel(file)
+        # Load registered classes once.
+        cursor.execute(
+            convert_query("""
+                SELECT class_name
+                FROM school_classes
+                WHERE school_id = ?
+                  AND class_name IS NOT NULL
+                  AND TRIM(class_name) != ''
+            """),
+            (school_id,)
+        )
 
-            required_columns = [
-                "first_name",
-                "last_name",
-                "gender",
-                "birthday",
-                "class_name",
-                "guardian1_name",
-                "guardian1_phone",
-                "guardian1_email"
-            ]
+        registered_classes = {
+            str(row["class_name"]).strip().lower():
+            str(row["class_name"]).strip()
+            for row in cursor.fetchall()
+        }
 
-            missing = [c for c in required_columns if c not in df.columns]
+        # Load existing learners once.
+        cursor.execute(
+            convert_query("""
+                SELECT
+                    LOWER(TRIM(first_name)) AS first_name,
+                    LOWER(TRIM(last_name)) AS last_name,
+                    LOWER(TRIM(class_name)) AS class_name
+                FROM students
+                WHERE school_id = ?
+            """),
+            (school_id,)
+        )
 
-            if missing:
-                flash(f"Missing columns: {', '.join(missing)}", "danger")
-                return redirect(url_for("import_students"))
+        existing_students = {
+            (
+                str(row["first_name"] or "").strip(),
+                str(row["last_name"] or "").strip(),
+                str(row["class_name"] or "").strip(),
+            )
+            for row in cursor.fetchall()
+        }
 
-            imported = 0
-            skipped = 0
+        students_to_insert = []
+        skipped_duplicates = 0
+        skipped_incomplete = 0
+        missing_classes = set()
 
-            for _, row in df.iterrows():
-                first_name = str(row.get("first_name", "")).strip()
-                last_name = str(row.get("last_name", "")).strip()
-                class_name = str(row.get("class_name", "")).strip()
+        for _, row in df.iterrows():
+            first_name = str(
+                row.get("first_name", "")
+            ).strip()
 
-                if not first_name or not last_name or not class_name:
-                    skipped += 1
-                    continue
+            last_name = str(
+                row.get("last_name", "")
+            ).strip()
 
-                student_number = generate_student_number()
-                existing = fetch_one("""
-                    SELECT id
-                    FROM students
-                    WHERE school_id = ?
-                    AND first_name = ?
-                    AND last_name = ?
-                    AND class_name = ?
-                """, (
-                    school_id,
-                    first_name,
-                    last_name,
-                     class_name
-                ))
+            gender = str(
+                row.get("gender", "")
+            ).strip() or "Unknown"
 
-                if existing:
-                    skipped += 1
-                    continue
-                execute_commit("""
-                    INSERT INTO students (
-                        school_id,
-                        student_number,
-                        first_name,
-                        last_name,
-                        gender,
-                        birthday,
-                        class_name,
-                        guardian1_name,
-                        guardian1_phone,
-                        guardian1_email,
-                        current_status
+            class_name = str(
+                row.get("class_name", "")
+            ).strip()
+
+            guardian1_name = str(
+                row.get("guardian1_name", "")
+            ).strip() or "Unknown Guardian"
+
+            guardian1_phone = str(
+                row.get("guardian1_phone", "")
+            ).strip() or "0000000000"
+
+            guardian1_email = str(
+                row.get("guardian1_email", "")
+            ).strip() or "unknown@example.com"
+
+            if not first_name or not last_name or not class_name:
+                skipped_incomplete += 1
+                continue
+
+            normalized_class = class_name.lower()
+
+            if normalized_class not in registered_classes:
+                missing_classes.add(class_name)
+                continue
+
+            # Use the spelling registered in EduTrack.
+            class_name = registered_classes[normalized_class]
+
+            birthday_value = row.get("birthday", "")
+
+            if birthday_value == "":
+                birthday = "1900-01-01"
+            else:
+                parsed_birthday = pd.to_datetime(
+                    birthday_value,
+                    errors="coerce"
+                )
+
+                if pd.isna(parsed_birthday):
+                    birthday = "1900-01-01"
+                else:
+                    birthday = parsed_birthday.strftime(
+                        "%Y-%m-%d"
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
+
+            duplicate_key = (
+                first_name.lower(),
+                last_name.lower(),
+                class_name.lower(),
+            )
+
+            if duplicate_key in existing_students:
+                skipped_duplicates += 1
+                continue
+
+            student_number = generate_student_number()
+
+            students_to_insert.append(
+                (
                     school_id,
                     student_number,
                     first_name,
                     last_name,
-                    str(row.get("gender", "")).strip(),
-                    str(row.get("birthday", "")).strip(),
+                    birthday,
+                    gender,
                     class_name,
-                    str(row.get("guardian1_name", "")).strip(),
-                    str(row.get("guardian1_phone", "")).strip(),
-                    str(row.get("guardian1_email", "")).strip(),
-                    "Active"
-                ))
-
-                imported += 1
-
-            log_audit(
-                "Bulk imported students",
-                "students",
-                None,
-                f"Imported {imported} students, skipped {skipped}"
+                    guardian1_name,
+                    guardian1_phone,
+                    guardian1_email,
+                    "Active",
+                )
             )
 
-            flash(f"Import complete. Imported: {imported}, Skipped: {skipped}", "success")
-            return redirect(url_for("students"))
+            existing_students.add(duplicate_key)
 
-        except Exception as e:
-            flash(f"Import failed: {str(e)}", "danger")
-            return redirect(url_for("import_students"))
+        if students_to_insert:
+            execute_values(
+                cursor,
+                """
+                INSERT INTO students (
+                    school_id,
+                    student_number,
+                    first_name,
+                    last_name,
+                    birthday,
+                    gender,
+                    class_name,
+                    guardian1_name,
+                    guardian1_phone,
+                    guardian1_email,
+                    current_status
+                )
+                VALUES %s
+                """,
+                students_to_insert,
+                page_size=300
+            )
 
-    return render_template("import_students.html", schools=schools)
+        conn.commit()
+
+        message = (
+            f"Student import completed. "
+            f"Imported: {len(students_to_insert)}. "
+            f"Duplicates skipped: {skipped_duplicates}. "
+            f"Incomplete rows skipped: {skipped_incomplete}."
+        )
+
+        if missing_classes:
+            message += (
+                " Students were not imported for these "
+                "unregistered classes: "
+                + ", ".join(sorted(missing_classes))
+                + ". Please register these classes first."
+            )
+
+        log_audit(
+            "Bulk imported students",
+            "students",
+            None,
+            (
+                f"School ID {school_id}: "
+                f"Imported {len(students_to_insert)}, "
+                f"duplicates {skipped_duplicates}, "
+                f"incomplete {skipped_incomplete}"
+            )
+        )
+
+        flash(message, "success")
+        return redirect(url_for("students"))
+
+    except Exception as error:
+        if conn:
+            conn.rollback()
+
+        app.logger.exception(
+            "Student import failed: %s",
+            error
+        )
+
+        flash(
+            f"Student import failed: {str(error)}",
+            "danger"
+        )
+
+        return redirect(url_for("import_students"))
+
+    finally:
+        if cursor:
+            cursor.close()
+
+        if conn:
+            conn.close()
 
 @app.route("/debug_students")
 @login_required
