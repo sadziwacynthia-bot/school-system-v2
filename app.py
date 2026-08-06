@@ -26,7 +26,6 @@ from utils.db import (
     execute_commit,
     insert_and_get_id
 )
-from psycopg2.extras import execute_values
 from utils.auth import login_required, roles_required
 from utils.audit import log_audit, run_audit_migration
 from utils.helpers import (
