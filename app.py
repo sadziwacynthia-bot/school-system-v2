@@ -2344,7 +2344,352 @@ def attendance_records():
         absent_percentage=absent_percentage,
         late_percentage=late_percentage
     )
+@app.route("/attendance/report")
+@login_required
+@roles_required("school_admin", "super_admin", "teacher")
+def attendance_report():
+    school_id = session.get("school_id")
+    role = session.get("role")
+    user_id = session.get("user_id")
 
+    selected_class = request.args.get("class_name", "").strip()
+    start_date = request.args.get("start_date", "").strip()
+    end_date = request.args.get("end_date", "").strip()
+    selected_school_id = request.args.get("school_id", "").strip()
+
+    class_options = []
+    schools = []
+    teacher = None
+
+    # -------------------------------------------------
+    # LOAD AVAILABLE CLASSES
+    # -------------------------------------------------
+
+    if role == "teacher":
+        teacher = fetch_one("""
+            SELECT *
+            FROM teachers
+            WHERE user_id = ?
+              AND school_id = ?
+            LIMIT 1
+        """, (user_id, school_id))
+
+        if teacher:
+            class_rows = fetch_all("""
+                SELECT DISTINCT class_name
+                FROM school_classes
+                WHERE school_id = ?
+                  AND class_teacher_id = ?
+                  AND class_name IS NOT NULL
+                  AND TRIM(class_name) != ''
+                ORDER BY class_name
+            """, (school_id, teacher["id"]))
+
+            class_options = [
+                row["class_name"]
+                for row in class_rows
+                if row["class_name"]
+            ]
+
+    elif role == "super_admin":
+        schools = fetch_all("""
+            SELECT id, school_name
+            FROM schools
+            ORDER BY school_name
+        """)
+
+        if selected_school_id:
+            class_rows = fetch_all("""
+                SELECT DISTINCT class_name
+                FROM school_classes
+                WHERE school_id = ?
+                  AND class_name IS NOT NULL
+                  AND TRIM(class_name) != ''
+                ORDER BY class_name
+            """, (selected_school_id,))
+
+            class_options = [
+                row["class_name"]
+                for row in class_rows
+                if row["class_name"]
+            ]
+        else:
+            class_options = []
+
+    else:
+        class_rows = fetch_all("""
+            SELECT DISTINCT class_name
+            FROM school_classes
+            WHERE school_id = ?
+              AND class_name IS NOT NULL
+              AND TRIM(class_name) != ''
+            ORDER BY class_name
+        """, (school_id,))
+
+        class_options = [
+            row["class_name"]
+            for row in class_rows
+            if row["class_name"]
+        ]
+
+    # -------------------------------------------------
+    # VALIDATE TEACHER ACCESS
+    # -------------------------------------------------
+
+    if (
+        role == "teacher"
+        and selected_class
+        and selected_class not in class_options
+    ):
+        flash(
+            "You can only generate reports for your assigned class.",
+            "danger"
+        )
+        selected_class = ""
+
+    # -------------------------------------------------
+    # DETERMINE REPORT SCHOOL
+    # -------------------------------------------------
+
+    if role == "super_admin":
+        report_school_id = (
+            int(selected_school_id)
+            if selected_school_id
+            else None
+        )
+    else:
+        report_school_id = school_id
+
+    school = None
+
+    if report_school_id:
+        school = fetch_one("""
+            SELECT *
+            FROM schools
+            WHERE id = ?
+        """, (report_school_id,))
+
+    # -------------------------------------------------
+    # REPORT DATA
+    # -------------------------------------------------
+
+    student_reports = []
+    class_summary = {
+        "total_students": 0,
+        "total_school_days": 0,
+        "total_present": 0,
+        "total_absent": 0,
+        "total_late": 0,
+        "total_excused": 0,
+        "attendance_percentage": 0
+    }
+
+    if (
+        selected_class
+        and start_date
+        and end_date
+        and report_school_id
+    ):
+        if start_date > end_date:
+            flash(
+                "The start date cannot be after the end date.",
+                "danger"
+            )
+
+            return redirect(
+                url_for(
+                    "attendance_report",
+                    school_id=selected_school_id,
+                    class_name=selected_class
+                )
+            )
+
+        students = fetch_all("""
+            SELECT
+                id,
+                student_number,
+                first_name,
+                last_name,
+                class_name,
+                gender,
+                current_status
+            FROM students
+            WHERE school_id = ?
+              AND LOWER(TRIM(class_name)) = LOWER(TRIM(?))
+              AND COALESCE(current_status, 'Active') = 'Active'
+            ORDER BY last_name, first_name
+        """, (
+            report_school_id,
+            selected_class
+        ))
+
+        attendance_rows = fetch_all("""
+            SELECT
+                student_id,
+                SUM(
+                    CASE WHEN status = 'Present'
+                    THEN 1 ELSE 0 END
+                ) AS present_count,
+                SUM(
+                    CASE WHEN status = 'Absent'
+                    THEN 1 ELSE 0 END
+                ) AS absent_count,
+                SUM(
+                    CASE WHEN status = 'Late'
+                    THEN 1 ELSE 0 END
+                ) AS late_count,
+                SUM(
+                    CASE WHEN status = 'Excused'
+                    THEN 1 ELSE 0 END
+                ) AS excused_count,
+                COUNT(*) AS marked_days
+            FROM attendance
+            WHERE school_id = ?
+              AND LOWER(TRIM(class_name)) = LOWER(TRIM(?))
+              AND date BETWEEN ? AND ?
+            GROUP BY student_id
+        """, (
+            report_school_id,
+            selected_class,
+            start_date,
+            end_date
+        ))
+
+        attendance_map = {
+            row["student_id"]: row
+            for row in attendance_rows
+        }
+
+        school_days_row = fetch_one("""
+            SELECT COUNT(DISTINCT date) AS total_days
+            FROM attendance
+            WHERE school_id = ?
+              AND LOWER(TRIM(class_name)) = LOWER(TRIM(?))
+              AND date BETWEEN ? AND ?
+        """, (
+            report_school_id,
+            selected_class,
+            start_date,
+            end_date
+        ))
+
+        total_school_days = (
+            school_days_row["total_days"]
+            if school_days_row
+            else 0
+        ) or 0
+
+        class_present = 0
+        class_absent = 0
+        class_late = 0
+        class_excused = 0
+
+        for student in students:
+            attendance_data = attendance_map.get(
+                student["id"],
+                {}
+            )
+
+            present_count = (
+                attendance_data.get("present_count", 0)
+                if attendance_data
+                else 0
+            ) or 0
+
+            absent_count = (
+                attendance_data.get("absent_count", 0)
+                if attendance_data
+                else 0
+            ) or 0
+
+            late_count = (
+                attendance_data.get("late_count", 0)
+                if attendance_data
+                else 0
+            ) or 0
+
+            excused_count = (
+                attendance_data.get("excused_count", 0)
+                if attendance_data
+                else 0
+            ) or 0
+
+            marked_days = (
+                attendance_data.get("marked_days", 0)
+                if attendance_data
+                else 0
+            ) or 0
+
+            attendance_percentage = 0
+
+            if marked_days:
+                attendance_percentage = round(
+                    (
+                        (present_count + late_count)
+                        / marked_days
+                    ) * 100,
+                    1
+                )
+
+            student_reports.append({
+                "id": student["id"],
+                "student_number": student["student_number"],
+                "first_name": student["first_name"],
+                "last_name": student["last_name"],
+                "gender": student["gender"],
+                "present_count": present_count,
+                "absent_count": absent_count,
+                "late_count": late_count,
+                "excused_count": excused_count,
+                "marked_days": marked_days,
+                "attendance_percentage": attendance_percentage
+            })
+
+            class_present += present_count
+            class_absent += absent_count
+            class_late += late_count
+            class_excused += excused_count
+
+        total_marked_records = (
+            class_present
+            + class_absent
+            + class_late
+            + class_excused
+        )
+
+        class_percentage = 0
+
+        if total_marked_records:
+            class_percentage = round(
+                (
+                    (class_present + class_late)
+                    / total_marked_records
+                ) * 100,
+                1
+            )
+
+        class_summary = {
+            "total_students": len(students),
+            "total_school_days": total_school_days,
+            "total_present": class_present,
+            "total_absent": class_absent,
+            "total_late": class_late,
+            "total_excused": class_excused,
+            "attendance_percentage": class_percentage
+        }
+
+    return render_template(
+        "attendance_report.html",
+        schools=schools,
+        school=school,
+        selected_school_id=selected_school_id,
+        class_options=class_options,
+        selected_class=selected_class,
+        start_date=start_date,
+        end_date=end_date,
+        student_reports=student_reports,
+        class_summary=class_summary
+    )
 # =========================================================
 # ASSIGNMENTS
 # =========================================================

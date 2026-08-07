@@ -1,0 +1,656 @@
+{% extends "base_premium.html" %}
+
+{% block title %}
+Attendance Report | EduTrack
+{% endblock %}
+
+{% block content %}
+
+<style>
+  .attendance-report-page {
+    width: 100%;
+  }
+
+  .report-header-layout {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .report-header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .term-report-filter {
+    display: grid;
+    grid-template-columns:
+      repeat(4, minmax(170px, 1fr))
+      auto;
+    gap: 14px;
+    align-items: end;
+  }
+
+  .term-report-filter label {
+    display: block;
+    margin-bottom: 7px;
+    color: #334155;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .term-report-filter input,
+  .term-report-filter select {
+    width: 100%;
+    min-height: 48px;
+    margin: 0;
+    padding: 12px 14px;
+    border: 1px solid #dbe2ea;
+    border-radius: 14px;
+    background: white;
+    font: inherit;
+  }
+
+  .term-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(150px, 1fr));
+    gap: 15px;
+    margin: 22px 0;
+  }
+
+  .term-summary-card {
+    padding: 18px;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    background: white;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.07);
+  }
+
+  .term-summary-card span {
+    display: block;
+    margin-bottom: 7px;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .term-summary-card strong {
+    display: block;
+    color: #0f172a;
+    font-size: 24px;
+  }
+
+  .report-document-heading {
+    display: none;
+  }
+
+  .percentage-badge {
+    display: inline-flex;
+    justify-content: center;
+    min-width: 70px;
+    padding: 7px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 900;
+  }
+
+  .percentage-good {
+    color: #166534;
+    background: #dcfce7;
+  }
+
+  .percentage-warning {
+    color: #92400e;
+    background: #fef3c7;
+  }
+
+  .percentage-danger {
+    color: #991b1b;
+    background: #fee2e2;
+  }
+
+  .signature-section {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 70px;
+    margin-top: 65px;
+  }
+
+  .signature-box {
+    padding-top: 12px;
+    border-top: 1px solid #0f172a;
+    text-align: center;
+  }
+
+  .signature-box strong {
+    display: block;
+  }
+
+  .signature-box span {
+    display: block;
+    margin-top: 5px;
+    color: #64748b;
+    font-size: 12px;
+  }
+
+  @media (max-width: 1200px) {
+    .term-summary-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .term-report-filter {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 700px) {
+    .report-header-layout {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .term-summary-grid,
+    .term-report-filter,
+    .signature-section {
+      grid-template-columns: 1fr;
+    }
+
+    .report-header-actions {
+      flex-direction: column;
+    }
+
+    .report-header-actions > * {
+      width: 100%;
+      text-align: center;
+    }
+  }
+
+  @media print {
+    @page {
+      size: A4 landscape;
+      margin: 12mm;
+    }
+
+    body {
+      background: white !important;
+      color: black !important;
+      font-family: Arial, sans-serif;
+    }
+
+    .premium-sidebar,
+    .premium-topbar,
+    .sidebar-overlay,
+    .page-header-card,
+    .report-filter-card,
+    .report-header-actions,
+    .premium-alert {
+      display: none !important;
+    }
+
+    .premium-main {
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+    .premium-content {
+      width: 100% !important;
+      padding: 0 !important;
+    }
+
+    .report-document-heading {
+      display: block;
+      margin-bottom: 18px;
+      text-align: center;
+    }
+
+    .report-document-heading h1 {
+      margin: 0 0 5px;
+      font-size: 22px;
+    }
+
+    .report-document-heading h2 {
+      margin: 4px 0;
+      font-size: 17px;
+    }
+
+    .report-document-heading p {
+      margin: 5px 0;
+      font-size: 12px;
+    }
+
+    .term-summary-grid {
+      grid-template-columns: repeat(6, 1fr);
+      gap: 7px;
+      margin: 12px 0;
+    }
+
+    .term-summary-card {
+      padding: 9px;
+      border: 1px solid #999;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    .term-summary-card span {
+      color: #333;
+      font-size: 9px;
+    }
+
+    .term-summary-card strong {
+      font-size: 15px;
+    }
+
+    .premium-card {
+      padding: 0 !important;
+      border: none !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      background: white !important;
+    }
+
+    .section-title {
+      margin-bottom: 10px;
+    }
+
+    .section-title h2 {
+      font-size: 16px;
+    }
+
+    .section-description {
+      font-size: 10px;
+    }
+
+    .table-responsive {
+      overflow: visible !important;
+    }
+
+    .premium-table {
+      min-width: 0 !important;
+      width: 100% !important;
+      border-collapse: collapse !important;
+      font-size: 10px;
+    }
+
+    .premium-table th,
+    .premium-table td {
+      padding: 6px !important;
+      border: 1px solid #555 !important;
+      color: black !important;
+      background: white !important;
+    }
+
+    .premium-table th {
+      font-weight: bold;
+    }
+
+    .percentage-badge {
+      padding: 0;
+      color: black !important;
+      background: transparent !important;
+    }
+
+    .signature-section {
+      display: grid !important;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 80px;
+      margin-top: 55px;
+      break-inside: avoid;
+    }
+
+    .signature-box span {
+      color: #333;
+    }
+  }
+</style>
+
+<div class="attendance-report-page">
+
+  <div class="page-header-card report-header-layout">
+
+    <div>
+      <span class="page-eyebrow">
+        TERM ATTENDANCE REPORT
+      </span>
+
+      <h1>Attendance Reporting Centre</h1>
+
+      <p>
+        Generate class attendance statistics and printable learner summaries.
+      </p>
+    </div>
+
+    <div class="report-header-actions">
+
+      <a
+        href="{{ url_for('attendance') }}"
+        class="premium-btn premium-btn-light"
+      >
+        Daily Register
+      </a>
+
+      {% if student_reports %}
+      <button
+        type="button"
+        class="premium-btn premium-btn-light"
+        onclick="window.print()"
+      >
+        🖨 Print Report
+      </button>
+      {% endif %}
+
+    </div>
+
+  </div>
+
+
+  <div class="premium-card report-filter-card">
+
+    <form
+      method="GET"
+      action="{{ url_for('attendance_report') }}"
+      class="term-report-filter"
+    >
+
+      {% if session.get("role") == "super_admin" %}
+
+      <div>
+        <label for="school_id">
+          School
+        </label>
+
+        <select
+          id="school_id"
+          name="school_id"
+          onchange="this.form.submit()"
+          required
+        >
+          <option value="">
+            Select school
+          </option>
+
+          {% for school_item in schools %}
+          <option
+            value="{{ school_item.id }}"
+            {% if selected_school_id|string == school_item.id|string %}
+              selected
+            {% endif %}
+          >
+            {{ school_item.school_name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      {% endif %}
+
+      <div>
+        <label for="class_name">
+          Class
+        </label>
+
+        <select
+          id="class_name"
+          name="class_name"
+          required
+        >
+          <option value="">
+            Select class
+          </option>
+
+          {% for class_name in class_options %}
+          <option
+            value="{{ class_name }}"
+            {% if selected_class == class_name %}
+              selected
+            {% endif %}
+          >
+            {{ class_name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label for="start_date">
+          Start Date
+        </label>
+
+        <input
+          type="date"
+          id="start_date"
+          name="start_date"
+          value="{{ start_date }}"
+          required
+        >
+      </div>
+
+      <div>
+        <label for="end_date">
+          End Date
+        </label>
+
+        <input
+          type="date"
+          id="end_date"
+          name="end_date"
+          value="{{ end_date }}"
+          required
+        >
+      </div>
+
+      <button
+        type="submit"
+        class="premium-btn"
+      >
+        Generate Report
+      </button>
+
+    </form>
+
+  </div>
+
+
+  {% if selected_class and start_date and end_date %}
+
+  <div class="report-document-heading">
+
+    <h1>
+      {{ school.school_name if school else "EduTrack School" }}
+    </h1>
+
+    <h2>
+      End-of-Term Attendance Report
+    </h2>
+
+    <p>
+      Class: <strong>{{ selected_class }}</strong>
+      &nbsp; | &nbsp;
+      Period:
+      <strong>{{ start_date }} to {{ end_date }}</strong>
+    </p>
+
+  </div>
+
+
+  <div class="term-summary-grid">
+
+    <div class="term-summary-card">
+      <span>Students</span>
+      <strong>{{ class_summary.total_students }}</strong>
+    </div>
+
+    <div class="term-summary-card">
+      <span>School Days</span>
+      <strong>{{ class_summary.total_school_days }}</strong>
+    </div>
+
+    <div class="term-summary-card">
+      <span>Present</span>
+      <strong>{{ class_summary.total_present }}</strong>
+    </div>
+
+    <div class="term-summary-card">
+      <span>Absent</span>
+      <strong>{{ class_summary.total_absent }}</strong>
+    </div>
+
+    <div class="term-summary-card">
+      <span>Late</span>
+      <strong>{{ class_summary.total_late }}</strong>
+    </div>
+
+    <div class="term-summary-card">
+      <span>Attendance Rate</span>
+      <strong>{{ class_summary.attendance_percentage }}%</strong>
+    </div>
+
+  </div>
+
+
+  <div class="premium-card">
+
+    <div class="section-title">
+
+      <div>
+        <h2>
+          {{ selected_class }} Learner Attendance
+        </h2>
+
+        <p class="section-description">
+          Attendance summary from {{ start_date }} to {{ end_date }}.
+        </p>
+      </div>
+
+      <button
+        type="button"
+        class="premium-btn premium-btn-light"
+        onclick="window.print()"
+      >
+        🖨 Print
+      </button>
+
+    </div>
+
+    {% if student_reports %}
+
+    <div class="table-responsive">
+
+      <table class="premium-table">
+
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Student Number</th>
+            <th>Student Name</th>
+            <th>Present</th>
+            <th>Absent</th>
+            <th>Late</th>
+            <th>Excused</th>
+            <th>Days Marked</th>
+            <th>Attendance</th>
+          </tr>
+        </thead>
+
+        <tbody>
+
+          {% for student in student_reports %}
+
+          <tr>
+            <td>{{ loop.index }}</td>
+
+            <td>
+              {{ student.student_number or "-" }}
+            </td>
+
+            <td>
+              <strong>
+                {{ student.first_name }}
+                {{ student.last_name }}
+              </strong>
+            </td>
+
+            <td>{{ student.present_count }}</td>
+            <td>{{ student.absent_count }}</td>
+            <td>{{ student.late_count }}</td>
+            <td>{{ student.excused_count }}</td>
+            <td>{{ student.marked_days }}</td>
+
+            <td>
+              {% if student.attendance_percentage >= 90 %}
+                {% set percentage_class = "percentage-good" %}
+              {% elif student.attendance_percentage >= 75 %}
+                {% set percentage_class = "percentage-warning" %}
+              {% else %}
+                {% set percentage_class = "percentage-danger" %}
+              {% endif %}
+
+              <span
+                class="percentage-badge {{ percentage_class }}"
+              >
+                {{ student.attendance_percentage }}%
+              </span>
+            </td>
+          </tr>
+
+          {% endfor %}
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+
+    <div class="signature-section">
+
+      <div class="signature-box">
+        <strong>Class Teacher Signature</strong>
+        <span>Name, signature and date</span>
+      </div>
+
+      <div class="signature-box">
+        <strong>Head / Administrator Signature</strong>
+        <span>Name, signature and date</span>
+      </div>
+
+    </div>
+
+    {% else %}
+
+    <div class="empty-box">
+      <h3>No attendance records found</h3>
+
+      <p>
+        No records were found for the selected class and date range.
+      </p>
+    </div>
+
+    {% endif %}
+
+  </div>
+
+  {% else %}
+
+  <div class="premium-card">
+
+    <div class="empty-box">
+      <div class="report-empty-icon">📊</div>
+
+      <h3>Generate an attendance report</h3>
+
+      <p>
+        Select a class and date range to calculate attendance statistics.
+      </p>
+    </div>
+
+  </div>
+
+  {% endif %}
+
+</div>
+
+{% endblock %}
