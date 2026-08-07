@@ -1,404 +1,519 @@
 {% extends "base_premium.html" %}
+
+{% block title %}
+{{ class_name }} Students | EduTrack
+{% endblock %}
+
 {% block content %}
 
-<div class="class-dashboard">
+<style>
+  .class-students-page {
+    width: 100%;
+  }
 
-  <div class="page-header">
+  .class-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .class-header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .class-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 22px;
+  }
+
+  .class-summary-card {
+    padding: 20px;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    background: #ffffff;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.07);
+  }
+
+  .class-summary-card span {
+    display: block;
+    margin-bottom: 7px;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .class-summary-card strong {
+    display: block;
+    color: #0f172a;
+    font-size: 22px;
+  }
+
+  .student-name-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .student-avatar-small {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    border-radius: 13px;
+    background: #dbeafe;
+    color: #1d4ed8;
+    font-weight: 900;
+  }
+
+  .student-name-cell strong,
+  .student-name-cell span {
+    display: block;
+  }
+
+  .student-name-cell span {
+    margin-top: 3px;
+    color: #64748b;
+    font-size: 11px;
+  }
+
+  .class-section {
+    margin-bottom: 22px;
+  }
+
+  .class-section:last-child {
+    margin-bottom: 0;
+  }
+
+  .section-subtitle {
+    margin: 6px 0 0;
+    color: #64748b;
+  }
+
+  .class-teacher-box {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(220px, 1fr));
+    gap: 16px;
+  }
+
+  .class-info-item {
+    padding: 15px;
+    border-radius: 15px;
+    background: #f8fafc;
+  }
+
+  .class-info-item span {
+    display: block;
+    margin-bottom: 6px;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .class-info-item strong {
+    color: #0f172a;
+  }
+
+  .attendance-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 7px 11px;
+    border-radius: 999px;
+    background: #dcfce7;
+    color: #166534;
+    font-size: 12px;
+    font-weight: 900;
+  }
+
+  @media (max-width: 900px) {
+    .class-summary-grid {
+      grid-template-columns: repeat(2, minmax(160px, 1fr));
+    }
+
+    .class-teacher-box {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 700px) {
+    .class-header {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .class-header-actions {
+      flex-direction: column;
+    }
+
+    .class-header-actions a {
+      width: 100%;
+      text-align: center;
+    }
+
+    .class-summary-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<div class="class-students-page">
+
+  <div class="page-header-card class-header">
+
     <div>
-      <p class="eyebrow">Class Dashboard</p>
-      <h1>{{ class_name }}</h1>
-      <p class="muted">Students, attendance, fees, results, and timetable in one place.</p>
+      <span
+        style="
+          display:block;
+          margin-bottom:8px;
+          color:#bfdbfe;
+          font-size:12px;
+          font-weight:900;
+          letter-spacing:.14em;
+        "
+      >
+        CLASS OVERVIEW
+      </span>
+
+      <h1>
+        {{ class_name }}
+      </h1>
+
+      <p>
+        View students, class information, attendance and timetable details.
+      </p>
     </div>
 
-    <div class="header-actions">
-      <a href="{{ url_for('add_student') }}" class="btn primary">+ Add Student</a>
-      <a href="{{ url_for('attendance', class_name=class_name) }}" class="btn">Take Attendance</a>
-      <a href="{{ url_for('add_fee', class_name=class_name) }}" class="btn">Add Fees</a>
-      <a href="{{ url_for('enter_result') }}" class="btn">Enter Results</a>
-      <a href="{{ url_for('print_class_list', class_name=class_name) }}" class="btn print">Print Class</a>
+    <div class="class-header-actions">
+
+      <a
+        href="{{ url_for('classes') }}"
+        class="premium-btn premium-btn-light"
+      >
+        ← Back to Classes
+      </a>
+
+      <a
+        href="{{ url_for('attendance') }}?class_name={{ class_name|urlencode }}"
+        class="premium-btn premium-btn-light"
+      >
+        📋 Open Attendance
+      </a>
+
     </div>
+
   </div>
 
-  <div class="stats-grid">
-    <div class="stat-card">
+  <div class="class-summary-grid">
+
+    <div class="class-summary-card">
       <span>Total Students</span>
-      <h2>{{ total_students }}</h2>
+      <strong>{{ students|length }}</strong>
     </div>
 
-    <div class="stat-card success">
-      <span>Active</span>
-      <h2>{{ active_students }}</h2>
+    <div class="class-summary-card">
+      <span>Class Teacher</span>
+      <strong>
+        {{ class_teacher_name
+           or teacher_name
+           or assigned_teacher
+           or '-' }}
+      </strong>
     </div>
 
-    <div class="stat-card warning">
-      <span>Inactive</span>
-      <h2>{{ inactive_students }}</h2>
+    <div class="class-summary-card">
+      <span>Subjects</span>
+      <strong>{{ subjects|length if subjects else 0 }}</strong>
     </div>
 
-    <div class="stat-card">
-      <span>Attendance Records</span>
-      <h2>{{ attendance_summary.total_records or 0 }}</h2>
+    <div class="class-summary-card">
+      <span>Timetable Entries</span>
+      <strong>{{ timetable_rows|length if timetable_rows else 0 }}</strong>
     </div>
 
-    <div class="stat-card">
-      <span>Average Mark</span>
-      <h2>{{ "%.1f"|format(results_summary.average_marks or 0) }}%</h2>
-    </div>
-
-    <div class="stat-card">
-      <span>Total Results</span>
-      <h2>{{ results_summary.total_results or 0 }}</h2>
-    </div>
   </div>
 
-  <div class="dashboard-section">
+  <div class="premium-card class-section">
+
     <div class="section-title">
-      <h2>Students</h2>
-      <p>{{ total_students }} students in {{ class_name }}</p>
+      <div>
+        <h2>Class Information</h2>
+
+        <p class="section-subtitle">
+          Basic information for {{ class_name }}.
+        </p>
+      </div>
     </div>
 
-    <div class="table-card">
-      <table>
+    <div class="class-teacher-box">
+
+      <div class="class-info-item">
+        <span>Class Name</span>
+        <strong>{{ class_name }}</strong>
+      </div>
+
+      <div class="class-info-item">
+        <span>Class Teacher</span>
+        <strong>
+          {{ class_teacher_name
+             or teacher_name
+             or assigned_teacher
+             or '-' }}
+        </strong>
+      </div>
+
+      <div class="class-info-item">
+        <span>Number of Students</span>
+        <strong>{{ students|length }}</strong>
+      </div>
+
+      <div class="class-info-item">
+        <span>Attendance Access</span>
+        <strong class="attendance-badge">
+          Available
+        </strong>
+      </div>
+
+    </div>
+
+  </div>
+
+  <div class="premium-card class-section">
+
+    <div class="section-title">
+      <div>
+        <h2>Students in {{ class_name }}</h2>
+
+        <p class="section-subtitle">
+          Open a student profile to view their complete school record.
+        </p>
+      </div>
+    </div>
+
+    {% if students %}
+
+    <div class="table-responsive">
+
+      <table class="premium-table">
+
         <thead>
           <tr>
-            <th>Student No.</th>
-            <th>Name</th>
+            <th>Student</th>
+            <th>Student Number</th>
             <th>Gender</th>
             <th>Status</th>
-            <th>Guardian</th>
-            <th>Phone</th>
-            <th>Actions</th>
+            <th>Profile</th>
           </tr>
         </thead>
+
         <tbody>
-          {% for s in students %}
+
+          {% for student in students %}
+
           <tr>
-            <td>{{ s.student_number }}</td>
-            <td><strong>{{ s.first_name }} {{ s.last_name }}</strong></td>
-            <td>{{ s.gender or "-" }}</td>
+
             <td>
-              {% if (s.current_status or "Active") == "Active" %}
-                <span class="badge active">Active</span>
-              {% else %}
-                <span class="badge inactive">{{ s.current_status }}</span>
-              {% endif %}
+              <div class="student-name-cell">
+
+                <div class="student-avatar-small">
+                  {{ student.first_name[0]|upper
+                     if student.first_name
+                     else 'S' }}
+                </div>
+
+                <div>
+                  <strong>
+                    {{ student.first_name or '' }}
+                    {{ student.last_name or '' }}
+                  </strong>
+
+                  <span>
+                    {{ student.class_name or class_name }}
+                  </span>
+                </div>
+
+              </div>
             </td>
-            <td>{{ s.guardian1_name or "-" }}</td>
-            <td>{{ s.guardian1_phone or "-" }}</td>
-            <td class="actions">
-              <a href="{{ url_for('student_profile', id=s.id) }}">View</a>
-              <a href="{{ url_for('edit_student', id=s.id) }}">Edit</a>
+
+            <td>
+              {{ student.student_number or '-' }}
             </td>
+
+            <td>
+              {{ student.gender or '-' }}
+            </td>
+
+            <td>
+              <span class="badge badge-success">
+                {{ student.current_status or 'Active' }}
+              </span>
+            </td>
+
+            <td>
+              <a
+                href="{{ url_for(
+  'student_profile',
+  id=student.id
+) }}"
+                class="premium-btn premium-btn-light"
+              >
+                Open Profile
+              </a>
+            </td>
+
           </tr>
-          {% else %}
-          <tr>
-            <td colspan="7" class="empty">No students found in this class.</td>
-          </tr>
+
           {% endfor %}
+
         </tbody>
+
       </table>
-    </div>
-  </div>
 
-  <div class="two-column">
-    <div class="dashboard-section">
-      <div class="section-title">
-        <h2>Attendance Summary</h2>
-      </div>
-
-      <div class="mini-cards">
-        <div>
-          <span>Present</span>
-          <strong>{{ attendance_summary.present_count or 0 }}</strong>
-        </div>
-        <div>
-          <span>Absent</span>
-          <strong>{{ attendance_summary.absent_count or 0 }}</strong>
-        </div>
-      </div>
     </div>
+
+    {% else %}
+
+    <div class="empty-box">
+      <h3>No students assigned</h3>
+
+      <p>
+        No students are currently assigned to {{ class_name }}.
+      </p>
+    </div>
+
+    {% endif %}
 
   </div>
 
-  <div class="dashboard-section">
+  {% if subjects %}
+
+  <div class="premium-card class-section">
+
     <div class="section-title">
-      <h2>Timetable</h2>
-      <p>Scheduled lessons for {{ class_name }}</p>
+      <div>
+        <h2>Subjects</h2>
+
+        <p class="section-subtitle">
+          Subjects connected to this class.
+        </p>
+      </div>
     </div>
 
-    <div class="table-card">
-      <table>
+    <div class="table-responsive">
+
+      <table class="premium-table">
+
+        <thead>
+          <tr>
+            <th>Subject</th>
+            <th>Teacher</th>
+          </tr>
+        </thead>
+
+        <tbody>
+
+          {% for subject in subjects %}
+
+          <tr>
+            <td>
+              {{ subject.subject_name
+                 or subject.name
+                 or subject.subject
+                 or '-' }}
+            </td>
+
+            <td>
+              {{ subject.teacher_name
+                 or subject.full_name
+                 or '-' }}
+            </td>
+          </tr>
+
+          {% endfor %}
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  </div>
+
+  {% endif %}
+
+  {% if timetable_rows %}
+
+  <div class="premium-card class-section">
+
+    <div class="section-title">
+      <div>
+        <h2>Class Timetable</h2>
+
+        <p class="section-subtitle">
+          Current timetable entries for {{ class_name }}.
+        </p>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+
+      <table class="premium-table">
+
         <thead>
           <tr>
             <th>Day</th>
             <th>Time</th>
             <th>Subject</th>
             <th>Teacher</th>
-            <th>Room</th>
           </tr>
         </thead>
+
         <tbody>
-          {% for t in timetable_rows %}
+
+          {% for row in timetable_rows %}
+
           <tr>
-            <td>{{ t.day_of_week }}</td>
-            <td>{{ t.start_time }} - {{ t.end_time }}</td>
-            <td><strong>{{ t.subject }}</strong></td>
-            <td>{{ t.full_name or "Not assigned" }}</td>
-            <td>{{ t.room or "-" }}</td>
+            <td>
+              {{ row.day or row.day_name or '-' }}
+            </td>
+
+            <td>
+              {{ row.start_time or row.time or '-' }}
+
+              {% if row.end_time %}
+                - {{ row.end_time }}
+              {% endif %}
+            </td>
+
+            <td>
+              {{ row.subject_name
+                 or row.subject
+                 or '-' }}
+            </td>
+
+            <td>
+              {{ row.teacher_name
+                 or row.full_name
+                 or '-' }}
+            </td>
           </tr>
-          {% else %}
-          <tr>
-            <td colspan="5" class="empty">No timetable added for this class yet.</td>
-          </tr>
+
           {% endfor %}
+
         </tbody>
+
       </table>
+
     </div>
+
   </div>
 
+  {% endif %}
+
 </div>
-
-<style>
-.class-dashboard {
-  padding: 24px;
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 20px;
-  align-items: flex-start;
-  margin-bottom: 24px;
-}
-
-.eyebrow {
-  text-transform: uppercase;
-  font-size: 12px;
-  letter-spacing: 1px;
-  color: #2563eb;
-  font-weight: 700;
-}
-
-.page-header h1 {
-  margin: 4px 0;
-  font-size: 34px;
-  color: #0f172a;
-}
-
-.muted {
-  color: #64748b;
-  margin: 0;
-}
-
-.header-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: flex-end;
-}
-
-.btn {
-  text-decoration: none;
-  background: #ffffff;
-  border: 1px solid #dbe3ef;
-  color: #0f172a;
-  padding: 10px 14px;
-  border-radius: 12px;
-  font-weight: 700;
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
-}
-
-.btn.primary {
-  background: #2563eb;
-  color: white;
-  border-color: #2563eb;
-}
-
-.btn.print {
-  background: #0f172a;
-  color: white;
-  border-color: #0f172a;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(160px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.stat-card {
-  background: white;
-  border-radius: 20px;
-  padding: 20px;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
-}
-
-.stat-card span {
-  font-size: 13px;
-  color: #64748b;
-  font-weight: 700;
-}
-
-.stat-card h2 {
-  margin: 8px 0 0;
-  font-size: 28px;
-  color: #0f172a;
-}
-
-.stat-card.success h2 {
-  color: #16a34a;
-}
-
-.stat-card.warning h2 {
-  color: #d97706;
-}
-
-.stat-card.danger h2 {
-  color: #dc2626;
-}
-
-.stat-card.money h2 {
-  color: #059669;
-}
-
-.dashboard-section {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 24px;
-  padding: 18px;
-  margin-bottom: 24px;
-}
-
-.section-title {
-  margin-bottom: 14px;
-}
-
-.section-title h2 {
-  margin: 0;
-  color: #0f172a;
-}
-
-.section-title p {
-  margin: 4px 0 0;
-  color: #64748b;
-}
-
-.table-card {
-  overflow-x: auto;
-  background: white;
-  border-radius: 18px;
-  border: 1px solid #e5e7eb;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th {
-  background: #f1f5f9;
-  color: #334155;
-  text-align: left;
-  padding: 14px;
-  font-size: 13px;
-}
-
-td {
-  padding: 14px;
-  border-top: 1px solid #e5e7eb;
-  color: #334155;
-}
-
-.badge {
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.badge.active {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.badge.inactive {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.actions a {
-  margin-right: 10px;
-  color: #2563eb;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.empty {
-  text-align: center;
-  color: #64748b;
-  padding: 24px;
-}
-
-.two-column {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px;
-}
-
-.mini-cards {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-}
-
-.mini-cards div {
-  background: white;
-  border-radius: 18px;
-  padding: 18px;
-  border: 1px solid #e5e7eb;
-}
-
-.mini-cards span {
-  display: block;
-  color: #64748b;
-  font-weight: 700;
-  margin-bottom: 8px;
-}
-
-.mini-cards strong {
-  font-size: 24px;
-  color: #0f172a;
-}
-
-@media (max-width: 900px) {
-  .page-header,
-  .two-column {
-    grid-template-columns: 1fr;
-    display: block;
-  }
-
-  .header-actions {
-    justify-content: flex-start;
-    margin-top: 16px;
-  }
-
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 600px) {
-  .stats-grid,
-  .mini-cards {
-    grid-template-columns: 1fr;
-  }
-
-  .class-dashboard {
-    padding: 12px;
-  }
-}
-</style>
 
 {% endblock %}

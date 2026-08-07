@@ -1,71 +1,328 @@
 {% extends "base_premium.html" %}
-{% block title %}Classes{% endblock %}
+
+{% block title %}Classes | EduTrack{% endblock %}
 
 {% block content %}
 
-<div class="page-header-card">
-  <h1>Classes</h1>
-  <p>Manage grades, streams, class teachers, and student allocations.</p>
-</div>
+<style>
+  .classes-page {
+    width: 100%;
+  }
 
-<div class="premium-card">
+  .classes-filter-card {
+    margin-bottom: 22px;
+  }
 
-  <div class="section-title">
-    <h2>Class Management</h2>
+  .classes-filter-form {
+    display: grid;
+    grid-template-columns: minmax(240px, 1fr) auto;
+    gap: 14px;
+    align-items: end;
+  }
 
-    <div class="action-row">
-      <a href="{{ url_for('add_class') }}" class="premium-btn">➕ Add Class</a>
-      <a href="{{ url_for('assign_class_teacher') }}" class="premium-btn premium-btn-light">👨‍🏫 Assign Class Teacher</a>
-      <a href="{{ url_for('students') }}" class="premium-btn premium-btn-light">👨‍🎓 View All Students</a>
-    </div>
+  .classes-filter-form label {
+    display: block;
+    margin-bottom: 7px;
+    color: #334155;
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  .classes-filter-form select {
+    width: 100%;
+    min-height: 48px;
+    margin: 0;
+    padding: 12px 14px;
+    border: 1px solid #dbe2ea;
+    border-radius: 14px;
+    background: #ffffff;
+    font: inherit;
+  }
+
+  .class-name-link {
+    color: #0f172a;
+    font-weight: 900;
+    text-decoration: none;
+  }
+
+  .class-name-link:hover {
+    color: #2563eb;
+    text-decoration: underline;
+  }
+
+  .student-count-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 7px 11px;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 12px;
+    font-weight: 900;
+    text-decoration: none;
+  }
+
+  .class-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .class-actions form {
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .class-delete-button {
+    border: none;
+    border-radius: 12px;
+    padding: 10px 14px;
+    background: #fee2e2;
+    color: #b91c1c;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  @media (max-width: 700px) {
+    .classes-filter-form {
+      grid-template-columns: 1fr;
+    }
+
+    .class-actions {
+      flex-direction: column;
+    }
+
+    .class-actions > *,
+    .class-actions form,
+    .class-actions button {
+      width: 100%;
+    }
+  }
+</style>
+
+<div class="classes-page">
+
+  <div class="page-header-card">
+    <h1>Classes</h1>
+
+    <p>
+      Manage classes, student allocations, and assigned class teachers.
+    </p>
   </div>
 
-  {% if classes %}
-  <table class="premium-table">
-    <thead>
-      <tr>
-        <th>Class</th>
-        <th>Class Teacher</th>
-        <th>Students</th>
-        <th>Open</th>
-      </tr>
-    </thead>
+  {% if session.get("role") == "super_admin" %}
 
-    <tbody>
-      {% for cls in classes %}
-      <tr>
-        <td>
-          <strong>{{ cls.class_name or cls.name or cls[1] or 'Class' }}</strong>
-        </td>
+  <div class="premium-card classes-filter-card">
 
-        <td>
-  {{ cls.class_teacher_name
-     or cls.teacher_name
-     or cls.assigned_teacher
-     or cls.teacher_full_name
-     or cls.full_name
-     or cls.class_teacher
-     or '-' }}
-</td>
+    <form
+      method="GET"
+      action="{{ url_for('classes') }}"
+      class="classes-filter-form"
+    >
 
-        <td>
-          <a href="{{ url_for('students') }}?class_id={{ cls.id or cls[0] }}" class="table-link">
-            {{ cls.student_count or cls.total_students or 0 }} students
-          </a>
-        </td>
+      <div>
+        <label for="school_id">
+          Select School
+        </label>
 
-        <td>
-          <a href="{{ url_for('students') }}?class_id={{ cls.id or cls[0] }}" class="premium-btn premium-btn-light">
-            View Students
-          </a>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  <div class="empty-box">No classes found yet.</div>
+        <select
+          id="school_id"
+          name="school_id"
+        >
+          <option value="">
+            All Schools
+          </option>
+
+          {% for school in schools %}
+
+          <option
+            value="{{ school.id }}"
+            {% if selected_school|string == school.id|string %}
+              selected
+            {% endif %}
+          >
+            {{ school.school_name }}
+          </option>
+
+          {% endfor %}
+        </select>
+      </div>
+
+      <button
+        type="submit"
+        class="premium-btn"
+      >
+        Filter Classes
+      </button>
+
+    </form>
+
+  </div>
+
   {% endif %}
+
+  <div class="premium-card">
+
+    <div class="section-title">
+
+      <div>
+        <h2>Class Management</h2>
+
+        <p style="margin:6px 0 0;color:#64748b;">
+          Click a class name or student count to open its learner list.
+        </p>
+      </div>
+
+      <div class="action-row">
+
+        <a
+          href="{{ url_for('add_class') }}"
+          class="premium-btn"
+        >
+          ➕ Add Class
+        </a>
+
+        <a
+          href="{{ url_for('assign_class_teacher') }}"
+          class="premium-btn premium-btn-light"
+        >
+          👨‍🏫 Assign Class Teacher
+        </a>
+
+      </div>
+
+    </div>
+
+    {% if classes %}
+
+    <div class="table-responsive">
+
+      <table class="premium-table">
+
+        <thead>
+          <tr>
+            <th>Class</th>
+
+            {% if session.get("role") == "super_admin" %}
+            <th>School</th>
+            {% endif %}
+
+            <th>Class Teacher</th>
+            <th>Students</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+
+        <tbody>
+
+          {% for cls in classes %}
+
+          <tr>
+
+            <td>
+              <a
+                href="{{ url_for(
+                  'class_students',
+                  class_name=cls.class_name
+                ) }}"
+                class="class-name-link"
+              >
+                {{ cls.class_name or 'Class' }}
+              </a>
+            </td>
+
+            {% if session.get("role") == "super_admin" %}
+
+            <td>
+              {{ cls.school_name or '-' }}
+            </td>
+
+            {% endif %}
+
+            <td>
+              {{ cls.class_teacher_name
+                 or cls.teacher_name
+                 or cls.assigned_teacher
+                 or cls.teacher_full_name
+                 or cls.full_name
+                 or cls.class_teacher
+                 or '-' }}
+            </td>
+
+            <td>
+              <a
+                href="{{ url_for(
+                  'class_students',
+                  class_name=cls.class_name
+                ) }}"
+                class="student-count-badge"
+              >
+                {{ cls.total_students or 0 }} students
+              </a>
+            </td>
+
+            <td>
+
+              <div class="class-actions">
+
+                <a
+                  href="{{ url_for(
+                    'class_students',
+                    class_name=cls.class_name
+                  ) }}"
+                  class="premium-btn premium-btn-light"
+                >
+                  View Students
+                </a>
+
+                {% if session.get("role") == "super_admin" %}
+
+                <form
+                  method="POST"
+                  action="{{ url_for(
+                    'delete_class',
+                    class_id=cls.id
+                  ) }}"
+                  onsubmit="return confirm(
+                    'Delete this class? This is only allowed when no students are assigned.'
+                  );"
+                >
+                  <button
+                    type="submit"
+                    class="class-delete-button"
+                  >
+                    🗑️ Delete
+                  </button>
+                </form>
+
+                {% endif %}
+
+              </div>
+
+            </td>
+
+          </tr>
+
+          {% endfor %}
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+    {% else %}
+
+    <div class="empty-box">
+      No classes found yet.
+    </div>
+
+    {% endif %}
+
+  </div>
 
 </div>
 
