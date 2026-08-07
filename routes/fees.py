@@ -1,5 +1,6 @@
 from flask import render_template, request, redirect, url_for, flash, session
 from datetime import datetime
+import uuid
 import urllib.parse
 import pandas as pd
 
@@ -16,8 +17,26 @@ from utils.auth import login_required, roles_required
 from utils.audit import log_audit
 from utils.helpers import CLASS_OPTIONS, row_get
 
+def generate_transaction_reference(prefix):
+    now = datetime.now()
+    short_id = uuid.uuid4().hex[:8].upper()
 
-def cashbook_insert_income(cursor, school_id, payment_date, amount_paid, receipt_number, student_name, term_name, created_by):
+    return (
+        f"{prefix}-"
+        f"{now.strftime('%Y%m%d')}-"
+        f"{short_id}"
+    )
+def cashbook_insert_income(
+    cursor,
+    school_id,
+    payment_date,
+    amount_paid,
+    receipt_number,
+    student_name,
+    term_name,
+    created_by
+):
+
     try:
         amount = float(amount_paid or 0)
     except Exception:
@@ -28,13 +47,29 @@ def cashbook_insert_income(cursor, school_id, payment_date, amount_paid, receipt
 
     entry_date = payment_date or datetime.now().strftime("%Y-%m-%d")
 
+    created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    created_by_user_id = session.get("user_id")
+
+    transaction_reference = generate_transaction_reference("CB")
+
     cursor.execute(
         convert_query("""
             INSERT INTO cashbook (
-                school_id, entry_date, entry_type, category, description,
-                amount, payment_method, reference_number, created_by
+                school_id,
+                entry_date,
+                entry_type,
+                category,
+                description,
+                amount,
+                payment_method,
+                reference_number,
+                created_by,
+                transaction_reference,
+                created_by_user_id,
+                created_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """),
         (
             school_id,
@@ -46,7 +81,10 @@ def cashbook_insert_income(cursor, school_id, payment_date, amount_paid, receipt
             "School Fee Payment",
             receipt_number,
             created_by,
-        )
+            transaction_reference,
+            created_by_user_id,
+            created_at,
+        ),
     )
 
 
@@ -102,92 +140,328 @@ def register_fee_routes(app):
     def add_fee():
         school_id = session.get("school_id")
         role = session.get("role")
+        user_id = session.get("user_id")
 
         selected_class = request.args.get("class_name", "").strip()
 
+        # -------------------------------------------------
+        # LOAD STUDENTS FOR SELECTED CLASS
+        # -------------------------------------------------
+
         if role == "super_admin":
-            students = fetch_all(
-                "SELECT * FROM students WHERE class_name = ? ORDER BY first_name, last_name",
-                (selected_class,)
-            ) if selected_class else []
+            students = (
+                fetch_all(
+                    """
+                    SELECT *
+                    FROM students
+                    WHERE class_name = ?
+                    ORDER BY first_name, last_name
+                    """,
+                    (selected_class,)
+                )
+                if selected_class
+                else []
+            )
+
         else:
-            students = fetch_all(
-                "SELECT * FROM students WHERE school_id = ? AND class_name = ? ORDER BY first_name, last_name",
-                (school_id, selected_class)
-            ) if selected_class else []
+            students = (
+                fetch_all(
+                    """
+                    SELECT *
+                    FROM students
+                    WHERE school_id = ?
+                    AND class_name = ?
+                    ORDER BY first_name, last_name
+                    """,
+                    (school_id, selected_class)
+                )
+                if selected_class
+                else []
+            )
+
+        # -------------------------------------------------
+        # SAVE NEW FEE RECORD
+        # -------------------------------------------------
 
         if request.method == "POST":
+
             student_id = request.form.get("student_id")
             term_name = request.form.get("term_name")
             due_date = request.form.get("due_date")
             payment_date = request.form.get("payment_date")
-            receipt_number = request.form.get("receipt_number", "").strip()
+
+            receipt_number = request.form.get(
+                "receipt_number",
+                ""
+            ).strip()
 
             try:
-                amount = float(request.form.get("amount") or 0)
-                paid_amount = float(request.form.get("paid_amount") or 0)
+                amount = float(
+                    request.form.get("amount") or 0
+                )
+
+                paid_amount = float(
+                    request.form.get("paid_amount") or 0
+                )
+
             except ValueError:
-                flash("Amount and payment must be valid numbers.", "danger")
-                return redirect(url_for("add_fee", class_name=selected_class))
+                flash(
+                    "Amount and payment must be valid numbers.",
+                    "danger"
+                )
+
+                return redirect(
+                    url_for(
+                        "add_fee",
+                        class_name=selected_class
+                    )
+                )
+
+            # -------------------------------------------------
+            # VALIDATION
+            # -------------------------------------------------
 
             if not student_id or not term_name or amount <= 0:
-                flash("Student, term, and total amount are required.", "danger")
-                return redirect(url_for("add_fee", class_name=selected_class))
+                flash(
+                    "Student, term, and total amount are required.",
+                    "danger"
+                )
 
-            student = fetch_one("SELECT * FROM students WHERE id = ?", (student_id,))
+                return redirect(
+                    url_for(
+                        "add_fee",
+                        class_name=selected_class
+                    )
+                )
+
+            student = fetch_one(
+                """
+                SELECT *
+                FROM students
+                WHERE id = ?
+                """,
+                (student_id,)
+            )
+
             if not student:
-                flash("Student not found.", "danger")
-                return redirect(url_for("add_fee", class_name=selected_class))
+                flash(
+                    "Student not found.",
+                    "danger"
+                )
 
-            if role != "super_admin" and row_get(student, "school_id") != school_id:
-                flash("Invalid student selected.", "danger")
-                return redirect(url_for("add_fee", class_name=selected_class))
+                return redirect(
+                    url_for(
+                        "add_fee",
+                        class_name=selected_class
+                    )
+                )
 
-            fee_school_id = row_get(student, "school_id", school_id)
+            if (
+                role != "super_admin"
+                and row_get(student, "school_id") != school_id
+            ):
+                flash(
+                    "Invalid student selected.",
+                    "danger"
+                )
+
+                return redirect(
+                    url_for(
+                        "add_fee",
+                        class_name=selected_class
+                    )
+                )
+
+            fee_school_id = row_get(
+                student,
+                "school_id",
+                school_id
+            )
+
+            # -------------------------------------------------
+            # CALCULATE BALANCE + STATUS
+            # -------------------------------------------------
 
             balance = amount - paid_amount
+
             if balance <= 0:
                 status = "Paid"
                 balance = 0
+
             elif paid_amount > 0:
                 status = "Partially Paid"
+
             else:
                 status = "Pending"
+
+            # -------------------------------------------------
+            # COMPLIANCE METADATA
+            # -------------------------------------------------
+
+            created_by_name = (
+                session.get("full_name")
+                or session.get("username")
+                or "System"
+            )
+
+            created_at = datetime.now().strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
+
+            financial_year = str(
+                datetime.now().year
+            )
+
+            # -------------------------------------------------
+            # DATABASE TRANSACTION
+            # -------------------------------------------------
 
             conn = get_db()
             cursor = conn.cursor()
 
             try:
+
+                # ---------------------------------------------
+                # CREATE FEE RECORD
+                # ---------------------------------------------
+
                 if is_postgres():
+
                     cursor.execute(
                         convert_query("""
-                            INSERT INTO fees (school_id, student_id, term_name, amount, paid_amount, balance, status, due_date)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                            INSERT INTO fees (
+                                school_id,
+                                student_id,
+                                term_name,
+                                amount,
+                                paid_amount,
+                                balance,
+                                status,
+                                due_date,
+                                financial_year,
+                                created_by_user_id,
+                                created_by_name,
+                                created_at
+                            )
+                            VALUES (
+                                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                            )
                             RETURNING id
                         """),
-                        (fee_school_id, student_id, term_name, amount, paid_amount, balance, status, due_date),
+                        (
+                            fee_school_id,
+                            student_id,
+                            term_name,
+                            amount,
+                            paid_amount,
+                            balance,
+                            status,
+                            due_date,
+                            financial_year,
+                            user_id,
+                            created_by_name,
+                            created_at
+                        )
                     )
+
                     fee_id = cursor.fetchone()["id"]
+
                 else:
+
                     cursor.execute(
                         convert_query("""
-                            INSERT INTO fees (school_id, student_id, term_name, amount, paid_amount, balance, status, due_date)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                            INSERT INTO fees (
+                                school_id,
+                                student_id,
+                                term_name,
+                                amount,
+                                paid_amount,
+                                balance,
+                                status,
+                                due_date,
+                                financial_year,
+                                created_by_user_id,
+                                created_by_name,
+                                created_at
+                            )
+                            VALUES (
+                                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                            )
                         """),
-                        (fee_school_id, student_id, term_name, amount, paid_amount, balance, status, due_date),
+                        (
+                            fee_school_id,
+                            student_id,
+                            term_name,
+                            amount,
+                            paid_amount,
+                            balance,
+                            status,
+                            due_date,
+                            financial_year,
+                            user_id,
+                            created_by_name,
+                            created_at
+                        )
                     )
+
                     fee_id = cursor.lastrowid
 
+                # ---------------------------------------------
+                # INITIAL PAYMENT
+                # ---------------------------------------------
+
                 if paid_amount > 0:
-                    cursor.execute(
-                        convert_query("""
-                            INSERT INTO fee_payments (school_id, fee_id, payment_date, amount_paid, receipt_number, details)
-                            VALUES (?, ?, ?, ?, ?, ?)
-                        """),
-                        (fee_school_id, fee_id, payment_date, paid_amount, receipt_number, "Initial payment"),
+
+                    payment_reference = (
+                        generate_transaction_reference("PAY")
                     )
 
-                    student_name = f"{row_get(student, 'first_name', '')} {row_get(student, 'last_name', '')}".strip() or "Student"
+                    if not payment_date:
+                        payment_date = datetime.now().strftime(
+                            "%Y-%m-%d"
+                        )
+
+                    cursor.execute(
+                        convert_query("""
+                            INSERT INTO fee_payments (
+                                school_id,
+                                fee_id,
+                                payment_date,
+                                amount_paid,
+                                receipt_number,
+                                details,
+                                transaction_reference,
+                                created_by_user_id,
+                                created_by_name,
+                                created_at
+                            )
+                            VALUES (
+                                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                            )
+                        """),
+                        (
+                            fee_school_id,
+                            fee_id,
+                            payment_date,
+                            paid_amount,
+                            receipt_number,
+                            "Initial payment",
+                            payment_reference,
+                            user_id,
+                            created_by_name,
+                            created_at
+                        )
+                    )
+
+                    # -----------------------------------------
+                    # MATCHING CASHBOOK ENTRY
+                    # -----------------------------------------
+
+                    student_name = (
+                        f"{row_get(student, 'first_name', '')} "
+                        f"{row_get(student, 'last_name', '')}"
+                    ).strip() or "Student"
+
                     cashbook_insert_income(
                         cursor,
                         fee_school_id,
@@ -196,28 +470,66 @@ def register_fee_routes(app):
                         receipt_number,
                         student_name,
                         term_name,
-                        session.get("full_name", "System")
+                        created_by_name
                     )
 
+                # ---------------------------------------------
+                # SAVE EVERYTHING
+                # ---------------------------------------------
+
                 conn.commit()
+
+                # ---------------------------------------------
+                # AUDIT LOG
+                # ---------------------------------------------
 
                 log_audit(
                     "Added fee record",
                     "fees",
                     fee_id,
-                    f"Student ID {student_id}, term {term_name}, amount {amount}, paid {paid_amount}"
+                    (
+                        f"Student ID {student_id}; "
+                        f"Term {term_name}; "
+                        f"Amount {amount}; "
+                        f"Paid {paid_amount}; "
+                        f"Balance {balance}; "
+                        f"Status {status}; "
+                        f"Financial year {financial_year}; "
+                        f"Created by {created_by_name}"
+                    )
                 )
 
-                flash("Fee record added successfully.", "success")
-                return redirect(url_for("fees"))
+                flash(
+                    "Fee record added successfully.",
+                    "success"
+                )
+
+                return redirect(
+                    url_for("fees")
+                )
 
             except Exception as e:
+
                 conn.rollback()
-                flash(f"Error adding fee: {str(e)}", "danger")
-                return redirect(url_for("add_fee", class_name=selected_class))
+
+                flash(
+                    f"Error adding fee: {str(e)}",
+                    "danger"
+                )
+
+                return redirect(
+                    url_for(
+                        "add_fee",
+                        class_name=selected_class
+                    )
+                )
 
             finally:
                 conn.close()
+
+        # -------------------------------------------------
+        # LOAD PAGE
+        # -------------------------------------------------
 
         return render_template(
             "add_fee.html",
@@ -225,6 +537,7 @@ def register_fee_routes(app):
             class_options=CLASS_OPTIONS,
             selected_class=selected_class
         )
+
 
     @app.route("/update_fee/<int:fee_id>", methods=["GET", "POST"])
     @login_required
