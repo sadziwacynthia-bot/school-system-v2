@@ -1,60 +1,358 @@
 {% extends "base_premium.html" %}
-{% block title %}Fees{% endblock %}
+
+{% block title %}Fees | EduTrack{% endblock %}
 
 {% block content %}
-<div class="page-header-card">
-  <h1>Fees & Payments</h1>
-  <p>Track payments, balances, statements, and reminders.</p>
+
+<style>
+  .fees-page {
+    width: 100%;
+  }
+
+  .fees-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+    gap: 16px;
+    margin-bottom: 22px;
+  }
+
+  .fees-search-form {
+    display: flex;
+    flex: 1;
+    gap: 10px;
+    max-width: 650px;
+  }
+
+  .fees-search-form input {
+    width: 100%;
+    min-height: 48px;
+    margin: 0;
+    padding: 12px 15px;
+    border: 1px solid #dbe2ea;
+    border-radius: 14px;
+    background: white;
+    font: inherit;
+    outline: none;
+  }
+
+  .fees-search-form input:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+  }
+
+  .fees-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .fee-student-cell strong,
+  .fee-student-cell span {
+    display: block;
+  }
+
+  .fee-student-cell span {
+    margin-top: 4px;
+    color: #64748b;
+    font-size: 11px;
+  }
+
+  .fee-status {
+    display: inline-flex;
+    justify-content: center;
+    min-width: 110px;
+    padding: 7px 11px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 900;
+  }
+
+  .fee-status-paid {
+    color: #166534;
+    background: #dcfce7;
+  }
+
+  .fee-status-partial {
+    color: #92400e;
+    background: #fef3c7;
+  }
+
+  .fee-status-pending {
+    color: #991b1b;
+    background: #fee2e2;
+  }
+
+  .fee-amount {
+    font-weight: 900;
+    color: #0f172a;
+  }
+
+  .fee-balance {
+    font-weight: 900;
+    color: #b91c1c;
+  }
+
+  .fee-row-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  @media (max-width: 800px) {
+    .fees-toolbar {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .fees-search-form,
+    .fees-actions {
+      width: 100%;
+      max-width: none;
+    }
+
+    .fees-search-form {
+      flex-direction: column;
+    }
+
+    .fees-actions {
+      flex-direction: column;
+    }
+
+    .fees-actions > *,
+    .fees-search-form > * {
+      width: 100%;
+      text-align: center;
+    }
+  }
+</style>
+
+<div class="fees-page">
+
+  <div class="page-header-card">
+
+    <div>
+      <span class="page-eyebrow">
+        SCHOOL FINANCE
+      </span>
+
+      <h1>Fees & Payments</h1>
+
+      <p>
+        Create fee records, record payments, review balances and open learner statements.
+      </p>
+    </div>
+
+  </div>
+
+  <div class="premium-card">
+
+    <div class="fees-toolbar">
+
+      <form
+        method="GET"
+        action="{{ url_for('fees') }}"
+        class="fees-search-form"
+      >
+        <input
+          type="text"
+          name="search"
+          value="{{ search or '' }}"
+          placeholder="Search by student name or student number"
+        >
+
+        <button
+          type="submit"
+          class="premium-btn"
+        >
+          Search
+        </button>
+
+        {% if search %}
+        <a
+          href="{{ url_for('fees') }}"
+          class="premium-btn premium-btn-light"
+        >
+          Clear
+        </a>
+        {% endif %}
+      </form>
+
+      <div class="fees-actions">
+
+        <a
+          href="{{ url_for('add_fee') }}"
+          class="premium-btn"
+        >
+          ➕ Add Fee Record
+        </a>
+
+        <a
+          href="{{ url_for('fee_reminders') }}"
+          class="premium-btn premium-btn-light"
+        >
+          🔔 Fee Reminders
+        </a>
+
+        <a
+          href="{{ url_for('fee_analytics') }}"
+          class="premium-btn premium-btn-light"
+        >
+          📊 Fee Analytics
+        </a>
+
+      </div>
+
+    </div>
+
+    <div class="section-title">
+
+      <div>
+        <h2>Fee Records</h2>
+
+        <p style="margin:6px 0 0;color:#64748b;">
+          Open a record to add a payment or print a learner statement.
+        </p>
+      </div>
+
+    </div>
+
+    {% if fee_records %}
+
+    <div class="table-responsive">
+
+      <table class="premium-table">
+
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Class</th>
+            <th>Term</th>
+            <th>Total Fee</th>
+            <th>Paid</th>
+            <th>Balance</th>
+            <th>Status</th>
+            <th>Due Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+
+        <tbody>
+
+          {% for fee in fee_records %}
+
+          <tr>
+
+            <td>
+              <div class="fee-student-cell">
+                <strong>
+                  {{ fee.first_name or '' }}
+                  {{ fee.last_name or '' }}
+                </strong>
+
+                <span>
+                  {{ fee.student_number or '-' }}
+                </span>
+              </div>
+            </td>
+
+            <td>
+              {{ fee.class_name or '-' }}
+            </td>
+
+            <td>
+              {{ fee.term_name or '-' }}
+            </td>
+
+            <td class="fee-amount">
+              ${{ "%.2f"|format(fee.amount or 0) }}
+            </td>
+
+            <td>
+              ${{ "%.2f"|format(fee.paid_amount or 0) }}
+            </td>
+
+            <td class="fee-balance">
+              ${{ "%.2f"|format(fee.balance or 0) }}
+            </td>
+
+            <td>
+              {% set status = fee.status or 'Pending' %}
+
+              {% if status == 'Paid' %}
+                {% set status_class = 'fee-status-paid' %}
+              {% elif status == 'Partially Paid' %}
+                {% set status_class = 'fee-status-partial' %}
+              {% else %}
+                {% set status_class = 'fee-status-pending' %}
+              {% endif %}
+
+              <span class="fee-status {{ status_class }}">
+                {{ status }}
+              </span>
+            </td>
+
+            <td>
+              {{ fee.due_date or '-' }}
+            </td>
+
+            <td>
+              <div class="fee-row-actions">
+
+                <a
+                  href="{{ url_for('update_fee', fee_id=fee.id) }}"
+                  class="premium-btn premium-btn-light"
+                >
+                  Record Payment
+                </a>
+
+                <a
+                  href="{{ url_for(
+                    'fee_statement',
+                    student_id=fee.student_id
+                  ) }}"
+                  class="premium-btn premium-btn-light"
+                >
+                  Statement
+                </a>
+
+              </div>
+            </td>
+
+          </tr>
+
+          {% endfor %}
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+    {% else %}
+
+    <div class="empty-box">
+      <div class="report-empty-icon">💰</div>
+
+      <h3>No fee records found</h3>
+
+      <p>
+        Create a fee record first, then record payments against it.
+      </p>
+
+      <a
+        href="{{ url_for('add_fee') }}"
+        class="premium-btn"
+        style="margin-top:14px;"
+      >
+        ➕ Add First Fee Record
+      </a>
+    </div>
+
+    {% endif %}
+
+  </div>
+
 </div>
 
-<div class="premium-grid">
-  <div class="stat-card card-blue">
-    <span>Total Expected</span>
-    <strong>${{ total_expected or 0 }}</strong>
-  </div>
-  <div class="stat-card card-green">
-    <span>Total Paid</span>
-    <strong>${{ total_paid or 0 }}</strong>
-  </div>
-  <div class="stat-card card-orange">
-    <span>Outstanding</span>
-    <strong>${{ outstanding_fees or 0 }}</strong>
-  </div>
-  <div class="stat-card card-purple">
-    <span>Payments</span>
-    <strong>{{ payment_count or 0 }}</strong>
-  </div>
-</div>
-
-<div class="premium-card">
-  <div class="section-title">
-    <h2>Fee Records</h2>
-    <a href="#" class="premium-btn">+ Record Payment</a>
-  </div>
-
-  {% if payments %}
-  <table class="premium-table">
-    <thead>
-      <tr>
-        <th>Student</th>
-        <th>Amount</th>
-        <th>Date</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for payment in payments %}
-      <tr>
-        <td><strong>{{ payment.student_name or '-' }}</strong></td>
-        <td>${{ payment.amount or 0 }}</td>
-        <td>{{ payment.date or payment.created_at or '-' }}</td>
-        <td><span class="badge badge-success">Paid</span></td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  <div class="empty-box">No fee records found yet.</div>
-  {% endif %}
-</div>
 {% endblock %}
