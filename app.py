@@ -8707,6 +8707,161 @@ def update_database():
     </body>
     </html>
     """
+@app.route("/admin/finance-compliance-upgrade")
+@login_required
+@roles_required("super_admin")
+def finance_compliance_upgrade():
+    updates = []
+    errors = []
+
+    # =====================================================
+    # FEES TABLE
+    # =====================================================
+
+    fee_columns = [
+        ("financial_year", "VARCHAR(20)"),
+        ("created_by_user_id", "INTEGER"),
+        ("created_by_name", "VARCHAR(255)"),
+        ("created_at", "TIMESTAMP"),
+        ("updated_by_user_id", "INTEGER"),
+        ("updated_by_name", "VARCHAR(255)"),
+        ("updated_at", "TIMESTAMP")
+    ]
+
+    for column_name, column_definition in fee_columns:
+        try:
+            if is_postgres():
+                execute_commit(f"""
+                    ALTER TABLE fees
+                    ADD COLUMN IF NOT EXISTS
+                    {column_name} {column_definition}
+                """)
+            else:
+                existing_columns = fetch_all("PRAGMA table_info(fees)")
+                existing_names = [
+                    row["name"] for row in existing_columns
+                ]
+
+                if column_name not in existing_names:
+                    execute_commit(f"""
+                        ALTER TABLE fees
+                        ADD COLUMN {column_name} {column_definition}
+                    """)
+
+            updates.append(
+                f"fees.{column_name} checked successfully"
+            )
+
+        except Exception as error:
+            errors.append(
+                f"fees.{column_name}: {error}"
+            )
+
+    # =====================================================
+    # FEE PAYMENTS TABLE
+    # =====================================================
+
+    payment_columns = [
+        ("transaction_reference", "VARCHAR(100)"),
+        ("created_by_user_id", "INTEGER"),
+        ("created_by_name", "VARCHAR(255)"),
+        ("created_at", "TIMESTAMP"),
+        ("supporting_document", "TEXT")
+    ]
+
+    for column_name, column_definition in payment_columns:
+        try:
+            if is_postgres():
+                execute_commit(f"""
+                    ALTER TABLE fee_payments
+                    ADD COLUMN IF NOT EXISTS
+                    {column_name} {column_definition}
+                """)
+            else:
+                existing_columns = fetch_all(
+                    "PRAGMA table_info(fee_payments)"
+                )
+                existing_names = [
+                    row["name"] for row in existing_columns
+                ]
+
+                if column_name not in existing_names:
+                    execute_commit(f"""
+                        ALTER TABLE fee_payments
+                        ADD COLUMN {column_name} {column_definition}
+                    """)
+
+            updates.append(
+                f"fee_payments.{column_name} checked successfully"
+            )
+
+        except Exception as error:
+            errors.append(
+                f"fee_payments.{column_name}: {error}"
+            )
+
+    # =====================================================
+    # CASHBOOK TABLE
+    # =====================================================
+
+    cashbook_columns = [
+        ("transaction_reference", "VARCHAR(100)"),
+        ("created_by_user_id", "INTEGER"),
+        ("created_at", "TIMESTAMP"),
+        ("updated_by_user_id", "INTEGER"),
+        ("updated_at", "TIMESTAMP"),
+        ("is_void", "INTEGER DEFAULT 0"),
+        ("void_reason", "TEXT"),
+        ("voided_by_user_id", "INTEGER"),
+        ("voided_at", "TIMESTAMP")
+    ]
+
+    for column_name, column_definition in cashbook_columns:
+        try:
+            if is_postgres():
+                pg_definition = column_definition
+
+                if column_name == "is_void":
+                    pg_definition = "BOOLEAN DEFAULT FALSE"
+
+                execute_commit(f"""
+                    ALTER TABLE cashbook
+                    ADD COLUMN IF NOT EXISTS
+                    {column_name} {pg_definition}
+                """)
+            else:
+                existing_columns = fetch_all(
+                    "PRAGMA table_info(cashbook)"
+                )
+                existing_names = [
+                    row["name"] for row in existing_columns
+                ]
+
+                if column_name not in existing_names:
+                    execute_commit(f"""
+                        ALTER TABLE cashbook
+                        ADD COLUMN {column_name} {column_definition}
+                    """)
+
+            updates.append(
+                f"cashbook.{column_name} checked successfully"
+            )
+
+        except Exception as error:
+            errors.append(
+                f"cashbook.{column_name}: {error}"
+            )
+
+    # =====================================================
+    # RESULT
+    # =====================================================
+
+    return {
+        "message": "Finance compliance schema upgrade completed.",
+        "updates": updates,
+        "errors": errors
+    }
+
 @app.route("/admin/fix-announcements")
 @login_required
 @roles_required("super_admin")
