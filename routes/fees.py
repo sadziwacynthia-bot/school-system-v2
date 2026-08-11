@@ -545,6 +545,11 @@ def register_fee_routes(app):
     def update_fee(fee_id):
         school_id = session.get("school_id")
         role = session.get("role")
+        user_id = session.get("user_id")
+
+        # =====================================================
+        # LOAD FEE RECORD
+        # =====================================================
 
         query = """
             SELECT
@@ -554,244 +559,536 @@ def register_fee_routes(app):
                 s.student_number,
                 s.class_name
             FROM fees f
-            JOIN students s ON f.student_id = s.id
+            JOIN students s
+                ON f.student_id = s.id
             WHERE f.id = ?
         """
+
         params = [fee_id]
 
         if role != "super_admin":
             query += " AND f.school_id = ?"
             params.append(school_id)
 
-        fee = fetch_one(query, tuple(params))
+        fee = fetch_one(
+            query,
+            tuple(params)
+        )
 
         if not fee:
-            flash("Fee record not found or access denied.", "danger")
+            flash(
+                "Fee record not found or access denied.",
+                "danger"
+            )
             return redirect(url_for("fees"))
 
+        # =====================================================
+        # RECORD PAYMENT
+        # =====================================================
+
         if request.method == "POST":
-            payment_date = request.form.get("payment_date", "").strip()
-            receipt_number = request.form.get("receipt_number", "").strip()
-            details = request.form.get("details", "").strip() or "School Fees"
-            carry_forward = request.form.get("carry_forward") == "on"
+
+            payment_date = request.form.get(
+                "payment_date",
+                ""
+            ).strip()
+
+            receipt_number = request.form.get(
+                "receipt_number",
+                ""
+            ).strip()
+
+            details = (
+                request.form.get(
+                    "details",
+                    ""
+                ).strip()
+                or "School Fees"
+            )
+
+            carry_forward = (
+                request.form.get("carry_forward") == "on"
+            )
+
+            # -------------------------------------------------
+            # VALIDATE PAYMENT
+            # -------------------------------------------------
 
             try:
-                additional_payment = float(request.form.get("additional_payment") or 0)
+                additional_payment = float(
+                    request.form.get(
+                        "additional_payment"
+                    ) or 0
+                )
+
             except Exception:
-                flash("Payment amount must be a valid number.", "danger")
-                return redirect(url_for("update_fee", fee_id=fee_id))
+                flash(
+                    "Payment amount must be a valid number.",
+                    "danger"
+                )
+
+                return redirect(
+                    url_for(
+                        "update_fee",
+                        fee_id=fee_id
+                    )
+                )
 
             if additional_payment <= 0:
-                flash("Payment amount must be greater than zero.", "danger")
-                return redirect(url_for("update_fee", fee_id=fee_id))
+                flash(
+                    "Payment amount must be greater than zero.",
+                    "danger"
+                )
+
+                return redirect(
+                    url_for(
+                        "update_fee",
+                        fee_id=fee_id
+                    )
+                )
 
             if not payment_date:
-                payment_date = datetime.now().strftime("%Y-%m-%d")
+                payment_date = datetime.now().strftime(
+                    "%Y-%m-%d"
+                )
 
-            old_paid_amount = float(fee["paid_amount"] or 0)
-            total_amount = float(fee["amount"] or 0)
+            # -------------------------------------------------
+            # USER + COMPLIANCE DETAILS
+            # -------------------------------------------------
 
-            new_paid_amount = old_paid_amount + additional_payment
+            updated_by_name = (
+                session.get("full_name")
+                or session.get("username")
+                or "System"
+            )
+
+            timestamp = datetime.now().strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
+
+            payment_reference = (
+                generate_transaction_reference("PAY")
+            )
+
+            # -------------------------------------------------
+            # CALCULATE NEW BALANCE
+            # -------------------------------------------------
+
+            old_paid_amount = float(
+                fee["paid_amount"] or 0
+            )
+
+            total_amount = float(
+                fee["amount"] or 0
+            )
+
+            old_balance = float(
+                fee["balance"] or 0
+            )
+
+            old_status = (
+                fee["status"]
+                or "Pending"
+            )
+
+            new_paid_amount = (
+                old_paid_amount
+                + additional_payment
+            )
+
             excess_amount = 0
 
             if new_paid_amount > total_amount:
-                excess_amount = new_paid_amount - total_amount
+                excess_amount = (
+                    new_paid_amount
+                    - total_amount
+                )
+
                 new_paid_amount = total_amount
 
-            new_balance = max(total_amount - new_paid_amount, 0)
+            new_balance = max(
+                total_amount - new_paid_amount,
+                0
+            )
 
             if new_balance <= 0:
                 status = "Paid"
+
             elif new_paid_amount > 0:
                 status = "Partially Paid"
+
             else:
                 status = "Pending"
 
-            student_name = f"{fee['first_name']} {fee['last_name']}".strip()
+            student_name = (
+                f"{fee['first_name']} "
+                f"{fee['last_name']}"
+            ).strip()
 
             conn = get_db()
             cursor = conn.cursor()
 
             try:
-                cursor.execute(convert_query("""
-                    UPDATE fees
-                    SET paid_amount = ?,
-                        balance = ?,
-                        status = ?
-                    WHERE id = ?
-                """), (
-                    new_paid_amount,
-                    new_balance,
-                    status,
-                    fee_id
-                ))
 
-                amount_for_current_fee = additional_payment - excess_amount
+                # =================================================
+                # UPDATE CURRENT FEE
+                # =================================================
+
+                cursor.execute(
+                    convert_query("""
+                        UPDATE fees
+                        SET
+                            paid_amount = ?,
+                            balance = ?,
+                            status = ?,
+                            updated_by_user_id = ?,
+                            updated_by_name = ?,
+                            updated_at = ?
+                        WHERE id = ?
+                    """),
+                    (
+                        new_paid_amount,
+                        new_balance,
+                        status,
+                        user_id,
+                        updated_by_name,
+                        timestamp,
+                        fee_id
+                    )
+                )
+
+                # =================================================
+                # PAYMENT APPLIED TO CURRENT FEE
+                # =================================================
+
+                amount_for_current_fee = (
+                    additional_payment
+                    - excess_amount
+                )
 
                 if amount_for_current_fee > 0:
-                    cursor.execute(convert_query("""
-                        INSERT INTO fee_payments (
-                            school_id,
+
+                    cursor.execute(
+                        convert_query("""
+                            INSERT INTO fee_payments (
+                                school_id,
+                                fee_id,
+                                payment_date,
+                                amount_paid,
+                                receipt_number,
+                                details,
+                                transaction_reference,
+                                created_by_user_id,
+                                created_by_name,
+                                created_at
+                            )
+                            VALUES (
+                                ?, ?, ?, ?, ?, ?,
+                                ?, ?, ?, ?
+                            )
+                        """),
+                        (
+                            fee["school_id"],
                             fee_id,
                             payment_date,
-                            amount_paid,
+                            amount_for_current_fee,
                             receipt_number,
-                            details
+                            details,
+                            payment_reference,
+                            user_id,
+                            updated_by_name,
+                            timestamp
                         )
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    """), (
-                        fee["school_id"],
-                        fee_id,
-                        payment_date,
-                        amount_for_current_fee,
-                        receipt_number,
-                        details
-                    ))
+                    )
+
+                # =================================================
+                # CARRY FORWARD
+                # =================================================
 
                 carry_forward_message = ""
+                carry_forward_reference = None
 
                 if carry_forward and excess_amount > 0:
-                    cursor.execute(convert_query("""
-                        SELECT *
-                        FROM fees
-                        WHERE school_id = ?
-                          AND student_id = ?
-                          AND id != ?
-                          AND balance > 0
-                        ORDER BY id ASC
-                        LIMIT 1
-                    """), (
-                        fee["school_id"],
-                        fee["student_id"],
-                        fee_id
-                    ))
+
+                    cursor.execute(
+                        convert_query("""
+                            SELECT *
+                            FROM fees
+                            WHERE school_id = ?
+                              AND student_id = ?
+                              AND id != ?
+                              AND balance > 0
+                            ORDER BY id ASC
+                            LIMIT 1
+                        """),
+                        (
+                            fee["school_id"],
+                            fee["student_id"],
+                            fee_id
+                        )
+                    )
 
                     next_fee = cursor.fetchone()
 
                     if next_fee:
-                        next_amount = float(next_fee["amount"] or 0)
-                        next_old_paid = float(next_fee["paid_amount"] or 0)
 
-                        next_paid = next_old_paid + excess_amount
+                        next_amount = float(
+                            next_fee["amount"] or 0
+                        )
+
+                        next_old_paid = float(
+                            next_fee["paid_amount"] or 0
+                        )
+
+                        next_paid = (
+                            next_old_paid
+                            + excess_amount
+                        )
+
                         remaining_excess = 0
 
                         if next_paid > next_amount:
-                            remaining_excess = next_paid - next_amount
+
+                            remaining_excess = (
+                                next_paid
+                                - next_amount
+                            )
+
                             next_paid = next_amount
 
-                        next_balance = max(next_amount - next_paid, 0)
+                        next_balance = max(
+                            next_amount - next_paid,
+                            0
+                        )
 
                         if next_balance <= 0:
                             next_status = "Paid"
+
                         elif next_paid > 0:
-                            next_status = "Partially Paid"
+                            next_status = (
+                                "Partially Paid"
+                            )
+
                         else:
                             next_status = "Pending"
 
-                        cursor.execute(convert_query("""
-                            UPDATE fees
-                            SET paid_amount = ?,
-                                balance = ?,
-                                status = ?
-                            WHERE id = ?
-                        """), (
-                            next_paid,
-                            next_balance,
-                            next_status,
-                            next_fee["id"]
-                        ))
+                        # -----------------------------------------
+                        # UPDATE NEXT FEE
+                        # -----------------------------------------
 
-                        amount_moved = excess_amount - remaining_excess
+                        cursor.execute(
+                            convert_query("""
+                                UPDATE fees
+                                SET
+                                    paid_amount = ?,
+                                    balance = ?,
+                                    status = ?,
+                                    updated_by_user_id = ?,
+                                    updated_by_name = ?,
+                                    updated_at = ?
+                                WHERE id = ?
+                            """),
+                            (
+                                next_paid,
+                                next_balance,
+                                next_status,
+                                user_id,
+                                updated_by_name,
+                                timestamp,
+                                next_fee["id"]
+                            )
+                        )
+
+                        amount_moved = (
+                            excess_amount
+                            - remaining_excess
+                        )
 
                         if amount_moved > 0:
-                            cursor.execute(convert_query("""
-                                INSERT INTO fee_payments (
-                                    school_id,
-                                    fee_id,
-                                    payment_date,
-                                    amount_paid,
-                                    receipt_number,
-                                    details
+
+                            carry_forward_reference = (
+                                generate_transaction_reference(
+                                    "PAY"
                                 )
-                                VALUES (?, ?, ?, ?, ?, ?)
-                            """), (
-                                fee["school_id"],
-                                next_fee["id"],
-                                payment_date,
-                                amount_moved,
-                                receipt_number,
-                                f"Carry forward from {fee['term_name']}"
-                            ))
+                            )
 
-                        carry_forward_message = f" Extra ${amount_moved:.2f} carried forward to {next_fee['term_name']}."
+                            cursor.execute(
+                                convert_query("""
+                                    INSERT INTO fee_payments (
+                                        school_id,
+                                        fee_id,
+                                        payment_date,
+                                        amount_paid,
+                                        receipt_number,
+                                        details,
+                                        transaction_reference,
+                                        created_by_user_id,
+                                        created_by_name,
+                                        created_at
+                                    )
+                                    VALUES (
+                                        ?, ?, ?, ?, ?, ?,
+                                        ?, ?, ?, ?
+                                    )
+                                """),
+                                (
+                                    fee["school_id"],
+                                    next_fee["id"],
+                                    payment_date,
+                                    amount_moved,
+                                    receipt_number,
+                                    (
+                                        "Carry forward from "
+                                        f"{fee['term_name']}"
+                                    ),
+                                    carry_forward_reference,
+                                    user_id,
+                                    updated_by_name,
+                                    timestamp
+                                )
+                            )
 
-                cursor.execute(convert_query("""
-                    INSERT INTO cashbook (
-                        school_id,
-                        entry_date,
-                        entry_type,
-                        category,
-                        description,
-                        amount,
-                        payment_method,
-                        reference_number,
-                        created_by
-                    )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """), (
+                            carry_forward_message = (
+                                f" Extra ${amount_moved:.2f} "
+                                f"carried forward to "
+                                f"{next_fee['term_name']}."
+                            )
+
+                # =================================================
+                # CASHBOOK
+                # =================================================
+
+                cashbook_insert_income(
+                    cursor,
                     fee["school_id"],
                     payment_date,
-                    "income",
-                    "School Fees",
-                    f"{details} payment from {student_name}",
                     additional_payment,
-                    "School Fee Payment",
                     receipt_number,
-                    session.get("full_name", "System")
-                ))
+                    student_name,
+                    fee["term_name"],
+                    updated_by_name
+                )
+
+                # =================================================
+                # COMMIT ALL FINANCIAL CHANGES TOGETHER
+                # =================================================
 
                 conn.commit()
+
+                # =================================================
+                # AUDIT TRAIL
+                # =================================================
+
+                audit_description = (
+                    f"Student: {student_name}; "
+                    f"Fee ID: {fee_id}; "
+                    f"Term: {fee['term_name']}; "
+                    f"Payment: {additional_payment:.2f}; "
+                    f"Payment reference: "
+                    f"{payment_reference}; "
+                    f"Receipt: "
+                    f"{receipt_number or 'None'}; "
+                    f"Previous paid: "
+                    f"{old_paid_amount:.2f}; "
+                    f"New paid: "
+                    f"{new_paid_amount:.2f}; "
+                    f"Previous balance: "
+                    f"{old_balance:.2f}; "
+                    f"New balance: "
+                    f"{new_balance:.2f}; "
+                    f"Previous status: "
+                    f"{old_status}; "
+                    f"New status: "
+                    f"{status}; "
+                    f"Recorded by: "
+                    f"{updated_by_name}"
+                )
+
+                if carry_forward_reference:
+                    audit_description += (
+                        f"; Carry-forward reference: "
+                        f"{carry_forward_reference}"
+                    )
 
                 log_audit(
                     "Recorded fee payment",
                     "fees",
                     fee_id,
-                    f"Added payment {additional_payment}, receipt {receipt_number}, details {details}.{carry_forward_message}"
+                    audit_description
                 )
 
-                flash(f"Payment recorded successfully.{carry_forward_message}", "success")
-                return redirect(url_for("update_fee", fee_id=fee_id))
+                flash(
+                    (
+                        "Payment recorded successfully."
+                        f"{carry_forward_message}"
+                    ),
+                    "success"
+                )
+
+                return redirect(
+                    url_for(
+                        "update_fee",
+                        fee_id=fee_id
+                    )
+                )
 
             except Exception as e:
+
                 conn.rollback()
-                flash(f"Error recording payment: {str(e)}", "danger")
-                return redirect(url_for("update_fee", fee_id=fee_id))
+
+                flash(
+                    f"Error recording payment: {str(e)}",
+                    "danger"
+                )
+
+                return redirect(
+                    url_for(
+                        "update_fee",
+                        fee_id=fee_id
+                    )
+                )
 
             finally:
                 conn.close()
 
+        # =====================================================
+        # PAYMENT HISTORY
+        # =====================================================
+
         if role == "super_admin":
+
             payment_history = fetch_all("""
                 SELECT *
                 FROM fee_payments
                 WHERE fee_id = ?
-                ORDER BY payment_date DESC, id DESC
+                ORDER BY
+                    payment_date DESC,
+                    id DESC
             """, (fee_id,))
+
         else:
+
             payment_history = fetch_all("""
                 SELECT *
                 FROM fee_payments
                 WHERE fee_id = ?
                   AND school_id = ?
-                ORDER BY payment_date DESC, id DESC
-            """, (fee_id, school_id))
+                ORDER BY
+                    payment_date DESC,
+                    id DESC
+            """, (
+                fee_id,
+                school_id
+            ))
 
         return render_template(
             "update_fee.html",
             fee=fee,
             payment_history=payment_history,
-            today=datetime.now().strftime("%Y-%m-%d")
-        )
+            today=datetime.now().strftime(
+                "%Y-%m-%d"
+            )
+        )   
 
     @app.route("/fee_statement/<int:student_id>")
     @login_required

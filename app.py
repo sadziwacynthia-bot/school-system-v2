@@ -3,6 +3,7 @@ import os
 import sqlite3
 import random
 import string
+import uuid
 import urllib.parse
 from functools import wraps
 from datetime import datetime, date
@@ -730,6 +731,16 @@ def get_school_classes(school_id):
         return [row["class_name"] for row in rows]
 
     return CLASS_OPTIONS
+
+def generate_transaction_reference(prefix):
+    now = datetime.now()
+    short_id = uuid.uuid4().hex[:8].upper()
+
+    return (
+        f"{prefix}-"
+        f"{now.strftime('%Y%m%d')}-"
+        f"{short_id}"
+    )
 
 def add_school_id_to_audit_logs():
     conn = get_db()
@@ -5658,19 +5669,24 @@ def student_list_report():
         active_students=active,
         inactive_students=inactive
     )
-
 @app.route("/add_cashbook_entry", methods=["GET", "POST"])
 @login_required
 @roles_required("school_admin", "super_admin")
 def add_cashbook_entry():
+
     school_id = session.get("school_id")
     role = session.get("role")
+    user_id = session.get("user_id")
 
     schools = []
+
     if role == "super_admin":
-        schools = fetch_all("SELECT * FROM schools ORDER BY school_name")
+        schools = fetch_all(
+            "SELECT * FROM schools ORDER BY school_name"
+        )
 
     if request.method == "POST":
+
         if role == "super_admin":
             school_id = request.form.get("school_id")
 
@@ -5678,53 +5694,142 @@ def add_cashbook_entry():
         entry_type = request.form.get("entry_type")
         category = request.form.get("category", "").strip()
         description = request.form.get("description", "").strip()
-        amount = request.form.get("amount")
-        payment_method = request.form.get("payment_method", "").strip()
-        reference_number = request.form.get("reference_number", "").strip()
-        created_by = session.get("full_name", "System")
 
-        if not school_id or not entry_date or not entry_type or not category or not amount:
-            flash("School, date, type, category, and amount are required.", "danger")
-            return redirect(url_for("add_cashbook_entry"))
+        amount = request.form.get("amount")
+
+        payment_method = request.form.get(
+            "payment_method",
+            ""
+        ).strip()
+
+        reference_number = request.form.get(
+            "reference_number",
+            ""
+        ).strip()
+
+        created_by_name = (
+            session.get("full_name")
+            or session.get("username")
+            or "System"
+        )
+
+        created_at = datetime.now().strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+
+        transaction_reference = (
+            generate_transaction_reference("CB")
+        )
+
+        # ------------------------------
+        # Validation
+        # ------------------------------
+
+        if (
+            not school_id
+            or not entry_date
+            or not entry_type
+            or not category
+            or not amount
+        ):
+
+            flash(
+                "School, date, type, category and amount are required.",
+                "danger"
+            )
+
+            return redirect(
+                url_for("add_cashbook_entry")
+            )
 
         try:
+
             amount = float(amount)
+
             if amount <= 0:
                 raise ValueError
-        except Exception:
-            flash("Amount must be greater than zero.", "danger")
-            return redirect(url_for("add_cashbook_entry"))
 
-        execute_commit("""
-            INSERT INTO cashbook (
-                school_id, entry_date, entry_type, category, description,
-                amount, payment_method, reference_number, created_by
+        except Exception:
+
+            flash(
+                "Amount must be greater than zero.",
+                "danger"
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            school_id,
-            entry_date,
-            entry_type,
-            category,
-            description,
-            amount,
-            payment_method,
-            reference_number,
-            created_by
-        ))
+
+            return redirect(
+                url_for("add_cashbook_entry")
+            )
+
+        # ------------------------------
+        # Save transaction
+        # ------------------------------
+
+        new_entry_id = insert_and_get_id(
+            """
+            INSERT INTO cashbook (
+                school_id,
+                entry_date,
+                entry_type,
+                category,
+                description,
+                amount,
+                payment_method,
+                reference_number,
+                created_by,
+                transaction_reference,
+                created_by_user_id,
+                created_at
+            )
+            VALUES (
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            )
+            """,
+            (
+                school_id,
+                entry_date,
+                entry_type,
+                category,
+                description,
+                amount,
+                payment_method,
+                reference_number,
+                created_by_name,
+                transaction_reference,
+                user_id,
+                created_at
+            )
+        )
+
+        # ------------------------------
+        # Audit Trail
+        # ------------------------------
 
         log_audit(
             "Added cashbook entry",
             "cashbook",
-            None,
-            f"{entry_type} - {category} - Amount {amount}"
+            new_entry_id,
+            (
+                f"{entry_type} | "
+                f"{category} | "
+                f"Amount: {amount:.2f} | "
+                f"Reference: {transaction_reference} | "
+                f"Created by: {created_by_name}"
+            )
         )
 
-        flash("Cashbook entry added successfully.", "success")
-        return redirect(url_for("cashbook"))
+        flash(
+            "Cashbook entry recorded successfully.",
+            "success"
+        )
 
-    return render_template("add_cashbook_entry.html", schools=schools)
+        return redirect(
+            url_for("cashbook")
+        )
 
+    return render_template(
+        "add_cashbook_entry.html",
+        schools=schools
+    )
 
 @app.route("/cashbook_reports")
 @login_required
@@ -5860,53 +5965,202 @@ def edit_cashbook_entry(entry_id):
 def update_cashbook_entry(entry_id):
 
     school_id = session.get("school_id")
+    role = session.get("role")
+    user_id = session.get("user_id")
 
-    entry = fetch_one("""
-        SELECT *
-        FROM cashbook
-        WHERE id = ?
-          AND school_id = ?
-    """, (entry_id, school_id))
+    # -------------------------------------------------
+    # LOAD EXISTING ENTRY
+    # -------------------------------------------------
+
+    if role == "super_admin":
+
+        entry = fetch_one("""
+            SELECT *
+            FROM cashbook
+            WHERE id = ?
+        """, (entry_id,))
+
+    else:
+
+        entry = fetch_one("""
+            SELECT *
+            FROM cashbook
+            WHERE id = ?
+              AND school_id = ?
+        """, (
+            entry_id,
+            school_id
+        ))
 
     if not entry:
-        flash("Cashbook entry not found.", "danger")
+        flash(
+            "Cashbook entry not found or access denied.",
+            "danger"
+        )
         return redirect(url_for("cashbook"))
 
-    description = request.form.get("description", "").strip()
-    category = request.form.get("category", "").strip()
-    payment_method = request.form.get("payment_method", "").strip()
-    reference_number = request.form.get("reference_number", "").strip()
+    # -------------------------------------------------
+    # GET NEW VALUES
+    # -------------------------------------------------
 
-    amount = float(request.form.get("amount") or 0)
+    description = request.form.get(
+        "description",
+        ""
+    ).strip()
 
-    execute_commit("""
-        UPDATE cashbook
-        SET
-            description = ?,
-            category = ?,
-            payment_method = ?,
-            reference_number = ?,
-            amount = ?
-        WHERE id = ?
-          AND school_id = ?
-    """, (
-        description,
-        category,
-        payment_method,
-        reference_number,
-        amount,
-        entry_id,
-        school_id
-    ))
+    category = request.form.get(
+        "category",
+        ""
+    ).strip()
+
+    payment_method = request.form.get(
+        "payment_method",
+        ""
+    ).strip()
+
+    reference_number = request.form.get(
+        "reference_number",
+        ""
+    ).strip()
+
+    try:
+        amount = float(
+            request.form.get("amount") or 0
+        )
+
+        if amount <= 0:
+            raise ValueError
+
+    except Exception:
+
+        flash(
+            "Amount must be greater than zero.",
+            "danger"
+        )
+
+        return redirect(
+            url_for(
+                "edit_cashbook_entry",
+                entry_id=entry_id
+            )
+        )
+
+    # -------------------------------------------------
+    # OLD VALUES FOR AUDIT TRAIL
+    # -------------------------------------------------
+
+    old_description = entry["description"] or ""
+    old_category = entry["category"] or ""
+    old_payment_method = entry["payment_method"] or ""
+    old_reference_number = entry["reference_number"] or ""
+
+    old_amount = float(
+        entry["amount"] or 0
+    )
+
+    # -------------------------------------------------
+    # UPDATE METADATA
+    # -------------------------------------------------
+
+    updated_by_name = (
+        session.get("full_name")
+        or session.get("username")
+        or "System"
+    )
+
+    updated_at = datetime.now().strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+
+    # -------------------------------------------------
+    # SAVE UPDATE
+    # -------------------------------------------------
+
+    if role == "super_admin":
+
+        execute_commit("""
+            UPDATE cashbook
+            SET
+                description = ?,
+                category = ?,
+                payment_method = ?,
+                reference_number = ?,
+                amount = ?,
+                updated_by_user_id = ?,
+                updated_at = ?
+            WHERE id = ?
+        """, (
+            description,
+            category,
+            payment_method,
+            reference_number,
+            amount,
+            user_id,
+            updated_at,
+            entry_id
+        ))
+
+    else:
+
+        execute_commit("""
+            UPDATE cashbook
+            SET
+                description = ?,
+                category = ?,
+                payment_method = ?,
+                reference_number = ?,
+                amount = ?,
+                updated_by_user_id = ?,
+                updated_at = ?
+            WHERE id = ?
+              AND school_id = ?
+        """, (
+            description,
+            category,
+            payment_method,
+            reference_number,
+            amount,
+            user_id,
+            updated_at,
+            entry_id,
+            school_id
+        ))
+
+    # -------------------------------------------------
+    # AUDIT TRAIL
+    # -------------------------------------------------
+
+    old_values = (
+        f"Description={old_description}; "
+        f"Category={old_category}; "
+        f"Payment Method={old_payment_method}; "
+        f"Reference={old_reference_number}; "
+        f"Amount={old_amount:.2f}"
+    )
+
+    new_values = (
+        f"Description={description}; "
+        f"Category={category}; "
+        f"Payment Method={payment_method}; "
+        f"Reference={reference_number}; "
+        f"Amount={amount:.2f}"
+    )
 
     log_audit(
         "Updated cashbook entry",
         "cashbook",
         entry_id,
-        f"Updated cashbook entry: {description}"
+        (
+            f"Changed by {updated_by_name}; "
+            f"Previous values: [{old_values}] "
+            f"New values: [{new_values}]"
+        )
     )
 
-    flash("Cashbook entry updated successfully.", "success")
+    flash(
+        "Cashbook entry updated successfully.",
+        "success"
+    )
 
     return redirect(url_for("cashbook"))
 
