@@ -5393,6 +5393,7 @@ def cashbook_insert_income(cursor, school_id, payment_date, amount_paid, receipt
 @login_required
 @roles_required("school_admin", "super_admin")
 def cashbook():
+
     school_id = session.get("school_id")
     role = session.get("role")
 
@@ -5401,13 +5402,32 @@ def cashbook():
     source = request.args.get("source", "").strip()
     start_date = request.args.get("start_date", "").strip()
     end_date = request.args.get("end_date", "").strip()
+    show_voided = request.args.get("show_voided", "").strip()
 
     query = "SELECT * FROM cashbook WHERE 1=1"
     params = []
 
+    # ------------------------------------
+    # Hide voided transactions by default
+    # ------------------------------------
+
+    if show_voided != "1":
+        if is_postgres():
+            query += " AND COALESCE(is_void, FALSE) = FALSE"
+        else:
+            query += " AND COALESCE(is_void, 0) = 0"
+
+    # ------------------------------------
+    # School filtering
+    # ------------------------------------
+
     if role != "super_admin":
         query += " AND school_id = ?"
         params.append(school_id)
+
+    # ------------------------------------
+    # Filters
+    # ------------------------------------
 
     if entry_type:
         query += " AND entry_type = ?"
@@ -5435,7 +5455,10 @@ def cashbook():
 
     query += " ORDER BY entry_date DESC, id DESC"
 
-    entries = fetch_all(query, tuple(params))
+    entries = fetch_all(
+        query,
+        tuple(params)
+    )
 
     total_income = 0
     total_expense = 0
@@ -5443,29 +5466,49 @@ def cashbook():
     processed_entries = []
 
     for entry in reversed(entries):
+
         amount = float(entry["amount"] or 0)
+
+        entry_is_void = bool(
+            entry["is_void"]
+    )
+
+    # ------------------------------------
+    # Only active transactions affect totals
+    # ------------------------------------
+    if not entry_is_void:
 
         if entry["entry_type"] == "income":
             total_income += amount
             running_balance += amount
+
         else:
             total_expense += amount
             running_balance -= amount
 
-        processed_entries.append({
-            "id": entry["id"],
-            "entry_date": entry["entry_date"],
-            "entry_type": entry["entry_type"],
-            "category": entry["category"],
-            "description": entry["description"],
-            "amount": amount,
-            "payment_method": entry["payment_method"],
-            "reference_number": entry["reference_number"],
-            "created_by": entry["created_by"],
-            "running_balance": running_balance
-        })
+    # ------------------------------------
+    # Keep voided records visible for audit
+    # ------------------------------------
+    processed_entries.append({
+        "id": entry["id"],
+        "entry_date": entry["entry_date"],
+        "entry_type": entry["entry_type"],
+        "category": entry["category"],
+        "description": entry["description"],
+        "amount": amount,
+        "payment_method": entry["payment_method"],
+        "reference_number": entry["reference_number"],
+        "transaction_reference": entry["transaction_reference"],
+        "created_by": entry["created_by"],
+        "is_void": entry["is_void"],
+        "void_reason": entry["void_reason"],
+        "voided_by_user_id": entry["voided_by_user_id"],
+        "voided_at": entry["voided_at"],
+        "running_balance": running_balance
+    })
 
     processed_entries.reverse()
+
     net_balance = total_income - total_expense
 
     return render_template(
@@ -5476,10 +5519,12 @@ def cashbook():
         source=source,
         start_date=start_date,
         end_date=end_date,
+        show_voided=show_voided,
         total_income=total_income,
         total_expense=total_expense,
         net_balance=net_balance
     )
+
 @app.route("/reports/cashbook")
 @login_required
 @roles_required("school_admin", "super_admin")
@@ -6164,6 +6209,138 @@ def update_cashbook_entry(entry_id):
 
     return redirect(url_for("cashbook"))
 
+@app.route(
+    "/void_cashbook_entry/<int:entry_id>",
+    methods=["POST"]
+)
+@login_required
+@roles_required("school_admin", "super_admin")
+def void_cashbook_entry(entry_id):
+
+    school_id = session.get("school_id")
+    role = session.get("role")
+    user_id = session.get("user_id")
+
+    reason = request.form.get(
+        "void_reason",
+        ""
+    ).strip()
+
+    if not reason:
+        flash(
+            "A reason is required before a transaction can be voided.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("cashbook")
+        )
+
+    if role == "super_admin":
+
+        entry = fetch_one("""
+            SELECT *
+            FROM cashbook
+            WHERE id = ?
+        """, (entry_id,))
+
+    else:
+
+        entry = fetch_one("""
+            SELECT *
+            FROM cashbook
+            WHERE id = ?
+              AND school_id = ?
+        """, (
+            entry_id,
+            school_id
+        ))
+
+    if not entry:
+        flash(
+            "Cashbook transaction not found or access denied.",
+            "danger"
+        )
+        return redirect(url_for("cashbook"))
+
+    if int(entry["is_void"] or 0) == 1:
+        flash(
+            "This transaction has already been voided.",
+            "warning"
+        )
+        return redirect(url_for("cashbook"))
+
+    voided_at = datetime.now().strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+
+    voided_by_name = (
+        session.get("full_name")
+        or session.get("username")
+        or "System"
+    )
+
+    if role == "super_admin":
+
+        execute_commit("""
+            UPDATE cashbook
+            SET
+                is_void = 1,
+                void_reason = ?,
+                voided_by_user_id = ?,
+                voided_at = ?
+            WHERE id = ?
+        """, (
+            reason,
+            user_id,
+            voided_at,
+            entry_id
+        ))
+
+    else:
+
+        execute_commit("""
+            UPDATE cashbook
+            SET
+                is_void = 1,
+                void_reason = ?,
+                voided_by_user_id = ?,
+                voided_at = ?
+            WHERE id = ?
+              AND school_id = ?
+        """, (
+            reason,
+            user_id,
+            voided_at,
+            entry_id,
+            school_id
+        ))
+
+    log_audit(
+        "Voided cashbook entry",
+        "cashbook",
+        entry_id,
+        (
+            f"Transaction reference: "
+            f"{entry['transaction_reference'] or entry['reference_number'] or '-'}; "
+            f"Type: {entry['entry_type']}; "
+            f"Category: {entry['category']}; "
+            f"Amount: {float(entry['amount'] or 0):.2f}; "
+            f"Reason: {reason}; "
+            f"Voided by: {voided_by_name}"
+        )
+    )
+
+    flash(
+        "Transaction voided successfully. "
+        "The original record has been retained for audit purposes.",
+        "success"
+    )
+
+    return redirect(
+        url_for("cashbook")
+    )
+    
 @app.route("/classes")
 @login_required
 @roles_required("school_admin", "super_admin", "teacher")
