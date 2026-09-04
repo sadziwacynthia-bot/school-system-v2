@@ -18,6 +18,11 @@
       <a href="{{ url_for('assign_teacher') }}" class="premium-btn premium-btn-light">📌 Assign Subject</a>
       <a href="{{ url_for('teacher_assignments_page') }}" class="premium-btn premium-btn-light">👨‍🏫 Teacher Assignments</a>
       <a href="{{ url_for('assign_class_teacher') }}" class="premium-btn premium-btn-light">🏫 Class Teacher</a>
+      {% if session.get('role') == 'super_admin' %}
+<a href="{{ url_for('import_teachers') }}" class="premium-btn">
+    📥 Import Teachers
+</a>
+{% endif %}
     </div>
   </div>
 

@@ -631,108 +631,473 @@ def register_teacher_routes(app):
     @login_required
     @roles_required("super_admin")
     def import_teachers():
-        schools = fetch_all("SELECT * FROM schools ORDER BY school_name")
+        schools = fetch_all(
+            "SELECT * FROM schools ORDER BY school_name"
+        )
 
         if request.method == "POST":
             school_id = request.form.get("school_id")
             file = request.files.get("teacher_file")
 
             if not school_id or not file or not file.filename:
-                flash("School and Excel file are required.", "danger")
+                flash(
+                    "School and Excel file are required.",
+                    "danger"
+                )
                 return redirect(url_for("import_teachers"))
 
             try:
                 df = pd.read_excel(file)
 
-                required_columns = ["full_name", "phone", "email", "username", "password"]
-                missing = [c for c in required_columns if c not in df.columns]
+                # -------------------------------------------------
+                # NORMALIZE COLUMN NAMES
+                # -------------------------------------------------
+                df.columns = [
+                    str(column).strip().lower().replace(" ", "_")
+                    for column in df.columns
+                ]
+
+                required_columns = [
+                    "full_name",
+                    "phone",
+                    "class_name",
+                    "subject"
+                ]
+
+                missing = [
+                    column
+                    for column in required_columns
+                    if column not in df.columns
+                ]
 
                 if missing:
-                    flash(f"Missing columns: {', '.join(missing)}", "danger")
+                    flash(
+                        f"Missing columns: {', '.join(missing)}",
+                        "danger"
+                    )
                     return redirect(url_for("import_teachers"))
+
+                # Email is optional
+                if "email" not in df.columns:
+                    df["email"] = ""
 
                 imported = 0
                 skipped = 0
+                assignment_count = 0
+                credentials = []
 
-                for _, row in df.iterrows():
-                    full_name = str(row.get("full_name", "")).strip()
-                    phone = str(row.get("phone", "")).strip()
-                    email = str(row.get("email", "")).strip()
-                    username = str(row.get("username", "")).strip()
-                    password = str(row.get("password", "")).strip()
+                # -------------------------------------------------
+                # SAGAMBE SUBJECT LIST
+                # Used only when spreadsheet subject = ALL
+                # -------------------------------------------------
+                sagambe_subjects = [
+                    "Mathematics",
+                    "Social Science",
+                    "English",
+                    "Science and Technology",
+                    "Shona",
+                    "PE and Arts"
+                ]
 
-                    if not full_name or not username or not password:
-                        skipped += 1
-                        continue
+                conn = get_db()
+                cursor = conn.cursor()
 
-                    existing = fetch_one("SELECT id FROM users WHERE username = ?", (username,))
-                    if existing:
-                        skipped += 1
-                        continue
+                try:
+                    for _, row in df.iterrows():
 
-                    conn = get_db()
-                    cursor = conn.cursor()
+                        # -----------------------------------------
+                        # READ VALUES SAFELY
+                        # -----------------------------------------
+                        full_name = str(
+                            row.get("full_name", "")
+                        ).strip()
 
-                    try:
-                        if is_postgres():
-                            cursor.execute(convert_query("""
-                                INSERT INTO users (school_id, full_name, username, password, role)
-                                VALUES (?, ?, ?, ?, ?)
-                                RETURNING id
-                            """), (
+                        phone = str(
+                            row.get("phone", "")
+                        ).strip()
+
+                        email = str(
+                            row.get("email", "")
+                        ).strip()
+
+                        class_name = str(
+                            row.get("class_name", "")
+                        ).strip()
+
+                        subject_value = str(
+                            row.get("subject", "")
+                        ).strip()
+
+                        # Ignore empty/blank teacher rows
+                        if not full_name or full_name.lower() == "nan":
+                            skipped += 1
+                            continue
+
+                        if not class_name or class_name.lower() == "nan":
+                            skipped += 1
+                            continue
+
+                        if not subject_value or subject_value.lower() == "nan":
+                            skipped += 1
+                            continue
+
+                        if phone.lower() == "nan":
+                            phone = ""
+
+                        if email.lower() == "nan":
+                            email = ""
+
+                        # -----------------------------------------
+                        # CHECK IF TEACHER ALREADY EXISTS
+                        # -----------------------------------------
+                        cursor.execute(
+                            convert_query("""
+                                SELECT id, user_id
+                                FROM teachers
+                                WHERE school_id = ?
+                                AND LOWER(TRIM(full_name)) =
+                                    LOWER(TRIM(?))
+                                LIMIT 1
+                            """),
+                            (
                                 school_id,
-                                full_name,
-                                username,
-                                generate_password_hash(password),
-                                "teacher"
-                            ))
-                            user_id = cursor.fetchone()["id"]
+                                full_name
+                            )
+                        )
+
+                        existing_teacher = cursor.fetchone()
+
+                        if existing_teacher:
+                            skipped += 1
+                            continue
+
+                        # -----------------------------------------
+                        # GENERATE TEACHER ID
+                        # -----------------------------------------
+                        teacher_code = generate_teacher_id()
+
+                        # -----------------------------------------
+                        # GENERATE UNIQUE USERNAME
+                        # Example:
+                        # MATILDA MUKASA -> mmukasa
+                        # -----------------------------------------
+                        name_parts = [
+                            part.lower()
+                            for part in full_name.split()
+                            if part.strip()
+                        ]
+
+                        if len(name_parts) >= 2:
+                            base_username = (
+                                name_parts[0][0]
+                                + name_parts[-1]
+                            )
                         else:
-                            cursor.execute(convert_query("""
-                                INSERT INTO users (school_id, full_name, username, password, role)
-                                VALUES (?, ?, ?, ?, ?)
-                            """), (
-                                school_id,
-                                full_name,
-                                username,
-                                generate_password_hash(password),
-                                "teacher"
-                            ))
+                            base_username = name_parts[0]
+
+                        base_username = "".join(
+                            character
+                            for character in base_username
+                            if character.isalnum()
+                        )
+
+                        if not base_username:
+                            base_username = "teacher"
+
+                        username = base_username
+                        counter = 1
+
+                        while True:
+                            cursor.execute(
+                                convert_query("""
+                                    SELECT id
+                                    FROM users
+                                    WHERE LOWER(username) =
+                                        LOWER(?)
+                                    LIMIT 1
+                                """),
+                                (username,)
+                            )
+
+                            username_exists = cursor.fetchone()
+
+                            if not username_exists:
+                                break
+
+                            counter += 1
+                            username = (
+                                f"{base_username}{counter}"
+                            )
+
+                        # -----------------------------------------
+                        # GENERATE TEMPORARY PASSWORD
+                        # Example: Edu@5821
+                        # -----------------------------------------
+                        import random
+
+                        temporary_password = (
+                            "Edu@"
+                            + str(
+                                random.randint(
+                                    1000,
+                                    9999
+                                )
+                            )
+                        )
+
+                        password_hash = generate_password_hash(
+                            temporary_password
+                        )
+
+                        # -----------------------------------------
+                        # CREATE USER ACCOUNT
+                        # -----------------------------------------
+                        if is_postgres():
+                            cursor.execute(
+                                convert_query("""
+                                    INSERT INTO users (
+                                        school_id,
+                                        full_name,
+                                        username,
+                                        password,
+                                        role
+                                    )
+                                    VALUES (?, ?, ?, ?, ?)
+                                    RETURNING id
+                                """),
+                                (
+                                    school_id,
+                                    full_name,
+                                    username,
+                                    password_hash,
+                                    "teacher"
+                                )
+                            )
+
+                            user_id = cursor.fetchone()["id"]
+
+                        else:
+                            cursor.execute(
+                                convert_query("""
+                                    INSERT INTO users (
+                                        school_id,
+                                        full_name,
+                                        username,
+                                        password,
+                                        role
+                                    )
+                                    VALUES (?, ?, ?, ?, ?)
+                                """),
+                                (
+                                    school_id,
+                                    full_name,
+                                    username,
+                                    password_hash,
+                                    "teacher"
+                                )
+                            )
+
                             user_id = cursor.lastrowid
 
-                        cursor.execute(convert_query("""
-                            INSERT INTO teachers (
-                                school_id, user_id, teacher_id, full_name, phone, email
+                        # -----------------------------------------
+                        # CREATE TEACHER RECORD
+                        # -----------------------------------------
+                        if is_postgres():
+                            cursor.execute(
+                                convert_query("""
+                                    INSERT INTO teachers (
+                                        school_id,
+                                        user_id,
+                                        teacher_id,
+                                        full_name,
+                                        phone,
+                                        email
+                                    )
+                                    VALUES (?, ?, ?, ?, ?, ?)
+                                    RETURNING id
+                                """),
+                                (
+                                    school_id,
+                                    user_id,
+                                    teacher_code,
+                                    full_name,
+                                    phone,
+                                    email
+                                )
                             )
-                            VALUES (?, ?, ?, ?, ?, ?)
-                        """), (
-                            school_id,
-                            user_id,
-                            generate_teacher_id(),
-                            full_name,
-                            phone,
-                            email
-                        ))
 
-                        conn.commit()
+                            teacher_db_id = cursor.fetchone()["id"]
+
+                        else:
+                            cursor.execute(
+                                convert_query("""
+                                    INSERT INTO teachers (
+                                        school_id,
+                                        user_id,
+                                        teacher_id,
+                                        full_name,
+                                        phone,
+                                        email
+                                    )
+                                    VALUES (?, ?, ?, ?, ?, ?)
+                                """),
+                                (
+                                    school_id,
+                                    user_id,
+                                    teacher_code,
+                                    full_name,
+                                    phone,
+                                    email
+                                )
+                            )
+
+                            teacher_db_id = cursor.lastrowid
+
+                        # -----------------------------------------
+                        # DETERMINE SUBJECTS
+                        # -----------------------------------------
+                        if subject_value.strip().upper() == "ALL":
+                            subjects_to_assign = sagambe_subjects
+                        else:
+                            subjects_to_assign = [
+                                subject.strip()
+                                for subject in subject_value.split(",")
+                                if subject.strip()
+                            ]
+
+                        # -----------------------------------------
+                        # CREATE TEACHER ASSIGNMENTS
+                        # -----------------------------------------
+                        for subject in subjects_to_assign:
+
+                            cursor.execute(
+                                convert_query("""
+                                    SELECT id
+                                    FROM teacher_assignments
+                                    WHERE school_id = ?
+                                    AND teacher_id = ?
+                                    AND LOWER(TRIM(class_name)) =
+                                        LOWER(TRIM(?))
+                                    AND LOWER(TRIM(subject)) =
+                                        LOWER(TRIM(?))
+                                    LIMIT 1
+                                """),
+                                (
+                                    school_id,
+                                    teacher_db_id,
+                                    class_name,
+                                    subject
+                                )
+                            )
+
+                            existing_assignment = cursor.fetchone()
+
+                            if existing_assignment:
+                                continue
+
+                            cursor.execute(
+                                convert_query("""
+                                    INSERT INTO teacher_assignments (
+                                        school_id,
+                                        teacher_id,
+                                        class_name,
+                                        subject
+                                    )
+                                    VALUES (?, ?, ?, ?)
+                                """),
+                                (
+                                    school_id,
+                                    teacher_db_id,
+                                    class_name,
+                                    subject
+                                )
+                            )
+
+                            assignment_count += 1
+
+                        # -----------------------------------------
+                        # SAVE CREDENTIALS FOR DISPLAY
+                        # -----------------------------------------
+                        credentials.append({
+                            "full_name": full_name,
+                            "teacher_id": teacher_code,
+                            "username": username,
+                            "password": temporary_password,
+                            "class_name": class_name
+                        })
+
                         imported += 1
 
-                    except Exception:
-                        conn.rollback()
-                        skipped += 1
+                    conn.commit()
 
-                    finally:
-                        conn.close()
+                except Exception:
+                    conn.rollback()
+                    raise
 
-                flash(f"Teacher import complete. Imported: {imported}, Skipped: {skipped}", "success")
-                return redirect(url_for("teachers"))
+                finally:
+                    conn.close()
+
+                # ---------------------------------------------
+                # AUDIT LOG
+                # ---------------------------------------------
+                log_audit(
+                    "Bulk imported teachers",
+                    "teachers",
+                    None,
+                    (
+                        f"Imported {imported} teachers. "
+                        f"Created {assignment_count} assignments. "
+                        f"Skipped {skipped} rows."
+                    )
+                )
+
+                # ---------------------------------------------
+                # SAVE CREDENTIALS TEMPORARILY IN SESSION
+                # ---------------------------------------------
+                session["imported_teacher_credentials"] = credentials
+
+                flash(
+                    (
+                        f"Teacher import complete. "
+                        f"Imported: {imported}, "
+                        f"Assignments: {assignment_count}, "
+                        f"Skipped: {skipped}"
+                    ),
+                    "success"
+                )
+
+                return redirect(
+                    url_for("teacher_import_credentials")
+                )
 
             except Exception as e:
-                flash(f"Import failed: {str(e)}", "danger")
-                return redirect(url_for("import_teachers"))
+                flash(
+                    f"Import failed: {str(e)}",
+                    "danger"
+                )
 
-        return render_template("import_teachers.html", schools=schools)
-    
+                return redirect(
+                    url_for("import_teachers")
+                )
+
+        return render_template(
+            "import_teachers.html",
+            schools=schools
+        )
+    @app.route("/teacher_import_credentials")
+    @login_required
+    @roles_required("super_admin")
+    def teacher_import_credentials():
+
+        credentials = session.get(
+            "imported_teacher_credentials",
+            []
+        )
+
+        return render_template(
+            "teacher_import_credentials.html",
+            credentials=credentials
+        )
 
     @app.route("/delete_teacher_assignment/<int:assignment_id>", methods=["POST"])
     @login_required
