@@ -6340,7 +6340,6 @@ def void_cashbook_entry(entry_id):
     return redirect(
         url_for("cashbook")
     )
-    
 @app.route("/classes")
 @login_required
 @roles_required("school_admin", "super_admin", "teacher")
@@ -6351,16 +6350,33 @@ def classes():
     selected_school = request.args.get("school_id")
 
     if role == "super_admin":
-        schools = fetch_all("SELECT * FROM schools ORDER BY school_name")
+
+        schools = fetch_all(
+            "SELECT * FROM schools ORDER BY school_name"
+        )
 
         query = """
-            SELECT sc.id, sc.school_id, sc.class_name, s.school_name,
-                   COUNT(st.id) AS total_students
+            SELECT
+                sc.id,
+                sc.school_id,
+                sc.class_name,
+                sc.class_teacher_id,
+                s.school_name,
+                t.full_name AS class_teacher_name,
+                COUNT(st.id) AS total_students
             FROM school_classes sc
-            LEFT JOIN schools s ON sc.school_id = s.id
+
+            LEFT JOIN schools s
+                ON sc.school_id = s.id
+
+            LEFT JOIN teachers t
+                ON sc.class_teacher_id = t.id
+                AND t.school_id = sc.school_id
+
             LEFT JOIN students st
                 ON st.school_id = sc.school_id
-                AND LOWER(TRIM(st.class_name)) = LOWER(TRIM(sc.class_name))
+                AND LOWER(TRIM(st.class_name))
+                    = LOWER(TRIM(sc.class_name))
         """
 
         params = []
@@ -6370,11 +6386,22 @@ def classes():
             params.append(selected_school)
 
         query += """
-            GROUP BY sc.id, sc.school_id, sc.class_name, s.school_name
-            ORDER BY s.school_name, sc.class_name
+            GROUP BY
+                sc.id,
+                sc.school_id,
+                sc.class_name,
+                sc.class_teacher_id,
+                s.school_name,
+                t.full_name
+            ORDER BY
+                s.school_name,
+                sc.class_name
         """
 
-        class_rows = fetch_all(query, tuple(params))
+        class_rows = fetch_all(
+            query,
+            tuple(params)
+        )
 
         return render_template(
             "classes.html",
@@ -6384,20 +6411,44 @@ def classes():
         )
 
     else:
+
         class_rows = fetch_all("""
-            SELECT sc.id, sc.school_id, sc.class_name,
-                   COUNT(st.id) AS total_students
+            SELECT
+                sc.id,
+                sc.school_id,
+                sc.class_name,
+                sc.class_teacher_id,
+                t.full_name AS class_teacher_name,
+                COUNT(st.id) AS total_students
+
             FROM school_classes sc
+
+            LEFT JOIN teachers t
+                ON sc.class_teacher_id = t.id
+                AND t.school_id = sc.school_id
+
             LEFT JOIN students st
                 ON st.school_id = sc.school_id
-                AND LOWER(TRIM(st.class_name)) = LOWER(TRIM(sc.class_name))
+                AND LOWER(TRIM(st.class_name))
+                    = LOWER(TRIM(sc.class_name))
+
             WHERE sc.school_id = ?
-            GROUP BY sc.id, sc.school_id, sc.class_name
+
+            GROUP BY
+                sc.id,
+                sc.school_id,
+                sc.class_name,
+                sc.class_teacher_id,
+                t.full_name
+
             ORDER BY sc.class_name
+
         """, (school_id,))
 
-        return render_template("classes.html", classes=class_rows)
-
+        return render_template(
+            "classes.html",
+            classes=class_rows
+        )
 @app.route("/add_class", methods=["GET", "POST"])
 @login_required
 @roles_required("school_admin", "super_admin")

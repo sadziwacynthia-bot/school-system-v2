@@ -50,6 +50,16 @@
     text-decoration: underline;
   }
 
+  .class-teacher-name {
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  .no-class-teacher {
+    color: #94a3b8;
+    font-weight: 700;
+  }
+
   .student-count-badge {
     display: inline-flex;
     align-items: center;
@@ -86,6 +96,13 @@
     cursor: pointer;
   }
 
+  .empty-box {
+    padding: 28px;
+    text-align: center;
+    color: #64748b;
+    font-weight: 700;
+  }
+
   @media (max-width: 700px) {
     .classes-filter-form {
       grid-template-columns: 1fr;
@@ -103,8 +120,12 @@
   }
 </style>
 
+
 <div class="classes-page">
 
+  <!-- =========================
+       PAGE HEADER
+  ========================== -->
   <div class="page-header-card">
     <h1>Classes</h1>
 
@@ -113,6 +134,10 @@
     </p>
   </div>
 
+
+  <!-- =========================
+       SUPER ADMIN SCHOOL FILTER
+  ========================== -->
   {% if session.get("role") == "super_admin" %}
 
   <div class="premium-card classes-filter-card">
@@ -132,6 +157,7 @@
           id="school_id"
           name="school_id"
         >
+
           <option value="">
             All Schools
           </option>
@@ -148,6 +174,7 @@
           </option>
 
           {% endfor %}
+
         </select>
       </div>
 
@@ -164,6 +191,10 @@
 
   {% endif %}
 
+
+  <!-- =========================
+       CLASS MANAGEMENT CARD
+  ========================== -->
   <div class="premium-card">
 
     <div class="section-title">
@@ -177,6 +208,8 @@
       </div>
 
       <div class="action-row">
+
+        {% if session.get("role") in ["super_admin", "school_admin"] %}
 
         <a
           href="{{ url_for('add_class') }}"
@@ -192,9 +225,12 @@
           👨‍🏫 Assign Class Teacher
         </a>
 
+        {% endif %}
+
       </div>
 
     </div>
+
 
     {% if classes %}
 
@@ -204,6 +240,7 @@
 
         <thead>
           <tr>
+
             <th>Class</th>
 
             {% if session.get("role") == "super_admin" %}
@@ -213,8 +250,10 @@
             <th>Class Teacher</th>
             <th>Students</th>
             <th>Actions</th>
+
           </tr>
         </thead>
+
 
         <tbody>
 
@@ -222,6 +261,7 @@
 
           <tr>
 
+            <!-- CLASS NAME -->
             <td>
               <a
                 href="{{ url_for(
@@ -234,6 +274,8 @@
               </a>
             </td>
 
+
+            <!-- SCHOOL -->
             {% if session.get("role") == "super_admin" %}
 
             <td>
@@ -242,17 +284,30 @@
 
             {% endif %}
 
+
+            <!-- CLASS TEACHER -->
             <td>
-              {{ cls.class_teacher_name
-                 or cls.teacher_name
-                 or cls.assigned_teacher
-                 or cls.teacher_full_name
-                 or cls.full_name
-                 or cls.class_teacher
-                 or '-' }}
+
+              {% if cls.class_teacher_name %}
+
+                <span class="class-teacher-name">
+                  👨‍🏫 {{ cls.class_teacher_name }}
+                </span>
+
+              {% else %}
+
+                <span class="no-class-teacher">
+                  Not Assigned
+                </span>
+
+              {% endif %}
+
             </td>
 
+
+            <!-- STUDENT COUNT -->
             <td>
+
               <a
                 href="{{ url_for(
                   'class_students',
@@ -262,8 +317,11 @@
               >
                 {{ cls.total_students or 0 }} students
               </a>
+
             </td>
 
+
+            <!-- ACTIONS -->
             <td>
 
               <div class="class-actions">
@@ -278,6 +336,7 @@
                   View Students
                 </a>
 
+
                 {% if session.get("role") == "super_admin" %}
 
                 <form
@@ -290,12 +349,14 @@
                     'Delete this class? This is only allowed when no students are assigned.'
                   );"
                 >
+
                   <button
                     type="submit"
                     class="class-delete-button"
                   >
                     🗑️ Delete
                   </button>
+
                 </form>
 
                 {% endif %}
@@ -313,6 +374,7 @@
       </table>
 
     </div>
+
 
     {% else %}
 
