@@ -10028,6 +10028,9 @@ def debug_timetable():
 
     return "<pre>" + str(rows) + "</pre>"
 
+# Run database setup when app is loaded by Gunicorn/Render
+if os.environ.get("RENDER"):
+    setup_app()
 if __name__ == "__main__":
     setup_app()
     port = int(os.environ.get("PORT", 10000))
