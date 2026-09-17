@@ -5388,7 +5388,6 @@ def cashbook_insert_income(cursor, school_id, payment_date, amount_paid, receipt
         )
     )
 
-
 @app.route("/cashbook")
 @login_required
 @roles_required("school_admin", "super_admin")
@@ -5410,7 +5409,6 @@ def cashbook():
     # ------------------------------------
     # Hide voided transactions by default
     # ------------------------------------
-
     if show_voided != "1":
         if is_postgres():
             query += " AND COALESCE(is_void, FALSE) = FALSE"
@@ -5420,7 +5418,6 @@ def cashbook():
     # ------------------------------------
     # School filtering
     # ------------------------------------
-
     if role != "super_admin":
         query += " AND school_id = ?"
         params.append(school_id)
@@ -5428,7 +5425,6 @@ def cashbook():
     # ------------------------------------
     # Filters
     # ------------------------------------
-
     if entry_type:
         query += " AND entry_type = ?"
         params.append(entry_type)
@@ -5465,47 +5461,48 @@ def cashbook():
     running_balance = 0
     processed_entries = []
 
+    # ------------------------------------
+    # Process cashbook entries
+    # ------------------------------------
     for entry in reversed(entries):
 
         amount = float(entry["amount"] or 0)
 
-        entry_is_void = bool(
-            entry["is_void"]
-    )
+        entry_is_void = bool(entry["is_void"])
 
-    # ------------------------------------
-    # Only active transactions affect totals
-    # ------------------------------------
-    if not entry_is_void:
+        # ------------------------------------
+        # Only active transactions affect totals
+        # ------------------------------------
+        if not entry_is_void:
 
-        if entry["entry_type"] == "income":
-            total_income += amount
-            running_balance += amount
+            if entry["entry_type"] == "income":
+                total_income += amount
+                running_balance += amount
 
-        else:
-            total_expense += amount
-            running_balance -= amount
+            else:
+                total_expense += amount
+                running_balance -= amount
 
-    # ------------------------------------
-    # Keep voided records visible for audit
-    # ------------------------------------
-    processed_entries.append({
-        "id": entry["id"],
-        "entry_date": entry["entry_date"],
-        "entry_type": entry["entry_type"],
-        "category": entry["category"],
-        "description": entry["description"],
-        "amount": amount,
-        "payment_method": entry["payment_method"],
-        "reference_number": entry["reference_number"],
-        "transaction_reference": entry["transaction_reference"],
-        "created_by": entry["created_by"],
-        "is_void": entry["is_void"],
-        "void_reason": entry["void_reason"],
-        "voided_by_user_id": entry["voided_by_user_id"],
-        "voided_at": entry["voided_at"],
-        "running_balance": running_balance
-    })
+        # ------------------------------------
+        # Keep voided records visible for audit
+        # ------------------------------------
+        processed_entries.append({
+            "id": entry["id"],
+            "entry_date": entry["entry_date"],
+            "entry_type": entry["entry_type"],
+            "category": entry["category"],
+            "description": entry["description"],
+            "amount": amount,
+            "payment_method": entry["payment_method"],
+            "reference_number": entry["reference_number"],
+            "transaction_reference": entry["transaction_reference"],
+            "created_by": entry["created_by"],
+            "is_void": entry["is_void"],
+            "void_reason": entry["void_reason"],
+            "voided_by_user_id": entry["voided_by_user_id"],
+            "voided_at": entry["voided_at"],
+            "running_balance": running_balance
+        })
 
     processed_entries.reverse()
 
