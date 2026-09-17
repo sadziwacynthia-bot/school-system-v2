@@ -8334,12 +8334,14 @@ def run_timetable_foundation_migrations():
     finally:
         conn.close()
 
-        
 def run_school_settings_migration():
     conn = get_db()
     cursor = conn.cursor()
+
     try:
         if is_postgres():
+
+            # Create base table if it does not exist
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS school_settings (
                     id SERIAL PRIMARY KEY,
@@ -8352,7 +8354,50 @@ def run_school_settings_migration():
                     logo_url TEXT
                 )
             """)
+
+            # Add newer Branding Center columns safely
+            statements = [
+                "ALTER TABLE school_settings ADD COLUMN IF NOT EXISTS motto TEXT",
+                "ALTER TABLE school_settings ADD COLUMN IF NOT EXISTS opening_date VARCHAR(50)",
+                "ALTER TABLE school_settings ADD COLUMN IF NOT EXISTS closing_date VARCHAR(50)",
+
+                "ALTER TABLE school_settings ADD COLUMN IF NOT EXISTS primary_color VARCHAR(20) DEFAULT '#2563EB'",
+                "ALTER TABLE school_settings ADD COLUMN IF NOT EXISTS secondary_color VARCHAR(20) DEFAULT '#7C3AED'",
+                "ALTER TABLE school_settings ADD COLUMN IF NOT EXISTS accent_color VARCHAR(20) DEFAULT '#F59E0B'",
+
+                "ALTER TABLE school_settings ADD COLUMN IF NOT EXISTS report_template VARCHAR(50) DEFAULT 'classic'",
+
+                "ALTER TABLE school_settings ADD COLUMN IF NOT EXISTS show_logo BOOLEAN DEFAULT TRUE",
+                "ALTER TABLE school_settings ADD COLUMN IF NOT EXISTS show_stamp BOOLEAN DEFAULT TRUE",
+                "ALTER TABLE school_settings ADD COLUMN IF NOT EXISTS show_head_signature BOOLEAN DEFAULT TRUE",
+                "ALTER TABLE school_settings ADD COLUMN IF NOT EXISTS show_bursar_signature BOOLEAN DEFAULT TRUE",
+                "ALTER TABLE school_settings ADD COLUMN IF NOT EXISTS show_position BOOLEAN DEFAULT TRUE",
+                "ALTER TABLE school_settings ADD COLUMN IF NOT EXISTS show_attendance BOOLEAN DEFAULT TRUE",
+                "ALTER TABLE school_settings ADD COLUMN IF NOT EXISTS show_conduct BOOLEAN DEFAULT TRUE",
+
+                "ALTER TABLE school_settings ADD COLUMN IF NOT EXISTS logo_data BYTEA",
+                "ALTER TABLE school_settings ADD COLUMN IF NOT EXISTS logo_filename TEXT",
+                "ALTER TABLE school_settings ADD COLUMN IF NOT EXISTS logo_mime_type TEXT",
+
+                "ALTER TABLE school_settings ADD COLUMN IF NOT EXISTS stamp_data BYTEA",
+                "ALTER TABLE school_settings ADD COLUMN IF NOT EXISTS stamp_filename TEXT",
+                "ALTER TABLE school_settings ADD COLUMN IF NOT EXISTS stamp_mime_type TEXT",
+
+                "ALTER TABLE school_settings ADD COLUMN IF NOT EXISTS head_signature_data BYTEA",
+                "ALTER TABLE school_settings ADD COLUMN IF NOT EXISTS head_signature_filename TEXT",
+                "ALTER TABLE school_settings ADD COLUMN IF NOT EXISTS head_signature_mime_type TEXT",
+
+                "ALTER TABLE school_settings ADD COLUMN IF NOT EXISTS bursar_signature_data BYTEA",
+                "ALTER TABLE school_settings ADD COLUMN IF NOT EXISTS bursar_signature_filename TEXT",
+                "ALTER TABLE school_settings ADD COLUMN IF NOT EXISTS bursar_signature_mime_type TEXT"
+            ]
+
+            for statement in statements:
+                cursor.execute(statement)
+
         else:
+
+            # Create base SQLite table
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS school_settings (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -8365,7 +8410,57 @@ def run_school_settings_migration():
                     logo_url TEXT
                 )
             """)
+
+            # SQLite does not support ADD COLUMN IF NOT EXISTS
+            statements = [
+                "ALTER TABLE school_settings ADD COLUMN motto TEXT",
+                "ALTER TABLE school_settings ADD COLUMN opening_date TEXT",
+                "ALTER TABLE school_settings ADD COLUMN closing_date TEXT",
+
+                "ALTER TABLE school_settings ADD COLUMN primary_color TEXT DEFAULT '#2563EB'",
+                "ALTER TABLE school_settings ADD COLUMN secondary_color TEXT DEFAULT '#7C3AED'",
+                "ALTER TABLE school_settings ADD COLUMN accent_color TEXT DEFAULT '#F59E0B'",
+
+                "ALTER TABLE school_settings ADD COLUMN report_template TEXT DEFAULT 'classic'",
+
+                "ALTER TABLE school_settings ADD COLUMN show_logo INTEGER DEFAULT 1",
+                "ALTER TABLE school_settings ADD COLUMN show_stamp INTEGER DEFAULT 1",
+                "ALTER TABLE school_settings ADD COLUMN show_head_signature INTEGER DEFAULT 1",
+                "ALTER TABLE school_settings ADD COLUMN show_bursar_signature INTEGER DEFAULT 1",
+                "ALTER TABLE school_settings ADD COLUMN show_position INTEGER DEFAULT 1",
+                "ALTER TABLE school_settings ADD COLUMN show_attendance INTEGER DEFAULT 1",
+                "ALTER TABLE school_settings ADD COLUMN show_conduct INTEGER DEFAULT 1",
+
+                "ALTER TABLE school_settings ADD COLUMN logo_data BLOB",
+                "ALTER TABLE school_settings ADD COLUMN logo_filename TEXT",
+                "ALTER TABLE school_settings ADD COLUMN logo_mime_type TEXT",
+
+                "ALTER TABLE school_settings ADD COLUMN stamp_data BLOB",
+                "ALTER TABLE school_settings ADD COLUMN stamp_filename TEXT",
+                "ALTER TABLE school_settings ADD COLUMN stamp_mime_type TEXT",
+
+                "ALTER TABLE school_settings ADD COLUMN head_signature_data BLOB",
+                "ALTER TABLE school_settings ADD COLUMN head_signature_filename TEXT",
+                "ALTER TABLE school_settings ADD COLUMN head_signature_mime_type TEXT",
+
+                "ALTER TABLE school_settings ADD COLUMN bursar_signature_data BLOB",
+                "ALTER TABLE school_settings ADD COLUMN bursar_signature_filename TEXT",
+                "ALTER TABLE school_settings ADD COLUMN bursar_signature_mime_type TEXT"
+            ]
+
+            for statement in statements:
+                try:
+                    cursor.execute(statement)
+                except Exception:
+                    pass
+
         conn.commit()
+        print("School settings migration completed")
+
+    except Exception as e:
+        conn.rollback()
+        print("SCHOOL SETTINGS MIGRATION ERROR:", str(e))
+
     finally:
         conn.close()
 
@@ -8413,7 +8508,6 @@ def run_school_control_migration():
     finally:
         conn.close()
 
-
 def run_cashbook_migration():
     conn = get_db()
     cursor = conn.cursor()
@@ -8421,37 +8515,79 @@ def run_cashbook_migration():
     try:
         if is_postgres():
 
-            # ➤ Add new columns safely
-            cursor.execute("ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS entry_type VARCHAR(50)")
-            cursor.execute("ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS category VARCHAR(100)")
-            cursor.execute("ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50)")
-            cursor.execute("ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS reference_number TEXT")
-            cursor.execute("ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS created_by TEXT")
+            statements = [
+                "ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS entry_type VARCHAR(50)",
+                "ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS category VARCHAR(100)",
+                "ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50)",
+                "ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS reference_number TEXT",
+                "ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS created_by TEXT",
 
-            # ➤ Try to migrate old data safely
+                "ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS transaction_reference TEXT",
+                "ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS created_by_user_id INTEGER",
+                "ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+                "ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS updated_by_user_id INTEGER",
+                "ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP",
+
+                "ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS is_void BOOLEAN DEFAULT FALSE",
+                "ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS void_reason TEXT",
+                "ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS voided_by_user_id INTEGER",
+                "ALTER TABLE cashbook ADD COLUMN IF NOT EXISTS voided_at TIMESTAMP"
+            ]
+
+            for statement in statements:
+                cursor.execute(statement)
+
+            # Migrate older column names only if those old columns exist.
+            # Use SAVEPOINT so one missing legacy column does not poison
+            # the whole PostgreSQL transaction.
+
             try:
+                cursor.execute("SAVEPOINT migrate_cashbook_type")
+
                 cursor.execute("""
                     UPDATE cashbook
                     SET entry_type = type
-                    WHERE entry_type IS NULL AND type IS NOT NULL
+                    WHERE entry_type IS NULL
+                      AND type IS NOT NULL
                 """)
+
+                cursor.execute("RELEASE SAVEPOINT migrate_cashbook_type")
+
             except Exception:
-                conn.rollback()
+                cursor.execute(
+                    "ROLLBACK TO SAVEPOINT migrate_cashbook_type"
+                )
+                cursor.execute(
+                    "RELEASE SAVEPOINT migrate_cashbook_type"
+                )
 
             try:
+                cursor.execute("SAVEPOINT migrate_cashbook_recorded_by")
+
                 cursor.execute("""
                     UPDATE cashbook
                     SET created_by = recorded_by
-                    WHERE created_by IS NULL AND recorded_by IS NOT NULL
+                    WHERE created_by IS NULL
+                      AND recorded_by IS NOT NULL
                 """)
-            except Exception:
-                conn.rollback()
 
-            # ➤ Set safe defaults
+                cursor.execute(
+                    "RELEASE SAVEPOINT migrate_cashbook_recorded_by"
+                )
+
+            except Exception:
+                cursor.execute(
+                    "ROLLBACK TO SAVEPOINT migrate_cashbook_recorded_by"
+                )
+                cursor.execute(
+                    "RELEASE SAVEPOINT migrate_cashbook_recorded_by"
+                )
+
             cursor.execute("""
                 UPDATE cashbook
                 SET category = 'General'
-                WHERE category IS NULL OR category = ''
+                WHERE category IS NULL
+                   OR category = ''
             """)
 
             cursor.execute("""
@@ -8466,8 +8602,13 @@ def run_cashbook_migration():
                 WHERE reference_number IS NULL
             """)
 
+            cursor.execute("""
+                UPDATE cashbook
+                SET is_void = FALSE
+                WHERE is_void IS NULL
+            """)
+
         else:
-            # SQLITE VERSION
 
             def safe_add(column_sql):
                 try:
@@ -8475,18 +8616,57 @@ def run_cashbook_migration():
                 except Exception:
                     pass
 
-            safe_add("ALTER TABLE cashbook ADD COLUMN entry_type TEXT")
-            safe_add("ALTER TABLE cashbook ADD COLUMN category TEXT")
-            safe_add("ALTER TABLE cashbook ADD COLUMN payment_method TEXT")
-            safe_add("ALTER TABLE cashbook ADD COLUMN reference_number TEXT")
-            safe_add("ALTER TABLE cashbook ADD COLUMN created_by TEXT")
+            safe_add(
+                "ALTER TABLE cashbook ADD COLUMN entry_type TEXT"
+            )
+            safe_add(
+                "ALTER TABLE cashbook ADD COLUMN category TEXT"
+            )
+            safe_add(
+                "ALTER TABLE cashbook ADD COLUMN payment_method TEXT"
+            )
+            safe_add(
+                "ALTER TABLE cashbook ADD COLUMN reference_number TEXT"
+            )
+            safe_add(
+                "ALTER TABLE cashbook ADD COLUMN created_by TEXT"
+            )
 
-            # Try migrating old fields
+            safe_add(
+                "ALTER TABLE cashbook ADD COLUMN transaction_reference TEXT"
+            )
+            safe_add(
+                "ALTER TABLE cashbook ADD COLUMN created_by_user_id INTEGER"
+            )
+            safe_add(
+                "ALTER TABLE cashbook ADD COLUMN created_at TEXT"
+            )
+            safe_add(
+                "ALTER TABLE cashbook ADD COLUMN updated_by_user_id INTEGER"
+            )
+            safe_add(
+                "ALTER TABLE cashbook ADD COLUMN updated_at TEXT"
+            )
+
+            safe_add(
+                "ALTER TABLE cashbook ADD COLUMN is_void INTEGER DEFAULT 0"
+            )
+            safe_add(
+                "ALTER TABLE cashbook ADD COLUMN void_reason TEXT"
+            )
+            safe_add(
+                "ALTER TABLE cashbook ADD COLUMN voided_by_user_id INTEGER"
+            )
+            safe_add(
+                "ALTER TABLE cashbook ADD COLUMN voided_at TEXT"
+            )
+
             try:
                 cursor.execute("""
                     UPDATE cashbook
                     SET entry_type = type
-                    WHERE entry_type IS NULL AND type IS NOT NULL
+                    WHERE entry_type IS NULL
+                      AND type IS NOT NULL
                 """)
             except Exception:
                 pass
@@ -8495,7 +8675,8 @@ def run_cashbook_migration():
                 cursor.execute("""
                     UPDATE cashbook
                     SET created_by = recorded_by
-                    WHERE created_by IS NULL AND recorded_by IS NOT NULL
+                    WHERE created_by IS NULL
+                      AND recorded_by IS NOT NULL
                 """)
             except Exception:
                 pass
@@ -8503,7 +8684,26 @@ def run_cashbook_migration():
             cursor.execute("""
                 UPDATE cashbook
                 SET category = 'General'
-                WHERE category IS NULL OR category = ''
+                WHERE category IS NULL
+                   OR category = ''
+            """)
+
+            cursor.execute("""
+                UPDATE cashbook
+                SET payment_method = ''
+                WHERE payment_method IS NULL
+            """)
+
+            cursor.execute("""
+                UPDATE cashbook
+                SET reference_number = ''
+                WHERE reference_number IS NULL
+            """)
+
+            cursor.execute("""
+                UPDATE cashbook
+                SET is_void = 0
+                WHERE is_void IS NULL
             """)
 
         conn.commit()
@@ -8713,56 +8913,104 @@ def create_teacher_resources_table():
         conn.commit()
     finally:
         conn.close()
-
 def run_classes_migration():
     conn = get_db()
     cursor = conn.cursor()
 
     try:
+        # =====================================================
+        # POSTGRESQL / RENDER
+        # =====================================================
         if is_postgres():
+
+            # Create the table if it does not exist
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS school_classes (
                     id SERIAL PRIMARY KEY,
                     school_id INTEGER,
                     class_name VARCHAR(100),
+                    class_teacher_id INTEGER,
                     UNIQUE(school_id, class_name)
                 )
             """)
 
+            # Important:
+            # If school_classes already existed before
+            # class_teacher_id was introduced, add it safely.
             cursor.execute("""
-                INSERT INTO school_classes (school_id, class_name)
-                SELECT DISTINCT school_id, class_name
+                ALTER TABLE school_classes
+                ADD COLUMN IF NOT EXISTS class_teacher_id INTEGER
+            """)
+
+            # Create classes from existing student records
+            cursor.execute("""
+                INSERT INTO school_classes (
+                    school_id,
+                    class_name
+                )
+                SELECT DISTINCT
+                    school_id,
+                    class_name
                 FROM students
                 WHERE school_id IS NOT NULL
                   AND class_name IS NOT NULL
-                  AND class_name != ''
-                ON CONFLICT (school_id, class_name) DO NOTHING
+                  AND TRIM(class_name) != ''
+                ON CONFLICT (school_id, class_name)
+                DO NOTHING
             """)
 
+        # =====================================================
+        # SQLITE / LOCAL
+        # =====================================================
         else:
+
+            # Create table if it does not exist
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS school_classes (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     school_id INTEGER,
                     class_name TEXT,
+                    class_teacher_id INTEGER,
                     UNIQUE(school_id, class_name)
                 )
             """)
 
+            # Existing local databases may not have
+            # class_teacher_id yet.
+            try:
+                cursor.execute("""
+                    ALTER TABLE school_classes
+                    ADD COLUMN class_teacher_id INTEGER
+                """)
+            except Exception:
+                # Column already exists
+                pass
+
+            # Create classes from existing student records
             cursor.execute("""
-                INSERT OR IGNORE INTO school_classes (school_id, class_name)
-                SELECT DISTINCT school_id, class_name
+                INSERT OR IGNORE INTO school_classes (
+                    school_id,
+                    class_name
+                )
+                SELECT DISTINCT
+                    school_id,
+                    class_name
                 FROM students
                 WHERE school_id IS NOT NULL
                   AND class_name IS NOT NULL
-                  AND class_name != ''
+                  AND TRIM(class_name) != ''
             """)
 
         conn.commit()
 
+        print("Classes migration completed")
+
+    except Exception as e:
+        conn.rollback()
+        print("CLASSES MIGRATION ERROR:", str(e))
+
     finally:
         conn.close()
-
 @app.route("/fix_old_data_school")
 @login_required
 @roles_required("super_admin")
